@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>InView VROOM Route Visualizer</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9;}
+        #map { height: 75vh; width: 100%; border: 2px solid #ccc; border-radius: 8px; margin-top: 15px; }
+        .controls { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h2>🗺️ InView Route Visualizer</h2>
+        <label for="jsonUpload"><strong>1. Upload your vroom_solution.json: </strong></label>
+        <input type="file" id="jsonUpload" accept=".json">
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        // Initialize the map centered on London
+        var map = L.map('map').setView([51.505, -0.09], 11);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var layerGroup = L.layerGroup().addTo(map);
+
+        // Colors for different engineers
+        const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
+
+        document.getElementById('jsonUpload').addEventListener('change', function(event) {
+            var file = event.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var data = JSON.parse(e.target.result);
+                        drawRoutes(data);
+                    } catch (err) {
+                        alert("Error parsing JSON file!");
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function drawRoutes(data) {
+            layerGroup.clearLayers(); // Clear previous routes
+
+            // 1. Draw Assigned Routes
+            if (data.routes) {
+                data.routes.forEach((route, index) => {
+                    let color = colors[index % colors.length];
+                    let latlngs = [];
+
+                    route.steps.forEach((step, stepIndex) => {
+                        // VROOM uses [lon, lat], Leaflet uses [lat, lon]
+                        let lat = step.location[1];
+                        let lon = step.location[0];
+                        latlngs.push([lat, lon]);
+
+                        // Format arrival time safely
+                        let arrivalTime = new Date(step.arrival * 1000).toISOString().substr(11, 5);
+
+                        let markerLabel = "";
+                        if (step.type === 'start') markerLabel = `<b>🟢 START</b><br>Eng: ${route.vehicle}`;
+                        else if (step.type === 'end') markerLabel = `<b>🔴 END</b><br>Eng: ${route.vehicle}`;
+                        else markerLabel = `<b>🔧 Job ID: ${step.job}</b><br>Arrival: ${arrivalTime}<br>Eng: ${route.vehicle}`;
+
+                        L.circleMarker([lat, lon], {
+                            color: color, radius: 6, fillOpacity: 0.8
+                        }).addTo(layerGroup).bindPopup(markerLabel);
+                    });
+
+                    // Draw the sequence line between stops
+                    L.polyline(latlngs, {color: color, weight: 4, opacity: 0.7, dashArray: '5, 10'}).addTo(layerGroup);
+                });
+            }
+
+            // 2. Draw Unassigned Jobs
+            if (data.unassigned) {
+                data.unassigned.forEach(job => {
+                    let lat = job.location[1];
+                    let lon = job.location[0];
+                    L.circleMarker([lat, lon], {
+                        color: '#000000', fillColor: '#000000', radius: 6, fillOpacity: 1
+                    }).addTo(layerGroup).bindPopup(`<b>⚠️ UNASSIGNED</b><br>Job ID: ${job.id}`);
+                });
+            }
+
+            // Auto-zoom the map to fit all drawn routes
+            if (latlngs.length > 0) {
+                map.fitBounds(L.polyline(latlngs).getBounds());
+            }
+        }
+    </script>
+</body>
+</html>

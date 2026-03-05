@@ -1,0 +1,20 @@
+---
+description: Coding Standards for VROOM Fault Management Orchestrator
+globs: *.py
+---
+# VROOM Engine Standards
+
+## Coordinate Standard
+All spatial data MUST be represented as `[Longitude, Latitude]` to conform with GeoJSON and VROOM specifications.
+
+## Corporate Environment
+For REST API calls, the system operates in a corporate IT environment. You must disable urllib3 warnings and set `verify=False`:
+```python
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# requests.get(url, verify=False)
+```
+
+## Temporal Precision
+All routing logic MUST mathematically account for departure time.
+Leverage TomTom's time-dependent traffic multipliers in travel estimations so that routes generated correctly reflect dynamic real-time conditions.

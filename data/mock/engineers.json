@@ -1,0 +1,37 @@
+{
+    "engineers": [
+        {
+            "id": 1,
+            "name": "Alice Smith",
+            "start_longitude": -0.1180,
+            "start_latitude": 51.4975,
+            "end_longitude": -0.1180,
+            "end_latitude": 51.4975,
+            "skills": [
+                "traffic_light_repair",
+                "high_voltage",
+                "cctv_maintenance"
+            ],
+            "working_hours": {
+                "start": "2026-03-05T08:00:00Z",
+                "end": "2026-03-05T16:00:00Z"
+            }
+        },
+        {
+            "id": 2,
+            "name": "Bob Jones",
+            "start_longitude": -0.1415,
+            "start_latitude": 51.5200,
+            "end_longitude": -0.1415,
+            "end_latitude": 51.5200,
+            "skills": [
+                "fiber_splicing",
+                "cctv_maintenance"
+            ],
+            "working_hours": {
+                "start": "2026-03-05T09:00:00Z",
+                "end": "2026-03-05T17:00:00Z"
+            }
+        }
+    ]
+}

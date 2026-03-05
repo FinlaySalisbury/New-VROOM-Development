@@ -1,0 +1,35 @@
+{
+    "jobs": [
+        {
+            "id": 101,
+            "description": "Fix traffic light at Main St",
+            "longitude": -0.1276,
+            "latitude": 51.5074,
+            "required_skills": [
+                "traffic_light_repair",
+                "high_voltage"
+            ],
+            "time_windows": [
+                {
+                    "start": "2026-03-05T08:00:00Z",
+                    "end": "2026-03-05T12:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 102,
+            "description": "Routine CCTV check",
+            "longitude": -0.1337,
+            "latitude": 51.5098,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "time_windows": [
+                {
+                    "start": "2026-03-05T09:00:00Z",
+                    "end": "2026-03-05T17:00:00Z"
+                }
+            ]
+        }
+    ]
+}

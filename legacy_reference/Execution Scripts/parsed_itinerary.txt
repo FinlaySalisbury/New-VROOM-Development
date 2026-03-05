@@ -1,0 +1,45 @@
+=========================================================
+           INVIEW ROUTE OPTIMIZATION ITINERARY           
+=========================================================
+
+👷 ENGINEER ID: 101
+   Total Driving Time: 91 mins | Total Work Time: 285 mins | Distance: 0.00 km
+   --- Shift Schedule ---
+   [07:00] 🟢 START SHIFT (Location: [0.001, 51.545])
+   [07:17] 🔧 ARRIVE AT JOB #506 (Fix duration: 60 mins)
+   [08:32] 🔧 ARRIVE AT JOB #518 (Fix duration: 55 mins)
+   [09:31] 🔧 ARRIVE AT JOB #520 (Fix duration: 65 mins)
+   [10:49] 🔧 ARRIVE AT JOB #512 (Fix duration: 53 mins)
+   [12:24] 🔧 ARRIVE AT JOB #534 (Fix duration: 51 mins)
+   [13:16] 🔴 END SHIFT
+
+---------------------------------------------------------
+
+👷 ENGINEER ID: 105
+   Total Driving Time: 59 mins | Total Work Time: 195 mins | Distance: 0.00 km
+   --- Shift Schedule ---
+   [07:00] 🟢 START SHIFT (Location: [-0.114, 51.461])
+   [07:12] 🔧 ARRIVE AT JOB #524 (Fix duration: 70 mins)
+   [08:32] 🔧 ARRIVE AT JOB #522 (Fix duration: 60 mins)
+   [10:09] 🔧 ARRIVE AT JOB #537 (Fix duration: 65 mins)
+   [11:14] 🔴 END SHIFT
+
+---------------------------------------------------------
+
+👷 ENGINEER ID: 102
+   Total Driving Time: 75 mins | Total Work Time: 191 mins | Distance: 0.00 km
+   --- Shift Schedule ---
+   [07:00] 🟢 START SHIFT (Location: [-0.098, 51.371])
+   [07:32] 🔧 ARRIVE AT JOB #539 (Fix duration: 68 mins)
+   [09:00] 🔧 ARRIVE AT JOB #515 (Fix duration: 60 mins)
+   [10:24] 🔧 ARRIVE AT JOB #507 (Fix duration: 63 mins)
+   [11:27] 🔴 END SHIFT
+
+---------------------------------------------------------
+
+=== ⚠️ UNASSIGNED JOBS ===
+Total Unassigned: 4
+   Job #519 -> Rejected by constraints (Check required skills or remaining shift times)
+   Job #510 -> Rejected by constraints (Check required skills or remaining shift times)
+   Job #523 -> Rejected by constraints (Check required skills or remaining shift times)
+   Job #501 -> Rejected by constraints (Check required skills or remaining shift times)

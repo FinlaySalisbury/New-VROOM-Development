@@ -1,0 +1,6 @@
+{
+    "traffic_light_repair": 1,
+    "cctv_maintenance": 2,
+    "fiber_splicing": 3,
+    "high_voltage": 4
+}
