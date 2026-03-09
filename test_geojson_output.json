@@ -1,0 +1,143 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.092,
+          51.514
+        ]
+      },
+      "properties": {
+        "vehicle": 101,
+        "job_id": 502,
+        "arrival_time": 1071,
+        "type": "job_site"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.123,
+          51.53
+        ]
+      },
+      "properties": {
+        "vehicle": 101,
+        "job_id": 505,
+        "arrival_time": 1625,
+        "type": "job_site"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.127,
+          51.507
+        ]
+      },
+      "properties": {
+        "vehicle": 101,
+        "job_id": 501,
+        "arrival_time": 1894,
+        "type": "job_site"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.101,
+          51.494
+        ]
+      },
+      "properties": {
+        "vehicle": 101,
+        "job_id": 504,
+        "arrival_time": 2309,
+        "type": "job_site"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.02,
+          51.505
+        ]
+      },
+      "properties": {
+        "vehicle": 101,
+        "job_id": 503,
+        "arrival_time": 3171,
+        "type": "job_site"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            0.001,
+            51.545
+          ],
+          [
+            -0.092,
+            51.514
+          ],
+          [
+            -0.123,
+            51.53
+          ],
+          [
+            -0.127,
+            51.507
+          ],
+          [
+            -0.101,
+            51.494
+          ],
+          [
+            -0.02,
+            51.505
+          ],
+          [
+            0.001,
+            51.545
+          ]
+        ]
+      },
+      "properties": {
+        "vehicle": 101,
+        "duration": 3605,
+        "distance": null,
+        "type": "route_path"
+      }
+    }
+  ],
+  "summary": {
+    "cost": 3605,
+    "routes": 1,
+    "unassigned": 0,
+    "setup": 0,
+    "service": 0,
+    "duration": 3605,
+    "waiting_time": 0,
+    "priority": 0,
+    "violations": [],
+    "computing_times": {
+      "loading": 0,
+      "solving": 2,
+      "routing": 0
+    }
+  }
+}

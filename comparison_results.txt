@@ -1,0 +1,23 @@
+
+
+==================================================
+      SIDE BY SIDE COMPARISON       
+==================================================
+--- NO TRAFFIC EUCLIDEAN RESULTS ---
+Total Routes: 1
+Unassigned Jobs: 0
+Total Travel Duration: 13015s
+
+Vehicle 101 Route: Start -> 506 -> 504 -> 501 -> 502 -> 505 -> 503 -> End
+  Total ETA: 13015s, Travel Distance: 0m
+
+--------------------------------------------------
+--- LIVE TRAFFIC RESULTS ---
+Total Routes: 1
+Unassigned Jobs: 0
+Total Travel Duration: 18271s
+
+Vehicle 101 Route: Start -> 504 -> 506 -> 503 -> 502 -> 501 -> 505 -> End
+  Total ETA: 18271s, Travel Distance: 0m
+
+==================================================

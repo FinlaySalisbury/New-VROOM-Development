@@ -51,6 +51,7 @@ class TomTomClient:
         params = {
             "key": self.api_key,
             "departAt": depart_at,
+            "computeTravelTimeFor": "all",
             "traffic": "true" # Request traffic-aware routing
         }
 
@@ -72,10 +73,15 @@ class TomTomClient:
                     multiplier = travel_time / free_flow_time
                     logger.debug(f"TomTom: TT={travel_time}s, FF={free_flow_time}s, Multiplier={multiplier:.2f}")
                     return multiplier
+                else:
+                    logger.warning(f"Missing free_flow_time. Summary payload: {summary}")
                     
-            logger.warning("TomTom API returned unexpected format or no routes.")
+            logger.warning(f"TomTom API returned unexpected format or no routes. Data snippet: {str(data)[:200]}")
             return 1.0
             
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"TomTom API request failed: {e}. Response: {e.response.text}")
+            return 1.0
         except requests.exceptions.RequestException as e:
             logger.error(f"TomTom API request failed: {e}")
             return 1.0

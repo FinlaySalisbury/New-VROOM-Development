@@ -60,13 +60,12 @@ def generate_mock_data(num_locations: int):
 def run_stress_test(num_locations: int = 500, departure_time: int | None = None):
     logger.info("Initializing Orchestrator Components...")
     
-    # We use MOCK_KEY to leverage our _simulate_multiplier fallback for vast testing without an API Key
-    tt_client = TomTomClient(api_key="MOCK_KEY")
+    # We use the provided actual TomTom API key
+    tt_client = TomTomClient(api_key="75WWiy2Hv7r7iGX0TalMJeQp23OtrOw0")
     matrix_weighter = TrafficMatrixWeighter(tomtom_client=tt_client)
     
     # Initialize Solver Interface 
-    # NOTE: Assumes 'vroom' is available globally in the OS path. 
-    solver = VroomSolverInterface(vroom_executable_path="vroom")
+    solver = VroomSolverInterface()
     formatter = GeoJsonFormatter()
     
     locations, base_matrix, vehicles, jobs = generate_mock_data(num_locations)

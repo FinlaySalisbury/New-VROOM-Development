@@ -1,0 +1,3 @@
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): api.tomtom.com:443
+DEBUG:urllib3.connectionpool:https://api.tomtom.com:443 "GET /routing/1/calculateRoute/51.545,0.001:51.507,-0.127/json?key=75WWiy2Hv7r7iGX0TalMJeQp23OtrOw0&departAt=2026-03-05T13%3A06%3A18&traffic=true HTTP/1.1" 403 94
+ERROR:src.temporal.tomtom_client:TomTom API request failed: 403 Client Error: Forbidden for url: https://api.tomtom.com/routing/1/calculateRoute/51.545,0.001:51.507,-0.127/json?key=75WWiy2Hv7r7iGX0TalMJeQp23OtrOw0&departAt=2026-03-05T13%3A06%3A18&traffic=true. Response: {"detailedError":{"code":"Forbidden","message":"You are not allowed to access this endpoint"}}

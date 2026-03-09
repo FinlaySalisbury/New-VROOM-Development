@@ -1,53 +1,47 @@
 import json
-import subprocess
 import logging
+import requests
 from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
 class VroomSolverInterface:
     """
-    Python interface to the locally installed VROOM executable.
+    Python interface to the VROOM HTTP API (vroom-express) running in Docker.
     Formats the constraints (skills, time windows) and the weighted matrix 
-    into a JSON payload, sends it to the VROOM binary via STDIN, and parses STDOUT.
+    into a JSON payload, sends it to the VROOM API, and parses the response.
     """
     
-    def __init__(self, vroom_executable_path: str = "vroom"):
-        self.vroom_path = vroom_executable_path
+    def __init__(self, endpoint_url: str = "http://localhost:3000/"):
+        self.endpoint_url = endpoint_url
 
     def solve(self, vehicles: List[Dict[str, Any]], 
               jobs: List[Dict[str, Any]], 
               matrix: List[List[int]]) -> Dict[str, Any]:
         """
-        Constructs the VRP JSON specific to VROOM's expected format and solves the matrix.
+        Constructs the VRP JSON specific to VROOM's expected format and solves via HTTP API.
         """
         payload = self._build_payload(vehicles, jobs, matrix)
         
         try:
-            # Execute the local VROOM binary according to IT constraints (no docker)
-            process = subprocess.Popen(
-                [self.vroom_path, "-i", "stdin"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
+            logger.info(f"Sending payload to VROOM API at {self.endpoint_url}")
+            response = requests.post(self.endpoint_url, json=payload, timeout=600)
             
-            payload_str = json.dumps(payload)
-            stdout, stderr = process.communicate(input=payload_str)
-            
-            if process.returncode != 0:
-                logger.error(f"VROOM Solver Failed: {stderr}")
-                return {"error": stderr}
+            if response.status_code != 200:
+                logger.error(f"VROOM API Failed with status {response.status_code}: {response.text}")
+                return {"error": response.text}
                 
-            return json.loads(stdout)
+            return response.json()
             
-        except FileNotFoundError:
-            logger.critical(f"VROOM executable not found at '{self.vroom_path}'. " 
-                            "Ensure the native binary is installed and mapped to path per local IT constraints.")
-            return {"error": "executable_not_found"}
+        except requests.exceptions.ConnectionError:
+            logger.critical(f"Could not connect to VROOM API at {self.endpoint_url}. " 
+                            "Ensure the Docker container is running and the port is exposed.")
+            return {"error": "connection_error"}
+        except requests.exceptions.Timeout:
+            logger.critical("VROOM API request timed out.")
+            return {"error": "timeout"}
         except Exception as e:
-            logger.error(f"Error communicating with VROOM: {e}")
+            logger.error(f"Error communicating with VROOM API: {e}")
             return {"error": str(e)}
 
     def _build_payload(self, vehicles: List[Dict[str, Any]], 
@@ -69,6 +63,10 @@ class VroomSolverInterface:
             }
             if "time_window" in v and v["time_window"]:
                 vroom_vehicle["time_window"] = v["time_window"] # Hard Constraint: Shift Hours
+            if "max_travel_time" in v:
+                vroom_vehicle["max_travel_time"] = v["max_travel_time"]
+            if "max_tasks" in v:
+                vroom_vehicle["max_tasks"] = v["max_tasks"]
             
             vroom_vehicles.append(vroom_vehicle)
             
