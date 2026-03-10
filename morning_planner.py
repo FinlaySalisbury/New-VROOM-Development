@@ -42,9 +42,9 @@ class GeospatialFilter:
     # Central London bounding box [min_lon, min_lat, max_lon, max_lat]
     CENTRAL_LONDON = (-0.16, 51.49, -0.07, 51.53)
     
-    # Non-peak window in VROOM epoch seconds (seconds from midnight)
-    # 10:00 = 36000s, 15:30 = 55800s
-    NON_PEAK_WINDOW = [36000, 55800]
+    # Non-peak offsets from midnight (seconds)
+    NON_PEAK_START_OFFSET = 36000   # 10:00
+    NON_PEAK_END_OFFSET = 55800     # 15:30
     
     def __init__(self, bbox: Optional[Tuple[float, float, float, float]] = None):
         self.bbox = bbox or self.CENTRAL_LONDON
@@ -69,13 +69,38 @@ class GeospatialFilter:
             return (self.bbox[0] <= lon <= self.bbox[2] and 
                     self.bbox[1] <= lat <= self.bbox[3])
     
-    def filter_jobs(self, jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def filter_jobs(self, jobs: List[Dict[str, Any]], 
+                    shift_start_unix: int) -> List[Dict[str, Any]]:
         """
         Inspect each job's location. If inside Central London, inject
-        time_windows restricting delivery to non-peak hours (10:00–15:30).
+        time_windows restricting delivery to non-peak hours (10:00–15:30)
+        using ABSOLUTE Unix timestamps derived from the shift date.
         
+        Args:
+            jobs: List of VROOM job dicts.
+            shift_start_unix: Unix timestamp of the shift start.
+            
         Returns the modified job list (original objects are mutated).
         """
+        # Compute absolute midnight of the shift date in UTC
+        shift_dt = datetime.fromtimestamp(shift_start_unix, tz=timezone.utc)
+        midnight_utc = shift_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        midnight_unix = int(midnight_utc.timestamp())
+        
+        # Absolute non-peak window for this specific date
+        absolute_non_peak = [
+            midnight_unix + self.NON_PEAK_START_OFFSET,  # 10:00 UTC
+            midnight_unix + self.NON_PEAK_END_OFFSET     # 15:30 UTC
+        ]
+        
+        non_peak_start_str = datetime.fromtimestamp(absolute_non_peak[0], tz=timezone.utc).strftime("%H:%M")
+        non_peak_end_str = datetime.fromtimestamp(absolute_non_peak[1], tz=timezone.utc).strftime("%H:%M")
+        
+        logger.info(
+            f"Non-peak window (absolute): [{absolute_non_peak[0]}, {absolute_non_peak[1]}] "
+            f"= {non_peak_start_str}–{non_peak_end_str} UTC on {shift_dt.strftime('%Y-%m-%d')}"
+        )
+        
         flagged_count = 0
         for job in jobs:
             loc = job.get("location", [0, 0])
@@ -84,10 +109,10 @@ class GeospatialFilter:
             if self.is_central_london(lon, lat):
                 logger.info(
                     f"  ⚠ Job {job['id']} at ({lon:.4f}, {lat:.4f}) is INSIDE Central London "
-                    f"→ restricting to non-peak window {self.NON_PEAK_WINDOW}"
+                    f"→ restricting to {non_peak_start_str}–{non_peak_end_str} UTC"
                 )
-                # Override time_windows with non-peak restriction
-                job["time_windows"] = [self.NON_PEAK_WINDOW]
+                # Override time_windows with ABSOLUTE non-peak restriction
+                job["time_windows"] = [absolute_non_peak]
                 job["_central_london"] = True
                 flagged_count += 1
             else:
@@ -159,7 +184,7 @@ class ConvergenceSolver:
         
         # ── Step 0: Apply Central London ring fence ──
         logger.info("\n--- GeospatialFilter: Scanning jobs ---")
-        jobs = self.geo_filter.filter_jobs(jobs)
+        jobs = self.geo_filter.filter_jobs(jobs, shift_start)
         
         # ── Step 1: Baseline matrix at shift start ──
         logger.info("\n--- Step 1: Computing baseline matrix via TomTom Matrix v2 ---")
