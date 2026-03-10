@@ -1,3 +1,4 @@
+import os
 import logging
 from datetime import datetime, timezone
 import json
@@ -6,7 +7,11 @@ from src.temporal.tomtom_client import TomTomClient
 logging.basicConfig(filename='debug_tomtom.log', filemode='w', level=logging.DEBUG)
 
 def run():
-    tt = TomTomClient("75WWiy2Hv7r7iGX0TalMJeQp23OtrOw0")
+    api_key = os.environ.get("TOMTOM_API_KEY")
+    if not api_key:
+        print("ERROR: Set TOMTOM_API_KEY environment variable first.")
+        return
+    tt = TomTomClient(api_key)
     # Stratford to London Center
     origin = [0.001, 51.545]
     dest = [-0.127, 51.507]
@@ -18,3 +23,4 @@ def run():
 
 if __name__ == '__main__':
     run()
+

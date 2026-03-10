@@ -59,7 +59,7 @@ class VroomSolverInterface:
                 "start_index": i,  # References the matrix index corresponding to start loc
                 "end_index": i,
                 "skills": v.get("skills", []), # Hard constraint
-                "profile": "car"
+                "profile": "van"  # Aligns with TomTom travelMode=van for London LTN compliance
             }
             if "time_window" in v and v["time_window"]:
                 vroom_vehicle["time_window"] = v["time_window"] # Hard Constraint: Shift Hours
@@ -82,7 +82,9 @@ class VroomSolverInterface:
                 "skills": j.get("skills", []) # Hard constraint
             }
             if "time_windows" in j and j["time_windows"]:
-                vroom_job["time_windows"] = j["time_windows"] # Hard Constraint: Site Accces
+                vroom_job["time_windows"] = j["time_windows"] # Hard Constraint: Site Access
+            if "service" in j:
+                vroom_job["service"] = j["service"]  # Service time in seconds at site
                 
             vroom_jobs.append(vroom_job)
 
@@ -90,7 +92,7 @@ class VroomSolverInterface:
             "vehicles": vroom_vehicles,
             "jobs": vroom_jobs,
             "matrices": {
-                "car": {
+                "van": {
                     "durations": matrix
                 }
             }

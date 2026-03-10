@@ -2,33 +2,57 @@
     "jobs": [
         {
             "id": 101,
-            "description": "Fix traffic light at Main St",
+            "description": "Fix traffic light at Westminster Bridge",
             "longitude": -0.1276,
             "latitude": 51.5074,
-            "required_skills": [
-                "traffic_light_repair",
-                "high_voltage"
-            ],
+            "required_skills": ["traffic_light_repair", "high_voltage"],
+            "service_time": 1800,
             "time_windows": [
-                {
-                    "start": "2026-03-05T08:00:00Z",
-                    "end": "2026-03-05T12:00:00Z"
-                }
+                {"start": "2026-03-10T08:00:00Z", "end": "2026-03-10T16:00:00Z"}
             ]
         },
         {
             "id": 102,
-            "description": "Routine CCTV check",
+            "description": "Routine CCTV check at Covent Garden",
             "longitude": -0.1337,
             "latitude": 51.5098,
-            "required_skills": [
-                "cctv_maintenance"
-            ],
+            "required_skills": ["cctv_maintenance"],
+            "service_time": 1200,
             "time_windows": [
-                {
-                    "start": "2026-03-05T09:00:00Z",
-                    "end": "2026-03-05T17:00:00Z"
-                }
+                {"start": "2026-03-10T09:00:00Z", "end": "2026-03-10T17:00:00Z"}
+            ]
+        },
+        {
+            "id": 103,
+            "description": "Replace signal controller at Stratford",
+            "longitude": 0.0010,
+            "latitude": 51.5450,
+            "required_skills": ["traffic_light_repair"],
+            "service_time": 2700,
+            "time_windows": [
+                {"start": "2026-03-10T08:00:00Z", "end": "2026-03-10T16:00:00Z"}
+            ]
+        },
+        {
+            "id": 104,
+            "description": "Fibre splice at Deptford junction",
+            "longitude": -0.0754,
+            "latitude": 51.4613,
+            "required_skills": ["fiber_splicing"],
+            "service_time": 3600,
+            "time_windows": [
+                {"start": "2026-03-10T08:00:00Z", "end": "2026-03-10T17:00:00Z"}
+            ]
+        },
+        {
+            "id": 105,
+            "description": "CCTV column replacement at Finsbury Park",
+            "longitude": -0.1058,
+            "latitude": 51.5642,
+            "required_skills": ["cctv_maintenance", "high_voltage"],
+            "service_time": 900,
+            "time_windows": [
+                {"start": "2026-03-10T08:00:00Z", "end": "2026-03-10T16:00:00Z"}
             ]
         }
     ]

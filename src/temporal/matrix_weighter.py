@@ -1,6 +1,8 @@
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
 from .tomtom_client import TomTomClient
+from .tomtom_matrix_v2 import TomTomTemporalWeighter
 
 logger = logging.getLogger(__name__)
 
@@ -9,10 +11,54 @@ class TrafficMatrixWeighter:
     Transforms baseline distance/duration matrices using real-time traffic data from TomTom.
     Ensures that the VROOM solver receives accurate travel times based on the precise
     departure schedules.
+    
+    Supports two modes:
+      - v1 (legacy): Per-pair multiplier via TomTom Routing API v1
+      - v2 (recommended): Bulk N×N matrix via TomTom Matrix Routing API v2
     """
     
-    def __init__(self, tomtom_client: TomTomClient):
+    def __init__(self, tomtom_client: Optional[TomTomClient] = None, 
+                 api_key: Optional[str] = None):
         self.tt_client = tomtom_client
+        self.v2_client = TomTomTemporalWeighter(api_key=api_key)
+
+    def compute_time_dependent_matrix(
+        self,
+        locations: List[List[float]],
+        departure_time: int,
+        plan_mode: bool = False,
+        traffic: str = "historical",
+        travel_mode: str = "van"
+    ) -> List[List[int]]:
+        """
+        Compute an N×N duration matrix using TomTom Matrix Routing API v2.
+        This replaces the old apply_traffic_weights() for new integrations.
+        
+        Args:
+            locations: List of [longitude, latitude] coordinate pairs.
+            departure_time: Unix timestamp of departure.
+            plan_mode: If True, use departAt="now" for live traffic (urgent fault injection).
+            traffic: "historical" or "live".
+            travel_mode: "van", "car", etc.
+            
+        Returns:
+            N×N matrix of travel durations in seconds.
+        """
+        if plan_mode:
+            depart_at = "now"
+            traffic = "live"
+            logger.info("PLAN MODE (-c): Using departAt=now with live traffic")
+        else:
+            dt = datetime.fromtimestamp(departure_time, tz=timezone.utc)
+            depart_at = dt.strftime("%Y-%m-%dT%H:%M:%S")
+            logger.info(f"Standard mode: departAt={depart_at}, traffic={traffic}")
+
+        return self.v2_client.compute_matrix(
+            locations=locations,
+            depart_at=depart_at,
+            traffic=traffic,
+            travel_mode=travel_mode
+        )
 
     def apply_traffic_weights(self, 
                               base_matrix: List[List[int]], 

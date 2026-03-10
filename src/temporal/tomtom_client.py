@@ -101,3 +101,70 @@ class TomTomClient:
             
         # Night/Free Flow (19:00-06:00)
         return 1.0 # Optimal speed
+
+    def get_route_duration(self, origin: List[float], destination: List[float], 
+                           departure_time: int) -> int:
+        """
+        Returns the absolute travel time in seconds for a single leg at the exact
+        departure time. Used by the convergence loop for leg verification.
+        
+        Args:
+            origin: [longitude, latitude]
+            destination: [longitude, latitude]
+            departure_time: Unix timestamp of departure
+            
+        Returns:
+            int: Travel time in seconds.
+        """
+        if not self.api_key or self.api_key == "MOCK_KEY":
+            # Mock mode: Haversine distance / speed adjusted by time-of-day
+            import math
+            dist = self._haversine(origin, destination)
+            multiplier = self._simulate_multiplier(departure_time)
+            base_speed = 8.3  # ~30 km/h London average in m/s
+            return int((dist / base_speed) * multiplier)
+        
+        # Live mode: Query TomTom Routing v1 for travelTimeInSeconds
+        locations = f"{origin[1]},{origin[0]}:{destination[1]},{destination[0]}"
+        dt = datetime.fromtimestamp(departure_time)
+        depart_at = dt.strftime('%Y-%m-%dT%H:%M:%S')
+        
+        url = f"{self.base_url}/{locations}/json"
+        params = {
+            "key": self.api_key,
+            "departAt": depart_at,
+            "computeTravelTimeFor": "all",
+            "traffic": "true"
+        }
+        
+        try:
+            response = requests.get(url, params=params, verify=False, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if "routes" in data and len(data["routes"]) > 0:
+                return data["routes"][0]["summary"].get("travelTimeInSeconds", 0)
+            
+            logger.warning("TomTom returned no routes for duration query")
+            return 0
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"TomTom duration query failed: {e}")
+            # Fallback to mock
+            import math
+            dist = self._haversine(origin, destination)
+            multiplier = self._simulate_multiplier(departure_time)
+            return int((dist / 8.3) * multiplier)
+
+    @staticmethod
+    def _haversine(coord1: List[float], coord2: List[float]) -> float:
+        """Great-circle distance in meters between two [lon, lat] points."""
+        import math
+        lon1, lat1 = math.radians(coord1[0]), math.radians(coord1[1])
+        lon2, lat2 = math.radians(coord2[0]), math.radians(coord2[1])
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        c = 2 * math.asin(math.sqrt(a))
+        return 6371000 * c
+
