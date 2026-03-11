@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="InView VROOM Simulation Sandbox — Test field engineer dispatch scenarios against three traffic-awareness models.">
+    <title>InView VROOM Simulation Sandbox</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- ═══ LEFT: Configuration Panel ═══ -->
+        <div class="panel config-panel">
+            <div class="app-title">
+                <span>⚡</span> InView Sandbox <span class="version">v1.0</span>
+            </div>
+            <div class="panel-header">
+                <h2><span class="icon">🎛️</span> Configuration</h2>
+            </div>
+            <div class="panel-body">
+                <!-- Engineers Slider -->
+                <div class="form-group">
+                    <label class="form-label">
+                        Engineers
+                        <span class="value-display" id="engineers-value">5</span>
+                    </label>
+                    <input type="range" id="engineers-slider" class="range-slider"
+                           min="1" max="50" value="5">
+                    <div class="slider-bounds"><span>1</span><span>50</span></div>
+                </div>
+
+                <!-- Jobs Slider -->
+                <div class="form-group">
+                    <label class="form-label">
+                        Jobs
+                        <span class="value-display" id="jobs-value">20</span>
+                    </label>
+                    <input type="range" id="jobs-slider" class="range-slider"
+                           min="1" max="500" value="20">
+                    <div class="slider-bounds"><span>1</span><span>500</span></div>
+                </div>
+
+                <hr class="divider">
+
+                <!-- Routing Strategy -->
+                <div class="form-group">
+                    <label class="form-label">Routing Strategy</label>
+                    <div class="strategy-group" id="strategy-group">
+                        <label class="strategy-option active" data-strategy="naive">
+                            <input type="radio" name="strategy" value="naive" checked>
+                            <span class="radio-dot"></span>
+                            <div class="strategy-info">
+                                <h4>Naive Mode</h4>
+                                <p>No traffic. Static distance matrix proves why naive routing fails SLAs.</p>
+                            </div>
+                            <span class="strategy-tag tag-free">FREE</span>
+                        </label>
+
+                        <label class="strategy-option" data-strategy="inhouse">
+                            <input type="radio" name="strategy" value="inhouse">
+                            <span class="radio-dot"></span>
+                            <div class="strategy-info">
+                                <h4>In-House Matrix</h4>
+                                <p>Historical multipliers (3-zone / 6-timeslot London model).</p>
+                            </div>
+                            <span class="strategy-tag tag-free">FREE</span>
+                        </label>
+
+                        <label class="strategy-option" data-strategy="tomtom_premium">
+                            <input type="radio" name="strategy" value="tomtom_premium">
+                            <span class="radio-dot"></span>
+                            <div class="strategy-info">
+                                <h4>TomTom Matrix API</h4>
+                                <p>Live predictive traffic from TomTom Matrix v2.</p>
+                            </div>
+                            <span class="strategy-tag tag-premium">PREMIUM</span>
+                        </label>
+                    </div>
+                </div>
+
+                <hr class="divider">
+
+                <!-- Run Button -->
+                <button id="run-btn" class="run-btn">
+                    ▶ Run Simulation
+                </button>
+            </div>
+
+            <!-- Download Section -->
+            <div class="download-section" id="download-section" style="display: none;">
+                <h3>📦 Export for Foursquare</h3>
+                <div class="download-grid">
+                    <button class="download-btn" id="dl-trips" onclick="downloadFile('trips')">
+                        <span class="dl-icon">📍</span> trips.json
+                    </button>
+                    <button class="download-btn" id="dl-faults" onclick="downloadFile('faults')">
+                        <span class="dl-icon">⚠️</span> faults.geojson
+                    </button>
+                    <button class="download-btn" id="dl-routes" onclick="downloadFile('routes')">
+                        <span class="dl-icon">🛤️</span> routes.geojson
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CENTER: Map ═══ -->
+        <div class="map-container">
+            <!-- Cost Guide (floating, TomTom Premium only) -->
+            <div class="cost-guide" id="cost-guide">
+                <div class="cost-guide-title">
+                    <span>💰</span> TomTom API Cost Estimate
+                </div>
+                <div class="cost-guide-grid">
+                    <div class="cost-metric">
+                        <div class="metric-value" id="cost-waypoints">25</div>
+                        <div class="metric-label">Waypoints</div>
+                    </div>
+                    <div class="cost-metric">
+                        <div class="metric-value" id="cost-elements">625</div>
+                        <div class="metric-label">Matrix Cells</div>
+                    </div>
+                    <div class="cost-metric">
+                        <div class="metric-value cost" id="cost-eur">€0.26</div>
+                        <div class="metric-label">Est. Cost</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaflet Map -->
+            <div id="map"></div>
+
+            <!-- Results Summary -->
+            <div class="results-summary" id="results-summary">
+                <div class="result-stat">
+                    <div class="stat-value" id="stat-routes">—</div>
+                    <div class="stat-label">Routes</div>
+                </div>
+                <div class="result-stat">
+                    <div class="stat-value" id="stat-duration">—</div>
+                    <div class="stat-label">Total Duration</div>
+                </div>
+                <div class="result-stat">
+                    <div class="stat-value" id="stat-unassigned">—</div>
+                    <div class="stat-label">Unassigned</div>
+                </div>
+                <div class="result-stat">
+                    <div class="stat-value" id="stat-strategy">—</div>
+                    <div class="stat-label">Strategy</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ RIGHT: History Panel ═══ -->
+        <div class="panel history-panel">
+            <div class="panel-header">
+                <h2><span class="icon">📋</span> Test History</h2>
+            </div>
+            <div class="history-list" id="history-list">
+                <div class="empty-state" id="history-empty">
+                    <div class="empty-icon">🧪</div>
+                    <p>No tests run yet.<br>Configure and run your first simulation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

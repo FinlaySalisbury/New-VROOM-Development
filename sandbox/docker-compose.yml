@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════════════════
+# InView VROOM Simulation Sandbox — Docker Compose
+#
+# Services:
+#   sandbox  — FastAPI backend + frontend (port 8000)
+#   vroom    — VROOM routing engine (port 3000)
+# ═══════════════════════════════════════════════════════════
+
+services:
+  # ── Simulation Sandbox ────────────────────────────────
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inview-sandbox
+    ports:
+      - "8000:8000"
+    environment:
+      - TOMTOM_API_KEY=${TOMTOM_API_KEY:-MOCK_KEY}
+      - VROOM_ENDPOINT=http://vroom:3000/
+      - DATABASE_PATH=/data/sandbox_history.db
+    volumes:
+      - sandbox-data:/data
+    depends_on:
+      vroom:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── VROOM Routing Engine ──────────────────────────────
+  vroom:
+    image: ghcr.io/vroom-project/vroom-docker:latest
+    container_name: inview-vroom
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  sandbox-data:

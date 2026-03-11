@@ -1,0 +1,861 @@
+{
+    "jobs": [
+        {
+            "id": 201,
+            "description": "Traffic signal repair at Parliament Square",
+            "longitude": -0.1263,
+            "latitude": 51.5007,
+            "required_skills": [
+                "traffic_light_repair",
+                "high_voltage"
+            ],
+            "service_time": 2400,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 202,
+            "description": "CCTV column check at Trafalgar Square",
+            "longitude": -0.1281,
+            "latitude": 51.5080,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 1200,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 203,
+            "description": "Fibre splice at Holborn Viaduct",
+            "longitude": -0.1050,
+            "latitude": 51.5175,
+            "required_skills": [
+                "fiber_splicing"
+            ],
+            "service_time": 3600,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 204,
+            "description": "Signal head replacement at Bank junction",
+            "longitude": -0.0886,
+            "latitude": 51.5133,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 1800,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 205,
+            "description": "HV cabinet inspection at Southwark Bridge",
+            "longitude": -0.0941,
+            "latitude": 51.5081,
+            "required_skills": [
+                "high_voltage"
+            ],
+            "service_time": 2700,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T09:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 206,
+            "description": "CCTV realignment at London Bridge",
+            "longitude": -0.0862,
+            "latitude": 51.5055,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 900,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 207,
+            "description": "New sign installation at Waterloo Road",
+            "longitude": -0.1141,
+            "latitude": 51.5015,
+            "required_skills": [
+                "sign_installation"
+            ],
+            "service_time": 1500,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 208,
+            "description": "Road marking refresh at Embankment",
+            "longitude": -0.1221,
+            "latitude": 51.5070,
+            "required_skills": [
+                "road_marking"
+            ],
+            "service_time": 2100,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T22:00:00Z",
+                    "end": "2026-03-11T05:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 209,
+            "description": "Signal controller upgrade at Aldwych",
+            "longitude": -0.1162,
+            "latitude": 51.5130,
+            "required_skills": [
+                "traffic_light_repair",
+                "high_voltage"
+            ],
+            "service_time": 3000,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 210,
+            "description": "CCTV fibre link at Moorgate",
+            "longitude": -0.0889,
+            "latitude": 51.5186,
+            "required_skills": [
+                "fiber_splicing",
+                "cctv_maintenance"
+            ],
+            "service_time": 2400,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 211,
+            "description": "Pedestrian signal repair at Old Street",
+            "longitude": -0.0875,
+            "latitude": 51.5263,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 1200,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 212,
+            "description": "CCTV upgrade at Angel station",
+            "longitude": -0.1058,
+            "latitude": 51.5322,
+            "required_skills": [
+                "cctv_maintenance",
+                "high_voltage"
+            ],
+            "service_time": 2700,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 213,
+            "description": "Fibre cabinet at Hackney Central",
+            "longitude": -0.0566,
+            "latitude": 51.5465,
+            "required_skills": [
+                "fiber_splicing"
+            ],
+            "service_time": 3600,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 214,
+            "description": "Traffic light at Dalston junction",
+            "longitude": -0.0752,
+            "latitude": 51.5457,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 1800,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 215,
+            "description": "CCTV at Lewisham High Street",
+            "longitude": -0.0130,
+            "latitude": 51.4523,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 1200,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 216,
+            "description": "Sign replacement at Peckham Rye",
+            "longitude": -0.0693,
+            "latitude": 51.4695,
+            "required_skills": [
+                "sign_installation"
+            ],
+            "service_time": 1500,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 217,
+            "description": "Road marking at Brixton Road",
+            "longitude": -0.1148,
+            "latitude": 51.4620,
+            "required_skills": [
+                "road_marking"
+            ],
+            "service_time": 1800,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 218,
+            "description": "HV switch at Camberwell Green",
+            "longitude": -0.0945,
+            "latitude": 51.4738,
+            "required_skills": [
+                "high_voltage"
+            ],
+            "service_time": 2400,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 219,
+            "description": "Signal phasing at Kennington Oval",
+            "longitude": -0.1133,
+            "latitude": 51.4836,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 2100,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 220,
+            "description": "Fibre patch at Bermondsey",
+            "longitude": -0.0636,
+            "latitude": 51.4979,
+            "required_skills": [
+                "fiber_splicing"
+            ],
+            "service_time": 1800,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 221,
+            "description": "CCTV at Deptford Broadway",
+            "longitude": -0.0276,
+            "latitude": 51.4729,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 1200,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 222,
+            "description": "Traffic signal at New Cross Gate",
+            "longitude": -0.0396,
+            "latitude": 51.4753,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 1500,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 223,
+            "description": "Sign install at Elephant & Castle",
+            "longitude": -0.0989,
+            "latitude": 51.4951,
+            "required_skills": [
+                "sign_installation"
+            ],
+            "service_time": 1800,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T09:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 224,
+            "description": "HV test at Vauxhall",
+            "longitude": -0.1242,
+            "latitude": 51.4862,
+            "required_skills": [
+                "high_voltage"
+            ],
+            "service_time": 2700,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 225,
+            "description": "Road marking at Clapham Common",
+            "longitude": -0.1520,
+            "latitude": 51.4618,
+            "required_skills": [
+                "road_marking"
+            ],
+            "service_time": 1500,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 226,
+            "description": "Fibre at Tooting Broadway",
+            "longitude": -0.1681,
+            "latitude": 51.4270,
+            "required_skills": [
+                "fiber_splicing"
+            ],
+            "service_time": 2400,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 227,
+            "description": "CCTV at Streatham Hill",
+            "longitude": -0.1290,
+            "latitude": 51.4380,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 900,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 228,
+            "description": "Traffic light at Wandsworth",
+            "longitude": -0.1912,
+            "latitude": 51.4553,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 2100,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 229,
+            "description": "Sign at Battersea Bridge",
+            "longitude": -0.1708,
+            "latitude": 51.4784,
+            "required_skills": [
+                "sign_installation"
+            ],
+            "service_time": 1200,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 230,
+            "description": "HV substation at Nine Elms",
+            "longitude": -0.1419,
+            "latitude": 51.4812,
+            "required_skills": [
+                "high_voltage",
+                "traffic_light_repair"
+            ],
+            "service_time": 3600,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 231,
+            "description": "Road marking at Fulham Road",
+            "longitude": -0.1970,
+            "latitude": 51.4810,
+            "required_skills": [
+                "road_marking"
+            ],
+            "service_time": 1800,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 232,
+            "description": "CCTV at Shepherd's Bush",
+            "longitude": -0.2237,
+            "latitude": 51.5045,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 1500,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 233,
+            "description": "Traffic signal at Ealing Broadway",
+            "longitude": -0.3047,
+            "latitude": 51.5148,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 2100,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 234,
+            "description": "Fibre at Barking station",
+            "longitude": 0.0807,
+            "latitude": 51.5396,
+            "required_skills": [
+                "fiber_splicing"
+            ],
+            "service_time": 3000,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 235,
+            "description": "CCTV at Ilford Lane",
+            "longitude": 0.0706,
+            "latitude": 51.5566,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 1200,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 236,
+            "description": "HV test at Enfield Town",
+            "longitude": -0.0806,
+            "latitude": 51.6518,
+            "required_skills": [
+                "high_voltage"
+            ],
+            "service_time": 2700,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T09:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 237,
+            "description": "Sign at Wood Green",
+            "longitude": -0.1096,
+            "latitude": 51.5971,
+            "required_skills": [
+                "sign_installation"
+            ],
+            "service_time": 1500,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 238,
+            "description": "Road marking at Tottenham Hale",
+            "longitude": -0.0604,
+            "latitude": 51.5882,
+            "required_skills": [
+                "road_marking"
+            ],
+            "service_time": 1800,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 239,
+            "description": "Traffic light at Walthamstow",
+            "longitude": -0.0195,
+            "latitude": 51.5834,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 1500,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 240,
+            "description": "CCTV at Leyton Orient",
+            "longitude": -0.0123,
+            "latitude": 51.5601,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 1200,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 241,
+            "description": "Fibre at Bow Church",
+            "longitude": -0.0148,
+            "latitude": 51.5277,
+            "required_skills": [
+                "fiber_splicing"
+            ],
+            "service_time": 2400,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 242,
+            "description": "HV test at Canary Wharf",
+            "longitude": -0.0197,
+            "latitude": 51.5054,
+            "required_skills": [
+                "high_voltage"
+            ],
+            "service_time": 3600,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 243,
+            "description": "Sign at Greenwich town centre",
+            "longitude": -0.0098,
+            "latitude": 51.4769,
+            "required_skills": [
+                "sign_installation"
+            ],
+            "service_time": 1500,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 244,
+            "description": "Road marking at Woolwich",
+            "longitude": 0.0590,
+            "latitude": 51.4907,
+            "required_skills": [
+                "road_marking"
+            ],
+            "service_time": 2100,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 245,
+            "description": "Traffic signal at Croydon",
+            "longitude": -0.0985,
+            "latitude": 51.3762,
+            "required_skills": [
+                "traffic_light_repair"
+            ],
+            "service_time": 2400,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 246,
+            "description": "CCTV at Bromley High Street",
+            "longitude": 0.0142,
+            "latitude": 51.4052,
+            "required_skills": [
+                "cctv_maintenance"
+            ],
+            "service_time": 1500,
+            "priority": 3,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 247,
+            "description": "Fibre at Richmond Bridge",
+            "longitude": -0.3056,
+            "latitude": 51.4599,
+            "required_skills": [
+                "fiber_splicing"
+            ],
+            "service_time": 2700,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T16:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 248,
+            "description": "Sign at Hammersmith Broadway",
+            "longitude": -0.2246,
+            "latitude": 51.4925,
+            "required_skills": [
+                "sign_installation",
+                "road_marking"
+            ],
+            "service_time": 2100,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T08:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 249,
+            "description": "HV at Acton depot",
+            "longitude": -0.2720,
+            "latitude": 51.5095,
+            "required_skills": [
+                "high_voltage"
+            ],
+            "service_time": 3000,
+            "priority": 1,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T15:00:00Z"
+                }
+            ]
+        },
+        {
+            "id": 250,
+            "description": "Traffic light at Finsbury Park",
+            "longitude": -0.1058,
+            "latitude": 51.5642,
+            "required_skills": [
+                "traffic_light_repair",
+                "cctv_maintenance"
+            ],
+            "service_time": 1800,
+            "priority": 2,
+            "time_windows": [
+                {
+                    "start": "2026-03-10T07:00:00Z",
+                    "end": "2026-03-10T17:00:00Z"
+                }
+            ]
+        }
+    ]
+}

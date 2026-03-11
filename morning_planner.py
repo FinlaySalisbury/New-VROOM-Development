@@ -214,46 +214,74 @@ class ConvergenceSolver:
             
             final_solution = solution
             
-            # ── Step 3: Simulate timeline ──
-            logger.info("--- Step 3: Simulating route timeline ---")
+            # ── Step 3: Simulate timeline for ALL routes ──
+            logger.info("--- Step 3: Simulating route timelines ---")
             if "routes" not in solution or not solution["routes"]:
                 logger.error("No routes in VROOM solution")
                 break
             
-            route = solution["routes"][0]
-            timeline = self._simulate_timeline(route, shift_start)
-            final_timeline = timeline
+            all_timelines = []
+            all_penalties = []
             
-            self._log_timeline(timeline, shift_start)
+            for ri, route in enumerate(solution["routes"]):
+                vehicle_id = route.get("vehicle", ri)
+                # Use the vehicle's own shift start if available
+                v_shift = shift_start
+                for v in vehicles:
+                    if v["id"] == vehicle_id:
+                        tw = v.get("time_window", [shift_start])
+                        v_shift = tw[0] if tw else shift_start
+                        break
+                
+                timeline = self._simulate_timeline(route, v_shift)
+                timeline_with_meta = {
+                    "vehicle_id": vehicle_id,
+                    "route_index": ri,
+                    "steps": timeline
+                }
+                all_timelines.append(timeline_with_meta)
+                
+                logger.info(f"\n  Route {ri+1} (Vehicle {vehicle_id}):")
+                self._log_timeline(timeline, v_shift)
+                
+                # ── Step 4: Verify legs against TomTom ──
+                logger.info(f"  Verifying legs for Vehicle {vehicle_id}...")
+                route_penalties = self._verify_legs(timeline, locations, matrix)
+                all_penalties.extend(route_penalties)
             
-            # ── Step 4: Verify legs against TomTom ──
-            logger.info("--- Step 4: Verifying legs via TomTom v1 ---")
-            penalties = self._verify_legs(timeline, locations, matrix)
+            final_timeline = all_timelines
             
             iter_log = {
                 "iteration": iteration + 1,
-                "penalties_found": len(penalties),
+                "penalties_found": len(all_penalties),
                 "penalty_details": [
                     {"from_idx": p[0], "to_idx": p[1], 
                      "baseline_s": matrix[p[0]][p[1]], "true_s": p[2]}
-                    for p in penalties
+                    for p in all_penalties
                 ]
             }
             convergence_log.append(iter_log)
             
-            if not penalties:
+            if not all_penalties:
                 logger.info(f"✓ CONVERGED at iteration {iteration + 1} — no penalties triggered")
                 break
             
             # ── Step 5: Apply penalties ──
-            logger.info(f"--- Step 5: Applying {len(penalties)} penalties to matrix ---")
-            for (oi, di, true_dur) in penalties:
+            logger.info(f"--- Step 5: Applying {len(all_penalties)} penalties to matrix ---")
+            for (oi, di, true_dur) in all_penalties:
                 old_val = matrix[oi][di]
-                new_val = true_dur + self.penalty_weight
+                
+                # Dynamic scaling: Penalty = the gap + static weight
+                # If true is 3600s and baseline was 1200s, gap is 2400s.
+                gap = true_dur - old_val
+                dynamic_penalty = max(0, gap) + self.penalty_weight
+                
+                new_val = true_dur + dynamic_penalty
                 matrix[oi][di] = new_val
+                
                 logger.info(
                     f"  matrix[{oi}][{di}]: {old_val}s → {new_val}s "
-                    f"(true={true_dur}s, penalty=+{self.penalty_weight}s)"
+                    f"(true={true_dur}s, gap={gap}s, applied_penalty=+{dynamic_penalty}s)"
                 )
         
         # ── Build final output ──
@@ -408,109 +436,157 @@ class ConvergenceSolver:
     ) -> Dict[str, Any]:
         """
         Build a plausible mock VROOM solution when the solver isn't available.
-        Sequences jobs in nearest-neighbor order using the matrix.
+        Distributes jobs across multiple vehicles with skill-matching and
+        nearest-neighbor sequencing.
         """
         n_vehicles = len(vehicles)
-        steps = []
-        current_time = 0
-        current_idx = 0  # Start at depot (vehicle 0)
+        n_jobs = len(jobs)
         
-        # Start step
-        steps.append({
-            "type": "start",
-            "location_index": 0,
-            "arrival": 0,
-            "duration": 0,
-            "id": vehicles[0]["id"]
-        })
+        # Per-vehicle state
+        vehicle_states = []
+        for vi, v in enumerate(vehicles):
+            vehicle_states.append({
+                "vehicle_id": v["id"],
+                "depot_idx": vi,
+                "current_idx": vi,
+                "current_time": 0,
+                "skills": set(v.get("skills", [])),
+                "steps": [{
+                    "type": "start",
+                    "location_index": vi,
+                    "arrival": 0,
+                    "duration": 0,
+                    "id": v["id"]
+                }],
+                "assigned_jobs": []
+            })
         
-        # Greedy nearest-neighbor for job ordering
-        remaining = list(range(len(jobs)))
-        visited_order = []
+        # Build job skill sets for matching
+        remaining = list(range(n_jobs))
+        unassigned = []
         
+        # Round-robin with nearest-neighbor: assign jobs to best-fit vehicle
         while remaining:
-            best_j = None
+            best_assignment = None
             best_cost = float("inf")
             
             for j in remaining:
+                job_skills = set(jobs[j].get("skills", []))
                 job_idx = n_vehicles + j
-                cost = matrix[current_idx][job_idx]
-                if cost < best_cost:
-                    best_cost = cost
-                    best_j = j
+                
+                for vi, vs in enumerate(vehicle_states):
+                    # Skill check: vehicle must have at least one matching skill
+                    if job_skills and vs["skills"] and not (job_skills & vs["skills"]):
+                        continue
+                    
+                    # Cost: travel time from vehicle's current position + load balance penalty
+                    travel = matrix[vs["current_idx"]][job_idx]
+                    # Add small bias toward vehicles with less accumulated time (load balance)
+                    balance_penalty = vs["current_time"] * 0.1
+                    total_cost = travel + balance_penalty
+                    
+                    if total_cost < best_cost:
+                        best_cost = total_cost
+                        best_assignment = (vi, j)
             
-            if best_j is None:
+            if best_assignment is None:
+                # No vehicle can serve remaining jobs (skill mismatch)
+                unassigned.extend(remaining)
                 break
             
-            remaining.remove(best_j)
-            visited_order.append(best_j)
+            vi, j = best_assignment
+            remaining.remove(j)
             
-            job_idx = n_vehicles + best_j
-            travel_time = matrix[current_idx][job_idx]
-            current_time += travel_time
-            service = jobs[best_j].get("service", 0)
+            vs = vehicle_states[vi]
+            job_idx = n_vehicles + j
+            travel_time = matrix[vs["current_idx"]][job_idx]
+            vs["current_time"] += travel_time
+            service = jobs[j].get("service", 0)
             
-            steps.append({
+            vs["steps"].append({
                 "type": "job",
-                "id": jobs[best_j]["id"],
+                "id": jobs[j]["id"],
                 "location_index": job_idx,
-                "arrival": current_time,
+                "arrival": vs["current_time"],
                 "duration": travel_time,
                 "service": service
             })
             
-            current_time += service
-            current_idx = job_idx
+            vs["current_time"] += service
+            vs["current_idx"] = job_idx
+            vs["assigned_jobs"].append(j)
         
-        # End step — return to depot
-        return_time = matrix[current_idx][0]
-        current_time += return_time
+        # Close all routes — return to depot
+        routes = []
+        total_cost = 0
+        for vs in vehicle_states:
+            if len(vs["steps"]) <= 1:
+                continue  # Skip vehicles with no jobs assigned
+            
+            return_time = matrix[vs["current_idx"]][vs["depot_idx"]]
+            vs["current_time"] += return_time
+            
+            vs["steps"].append({
+                "type": "end",
+                "location_index": vs["depot_idx"],
+                "arrival": vs["current_time"],
+                "duration": return_time,
+                "id": vs["vehicle_id"]
+            })
+            
+            route_service = sum(
+                jobs[j].get("service", 0) for j in vs["assigned_jobs"]
+            )
+            
+            routes.append({
+                "vehicle": vs["vehicle_id"],
+                "steps": vs["steps"],
+                "duration": vs["current_time"],
+                "service": route_service
+            })
+            total_cost += vs["current_time"]
         
-        steps.append({
-            "type": "end",
-            "location_index": 0,
-            "arrival": current_time,
-            "duration": return_time,
-            "id": vehicles[0]["id"]
-        })
+        logger.info(f"Mock solver: {len(routes)} routes, {n_jobs - len(unassigned)} assigned, {len(unassigned)} unassigned")
         
         return {
             "code": 0,
-            "routes": [{
-                "vehicle": vehicles[0]["id"],
-                "steps": steps,
-                "duration": current_time,
-                "service": sum(j.get("service", 0) for j in jobs)
-            }],
+            "routes": routes,
             "summary": {
-                "cost": current_time,
-                "routes": 1,
-                "unassigned": 0
+                "cost": total_cost,
+                "routes": len(routes),
+                "unassigned": len(unassigned)
             },
+            "unassigned": [{"id": jobs[j]["id"]} for j in unassigned],
             "_mock": True
         }
+
     
     def _build_output(
         self,
         solution: Dict[str, Any],
-        timeline: List[Dict[str, Any]],
+        timeline,
         convergence_log: List[Dict[str, Any]],
         final_matrix: List[List[int]],
         baseline_matrix: List[List[int]],
         shift_start: int
     ) -> Dict[str, Any]:
         """Assemble the final output JSON."""
-        # Build ETA report from timeline
+        # Build ETA report from multi-route timeline
         eta_report = []
-        for step in (timeline or []):
-            if step.get("job_id"):
-                eta_report.append({
-                    "job_id": step["job_id"],
-                    "expected_arrival_utc": step.get("arrival_utc"),
-                    "expected_departure_utc": step.get("departure_utc"),
-                    "service_time_minutes": step.get("service_seconds", 0) / 60,
-                    "travel_to_minutes": step.get("travel_to_seconds", 0) / 60
-                })
+        route_timelines = timeline or []
+        
+        for rt in route_timelines:
+            vehicle_id = rt.get("vehicle_id", "?")
+            for step in rt.get("steps", []):
+                if step.get("job_id"):
+                    eta_report.append({
+                        "vehicle_id": vehicle_id,
+                        "job_id": step["job_id"],
+                        "expected_arrival_utc": step.get("arrival_utc"),
+                        "expected_departure_utc": step.get("departure_utc"),
+                        "service_time_minutes": step.get("service_seconds", 0) / 60,
+                        "travel_to_minutes": step.get("travel_to_seconds", 0) / 60
+                    })
         
         return {
             "status": "converged" if convergence_log and not convergence_log[-1]["penalties_found"] else "max_iterations_reached",
@@ -518,6 +594,7 @@ class ConvergenceSolver:
             "total_iterations": len(convergence_log),
             "convergence_log": convergence_log,
             "eta_report": eta_report,
+            "route_timelines": route_timelines,
             "vroom_solution": solution,
             "baseline_matrix": baseline_matrix,
             "final_matrix": final_matrix,

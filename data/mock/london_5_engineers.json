@@ -1,0 +1,88 @@
+{
+    "engineers": [
+        {
+            "id": 1,
+            "name": "Alice Smith",
+            "start_longitude": -0.0755,
+            "start_latitude": 51.5136,
+            "end_longitude": -0.0755,
+            "end_latitude": 51.5136,
+            "skills": [
+                "traffic_light_repair",
+                "high_voltage",
+                "cctv_maintenance"
+            ],
+            "working_hours": {
+                "start": "2026-03-10T07:00:00Z",
+                "end": "2026-03-10T15:00:00Z"
+            }
+        },
+        {
+            "id": 2,
+            "name": "Bob Jones",
+            "start_longitude": -0.1426,
+            "start_latitude": 51.5390,
+            "end_longitude": -0.1426,
+            "end_latitude": 51.5390,
+            "skills": [
+                "fiber_splicing",
+                "cctv_maintenance",
+                "sign_installation"
+            ],
+            "working_hours": {
+                "start": "2026-03-10T08:00:00Z",
+                "end": "2026-03-10T16:00:00Z"
+            }
+        },
+        {
+            "id": 3,
+            "name": "Charlie Davis",
+            "start_longitude": -0.1138,
+            "start_latitude": 51.4613,
+            "end_longitude": -0.1138,
+            "end_latitude": 51.4613,
+            "skills": [
+                "traffic_light_repair",
+                "fiber_splicing"
+            ],
+            "working_hours": {
+                "start": "2026-03-10T07:30:00Z",
+                "end": "2026-03-10T15:30:00Z"
+            }
+        },
+        {
+            "id": 4,
+            "name": "Diana Wilson",
+            "start_longitude": -0.3625,
+            "start_latitude": 51.4690,
+            "end_longitude": -0.3625,
+            "end_latitude": 51.4690,
+            "skills": [
+                "high_voltage",
+                "sign_installation",
+                "road_marking"
+            ],
+            "working_hours": {
+                "start": "2026-03-10T09:00:00Z",
+                "end": "2026-03-10T17:00:00Z"
+            }
+        },
+        {
+            "id": 5,
+            "name": "Eddie Brown",
+            "start_longitude": -0.0034,
+            "start_latitude": 51.5430,
+            "end_longitude": -0.0034,
+            "end_latitude": 51.5430,
+            "skills": [
+                "cctv_maintenance",
+                "road_marking",
+                "traffic_light_repair"
+            ],
+            "working_hours": {
+                "start": "2026-03-10T06:00:00Z",
+                "end": "2026-03-10T14:00:00Z"
+            }
+        }
+    ]
+}

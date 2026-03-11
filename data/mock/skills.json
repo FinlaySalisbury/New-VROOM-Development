@@ -2,5 +2,7 @@
     "traffic_light_repair": 1,
     "cctv_maintenance": 2,
     "fiber_splicing": 3,
-    "high_voltage": 4
+    "high_voltage": 4,
+    "sign_installation": 5,
+    "road_marking": 6
 }
