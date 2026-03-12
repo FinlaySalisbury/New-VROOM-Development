@@ -24,6 +24,76 @@ const URGENCY_COLORS = {
 };
 
 // ═══ State ═══════════════════════════════════════════════
+let selectedEngineers = new Set();
+
+function toggleEngineer(eid) {
+    if (selectedEngineers.has(eid)) {
+        selectedEngineers.delete(eid);
+    } else {
+        selectedEngineers.add(eid);
+    }
+    updateSelections();
+}
+
+function updateSelections() {
+    const hasSelection = selectedEngineers.size > 0;
+    
+    // Update Map Routes
+    if (routeLayerGroup) {
+        routeLayerGroup.eachLayer(layer => {
+            if (!hasSelection || selectedEngineers.has(layer.engineerId)) {
+                layer.setStyle({ opacity: 0.8, weight: layer._baseWeight || 3 });
+            } else {
+                layer.setStyle({ opacity: 0.15, weight: 2 });
+            }
+        });
+    }
+
+    // Update Depot Markers
+    if (depotLayerGroup) {
+        depotLayerGroup.eachLayer(layer => {
+            const el = layer.getElement();
+            if (el) {
+                if (!hasSelection || selectedEngineers.has(layer.engineerId)) {
+                    el.style.opacity = '1';
+                } else {
+                    el.style.opacity = '0.3';
+                }
+            }
+        });
+    }
+
+    // Update Animation Markers
+    if (animState.markerLayer) {
+        animState.markerLayer.eachLayer(layer => {
+            const el = layer.getElement();
+            if (el) {
+                if (!hasSelection || selectedEngineers.has(layer.engineerId)) {
+                    el.style.opacity = '1';
+                    el.style.filter = 'none';
+                } else {
+                    el.style.opacity = '0.3';
+                    el.style.filter = 'grayscale(100%)';
+                }
+            }
+        });
+    }
+
+    // Update Engineer Cards
+    document.querySelectorAll('.engineer-card').forEach(card => {
+        const eid = Number(card.dataset.engineerId);
+        if (!hasSelection || selectedEngineers.has(eid)) {
+            card.style.opacity = '1';
+            card.style.borderLeft = selectedEngineers.has(eid) ? '4px solid #4f46e5' : '4px solid transparent';
+            card.style.backgroundColor = selectedEngineers.has(eid) ? '#f8fafc' : 'white';
+        } else {
+            card.style.opacity = '0.4';
+            card.style.borderLeft = '4px solid transparent';
+            card.style.backgroundColor = 'white';
+        }
+    });
+}
+
 let state = {
     numEngineers: 5,
     numJobs: 20,
@@ -145,6 +215,9 @@ function renderMap(result) {
     depotLayerGroup.clearLayers();
     const bounds = L.latLngBounds();
 
+    selectedEngineers.clear();
+    updateSelections();
+
     // Draw routes
     if (result.routes_geojson?.features) {
         result.routes_geojson.features.forEach((f, idx) => {
@@ -159,6 +232,9 @@ function renderMap(result) {
 
             const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
             const pl = L.polyline(coords, { color: lineColor, weight, opacity: 0.8, smoothFactor: 1 });
+            pl.engineerId = eid;
+            pl._baseWeight = weight;
+            pl.on('click', () => toggleEngineer(eid));
             pl.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px">
                 <strong>Engineer #${eid}</strong><br>
                 <span style="color:#888">Leg:</span> ${f.properties.leg_id}<br>
@@ -185,6 +261,8 @@ function renderMap(result) {
                         iconSize: [18, 18], iconAnchor: [9, 9],
                     }),
                 });
+                dm.engineerId = eid;
+                dm.on('click', () => toggleEngineer(eid));
                 dm.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px">
                     <strong>🏠 Depot — Engineer #${eid}</strong><br>
                     <span style="color:#888">Name:</span> ${rd.vehicle_name}<br>
@@ -333,6 +411,10 @@ function renderEngineerStats(routesData) {
 
         const el = document.createElement('div');
         el.className = 'engineer-card';
+        el.dataset.engineerId = eid;
+        el.onclick = () => toggleEngineer(eid);
+        el.style.cursor = 'pointer';
+        el.style.transition = 'all 0.2s ease-in-out';
         el.innerHTML = `
             <div class="eng-header">
                 <span class="eng-name"><span class="eng-color-dot" style="background:${color}"></span>${rd.vehicle_name || `Engineer #${eid}`}</span>

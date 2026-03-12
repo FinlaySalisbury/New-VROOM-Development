@@ -467,7 +467,7 @@ def _mock_vroom_solve(
         routes.append({
             "vehicle": vehicle["id"],
             "steps": steps,
-            "duration": cumulative_time,
+            "duration": cumulative_time - shift_start,
             "distance": 0,
         })
 

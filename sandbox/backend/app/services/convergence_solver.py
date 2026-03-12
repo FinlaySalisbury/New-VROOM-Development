@@ -211,7 +211,7 @@ class ConvergenceSolver:
             if "error" in solution:
                 logger.warning(f"VROOM error: {solution['error']} — using simulated solution")
                 # Build a mock solution for testing when VROOM isn't available
-                solution = self._mock_vroom_solution(vehicles, jobs, matrix)
+                solution = self._mock_vroom_solution(vehicles, jobs, matrix, shift_start)
             
             final_solution = solution
             
@@ -320,9 +320,8 @@ class ConvergenceSolver:
             step_type = step.get("type", "")
             
             if step_type == "job":
-                arrival_offset = step.get("arrival", 0)
+                arrival_unix = step.get("arrival", 0)
                 service = step.get("service", 0)
-                arrival_unix = shift_start + arrival_offset
                 departure_unix = arrival_unix + service
                 
                 timeline.append({
@@ -337,24 +336,27 @@ class ConvergenceSolver:
                 })
             
             elif step_type == "start":
-                arrival_offset = step.get("arrival", 0)
+                arrival_unix = step.get("arrival", 0)
+                if arrival_unix == 0:
+                    arrival_unix = shift_start
+                    
                 timeline.insert(0, {
                     "type": "depot_start",
                     "location_index": step.get("location_index", 0),
-                    "departure_unix": shift_start + arrival_offset,
+                    "departure_unix": arrival_unix,
                     "departure_utc": datetime.fromtimestamp(
-                        shift_start + arrival_offset, tz=timezone.utc
+                        arrival_unix, tz=timezone.utc
                     ).strftime("%H:%M:%S")
                 })
             
             elif step_type == "end":
-                arrival_offset = step.get("arrival", 0)
+                arrival_unix = step.get("arrival", 0)
                 timeline.append({
                     "type": "depot_end",
                     "location_index": step.get("location_index", 0),
-                    "arrival_unix": shift_start + arrival_offset,
+                    "arrival_unix": arrival_unix,
                     "arrival_utc": datetime.fromtimestamp(
-                        shift_start + arrival_offset, tz=timezone.utc
+                        arrival_unix, tz=timezone.utc
                     ).strftime("%H:%M:%S")
                 })
         
@@ -445,7 +447,8 @@ class ConvergenceSolver:
         self,
         vehicles: List[Dict[str, Any]],
         jobs: List[Dict[str, Any]],
-        matrix: List[List[int]]
+        matrix: List[List[int]],
+        shift_start: int
     ) -> Dict[str, Any]:
         """
         Build a plausible mock VROOM solution when the solver isn't available.
@@ -458,16 +461,18 @@ class ConvergenceSolver:
         # Per-vehicle state
         vehicle_states = []
         for vi, v in enumerate(vehicles):
+            v_shift = v.get("time_window", [shift_start])[0] if v.get("time_window") else shift_start
             vehicle_states.append({
                 "vehicle_id": v["id"],
                 "depot_idx": vi,
                 "current_idx": vi,
-                "current_time": 0,
+                "current_time": v_shift,
+                "start_time": v_shift,
                 "skills": set(v.get("skills", [])),
                 "steps": [{
                     "type": "start",
                     "location_index": vi,
-                    "arrival": 0,
+                    "arrival": v_shift,
                     "duration": 0,
                     "id": v["id"]
                 }],
@@ -529,7 +534,6 @@ class ConvergenceSolver:
             vs["current_idx"] = job_idx
             vs["assigned_jobs"].append(j)
         
-        # Close all routes — return to depot
         routes = []
         total_cost = 0
         for vs in vehicle_states:
@@ -551,13 +555,14 @@ class ConvergenceSolver:
                 jobs[j].get("service", 0) for j in vs["assigned_jobs"]
             )
             
+            route_duration = vs["current_time"] - vs["start_time"]
             routes.append({
                 "vehicle": vs["vehicle_id"],
                 "steps": vs["steps"],
-                "duration": vs["current_time"],
+                "duration": route_duration,
                 "service": route_service
             })
-            total_cost += vs["current_time"]
+            total_cost += route_duration
         
         logger.info(f"Mock solver: {len(routes)} routes, {n_jobs - len(unassigned)} assigned, {len(unassigned)} unassigned")
         
