@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 
 from app.config import get_settings
 from app.database import create_tables
-from app.routers import simulation, history
+from app.routers import simulation, history, chat
 
 # Frontend directory (relative to the sandbox root)
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
@@ -57,6 +57,7 @@ app.add_middleware(
 # Register routers
 app.include_router(simulation.router)
 app.include_router(history.router)
+app.include_router(chat.router)
 
 
 @app.get("/api/health")

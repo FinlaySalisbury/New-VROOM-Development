@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # TomTom API
     TOMTOM_API_KEY: str = "MOCK_KEY"
 
+    # Gemini AI (Route Explainer)
+    GEMINI_API_KEY: str = ""
+
     # VROOM Engine
     VROOM_ENDPOINT: str = "http://localhost:3000/"
 

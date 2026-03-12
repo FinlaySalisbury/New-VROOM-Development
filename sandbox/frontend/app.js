@@ -564,6 +564,130 @@ function renderRemixHistory() {
     });
 }
 
+// ═══ AI Chat ═════════════════════════════════════════════
+let chatHistory = [];
+
+function miniMarkdown(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code>$1</code>')
+        .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+        .replace(/\n/g, '<br>');
+}
+
+function renderChatMessages() {
+    const container = $('#chat-messages');
+    const empty = $('#chat-empty');
+
+    // Clear previous message bubbles (keep the empty state)
+    container.querySelectorAll('.chat-bubble, .chat-loading').forEach(el => el.remove());
+
+    if (chatHistory.length === 0) {
+        empty.style.display = 'flex';
+        return;
+    }
+    empty.style.display = 'none';
+
+    chatHistory.forEach(msg => {
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble chat-bubble-${msg.role === 'user' ? 'user' : 'ai'}`;
+        const icon = msg.role === 'user' ? '🧑' : '🤖';
+        bubble.innerHTML = `
+            <div class="chat-bubble-icon">${icon}</div>
+            <div class="chat-bubble-content">${msg.role === 'user' ? msg.content.replace(/</g, '&lt;') : miniMarkdown(msg.content)}</div>
+        `;
+        container.appendChild(bubble);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function showChatLoading() {
+    const container = $('#chat-messages');
+    const loader = document.createElement('div');
+    loader.className = 'chat-loading';
+    loader.innerHTML = `
+        <div class="chat-bubble-icon">🤖</div>
+        <div class="chat-bubble-content">
+            <span class="chat-loading-text">Analyzing VROOM telemetry</span>
+            <span class="chat-loading-dots"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+    `;
+    container.appendChild(loader);
+    container.scrollTop = container.scrollHeight;
+}
+
+function hideChatLoading() {
+    const loader = document.querySelector('.chat-loading');
+    if (loader) loader.remove();
+}
+
+async function sendChatMessage() {
+    const input = $('#chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    if (!state.currentResult?.id) {
+        alert('Run a simulation first, then ask the AI about it.');
+        return;
+    }
+
+    input.value = '';
+    chatHistory.push({ role: 'user', content: msg });
+    renderChatMessages();
+    showChatLoading();
+
+    const btn = $('#chat-send-btn');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                run_id: state.currentResult.id,
+                message: msg,
+                history: chatHistory.slice(0, -1), // Don't double-send the latest user msg
+            }),
+        });
+
+        hideChatLoading();
+
+        if (!res.ok) {
+            const err = await res.json();
+            chatHistory.push({ role: 'assistant', content: `⚠️ Error: ${err.detail || 'API request failed'}` });
+        } else {
+            const data = await res.json();
+            chatHistory.push({ role: 'assistant', content: data.reply });
+        }
+
+        renderChatMessages();
+    } catch (err) {
+        hideChatLoading();
+        chatHistory.push({ role: 'assistant', content: `⚠️ Network error: ${err.message}` });
+        renderChatMessages();
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function sendQuickPrompt(msg) {
+    $('#chat-input').value = msg;
+    sendChatMessage();
+}
+
+function resetChat() {
+    chatHistory = [];
+    renderChatMessages();
+}
+
 // ═══ Downloads ═══════════════════════════════════════════
 function downloadFile(type) {
     if (!state.currentResult) return;

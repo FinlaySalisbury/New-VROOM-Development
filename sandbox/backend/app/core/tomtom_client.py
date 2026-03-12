@@ -210,6 +210,10 @@ class TomTomClient:
           - traffic_duration_s: travel time with TomTom's traffic prediction
           - distance_m: route distance in meters
         """
+        cache_key = f"route:{round(origin[0],5)},{round(origin[1],5)}:{round(destination[0],5)},{round(destination[1],5)}:{departure_time//300}"
+        if cache_key in self._route_cache:
+            return self._route_cache[cache_key]
+
         if not self.api_key or self.api_key == "MOCK_KEY":
             import math
             dist = self._haversine(origin, destination)

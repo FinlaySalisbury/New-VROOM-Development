@@ -178,6 +178,7 @@
                 <button class="tab-btn" data-tab="engineers" onclick="switchTab('engineers')">👷 Engineers</button>
                 <button class="tab-btn" data-tab="activitylog" onclick="switchTab('activitylog')">📜 Log</button>
                 <button class="tab-btn" data-tab="remixes" onclick="switchTab('remixes')">🔁 Remixes</button>
+                <button class="tab-btn" data-tab="ai" onclick="switchTab('ai')">🤖 AI</button>
             </div>
 
             <!-- History Tab -->
@@ -232,6 +233,38 @@
                     <div class="empty-state" id="remix-empty">
                         <div class="empty-icon">🔁</div>
                         <p>No remixes yet. Run a test first, then remix it here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Chat Tab -->
+            <div class="tab-content" id="tab-ai">
+                <div class="chat-panel">
+                    <div class="chat-header">
+                        <span class="chat-header-icon">🤖</span>
+                        <span>Route Intelligence AI</span>
+                    </div>
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-empty" id="chat-empty">
+                            <div class="chat-empty-icon">🧠</div>
+                            <p>Ask me about this simulation's routing decisions, job allocations, or traffic impacts.</p>
+                            <div class="chat-quick-prompts" id="chat-quick-prompts">
+                                <button class="chat-quick-btn" onclick="sendQuickPrompt('Summarise this shift plan')">
+                                    📋 Summarise this shift plan
+                                </button>
+                                <button class="chat-quick-btn" onclick="sendQuickPrompt('Why are there unassigned jobs?')">
+                                    ❓ Why are there unassigned jobs?
+                                </button>
+                                <button class="chat-quick-btn" onclick="sendQuickPrompt('How much time did traffic awareness save?')">
+                                    🚦 Traffic awareness savings
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-bar" id="chat-input-bar">
+                        <input type="text" id="chat-input" class="chat-input" placeholder="Ask about this run..."
+                            onkeydown="if(event.key==='Enter')sendChatMessage()">
+                        <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">➤</button>
                     </div>
                 </div>
             </div>
