@@ -16,7 +16,7 @@
 - [ ] Apply specific traffic multipliers based on the precise Unix Timestamp of travel, transforming baseline distance/duration matrices.
 
 ## 4. VROOM Solver Integration (Local Implementation)
-- [ ] Assess and set up native local VROOM executable (or equivalent Python integration) according to corporate IT constraints. (Do not use Docker unless explicitly requested and approved).
+- [ ] Set up VROOM solver via Docker (vroom-express) as the default. Fall back to a native local executable only if Docker is impractical for a specific use case.
 - [ ] Format the modified, time-aware matrix and job constraints as a valid VROOM VRP JSON payload.
 - [ ] Formulate hard constraints within the payload (dynamic skills mapping, strict time windows).
 

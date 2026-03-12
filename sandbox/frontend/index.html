@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="InView VROOM Simulation Sandbox — Test field engineer dispatch scenarios against three traffic-awareness models.">
+    <meta name="description"
+        content="InView VROOM Simulation Sandbox — Test field engineer dispatch scenarios against three traffic-awareness models.">
     <title>InView VROOM Simulation Sandbox</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
+
 <body>
     <div class="app-layout">
         <!-- ═══ LEFT: Configuration Panel ═══ -->
         <div class="panel config-panel">
             <div class="app-title">
-                <span>⚡</span> InView Sandbox <span class="version">v1.0</span>
+                <span>⚡</span> InView Sandbox <span class="version">v1.1</span>
             </div>
             <div class="panel-header">
                 <h2><span class="icon">🎛️</span> Configuration</h2>
@@ -26,8 +29,7 @@
                         Engineers
                         <span class="value-display" id="engineers-value">5</span>
                     </label>
-                    <input type="range" id="engineers-slider" class="range-slider"
-                           min="1" max="50" value="5">
+                    <input type="range" id="engineers-slider" class="range-slider" min="1" max="50" value="5">
                     <div class="slider-bounds"><span>1</span><span>50</span></div>
                 </div>
 
@@ -37,8 +39,7 @@
                         Jobs
                         <span class="value-display" id="jobs-value">20</span>
                     </label>
-                    <input type="range" id="jobs-slider" class="range-slider"
-                           min="1" max="500" value="20">
+                    <input type="range" id="jobs-slider" class="range-slider" min="1" max="500" value="20">
                     <div class="slider-bounds"><span>1</span><span>500</span></div>
                 </div>
 
@@ -53,7 +54,7 @@
                             <span class="radio-dot"></span>
                             <div class="strategy-info">
                                 <h4>Naive Mode</h4>
-                                <p>No traffic. Static distance matrix proves why naive routing fails SLAs.</p>
+                                <p>No traffic. Static distance matrix.</p>
                             </div>
                             <span class="strategy-tag tag-free">FREE</span>
                         </label>
@@ -63,7 +64,7 @@
                             <span class="radio-dot"></span>
                             <div class="strategy-info">
                                 <h4>In-House Matrix</h4>
-                                <p>Historical multipliers (3-zone / 6-timeslot London model).</p>
+                                <p>3-zone/6-timeslot London model.</p>
                             </div>
                             <span class="strategy-tag tag-free">FREE</span>
                         </label>
@@ -73,7 +74,7 @@
                             <span class="radio-dot"></span>
                             <div class="strategy-info">
                                 <h4>TomTom Matrix API</h4>
-                                <p>Live predictive traffic from TomTom Matrix v2.</p>
+                                <p>Live predictive traffic v2.</p>
                             </div>
                             <span class="strategy-tag tag-premium">PREMIUM</span>
                         </label>
@@ -82,10 +83,7 @@
 
                 <hr class="divider">
 
-                <!-- Run Button -->
-                <button id="run-btn" class="run-btn">
-                    ▶ Run Simulation
-                </button>
+                <button id="run-btn" class="run-btn">▶ Run Simulation</button>
             </div>
 
             <!-- Download Section -->
@@ -101,17 +99,18 @@
                     <button class="download-btn" id="dl-routes" onclick="downloadFile('routes')">
                         <span class="dl-icon">🛤️</span> routes.geojson
                     </button>
+                    <button class="download-btn" id="dl-combined" onclick="downloadFile('combined')">
+                        <span class="dl-icon">🗺️</span> combined.geojson
+                    </button>
                 </div>
             </div>
         </div>
 
         <!-- ═══ CENTER: Map ═══ -->
         <div class="map-container">
-            <!-- Cost Guide (floating, TomTom Premium only) -->
+            <!-- Cost Guide -->
             <div class="cost-guide" id="cost-guide">
-                <div class="cost-guide-title">
-                    <span>💰</span> TomTom API Cost Estimate
-                </div>
+                <div class="cost-guide-title"><span>💰</span> TomTom API Cost Estimate</div>
                 <div class="cost-guide-grid">
                     <div class="cost-metric">
                         <div class="metric-value" id="cost-waypoints">25</div>
@@ -128,11 +127,30 @@
                 </div>
             </div>
 
-            <!-- Leaflet Map -->
             <div id="map"></div>
+
+            <!-- Animation Controls -->
+            <div class="animation-controls" id="animation-controls">
+                <button class="anim-btn" id="anim-play-btn" title="Play/Pause">▶</button>
+                <div class="anim-speeds" id="anim-speeds">
+                    <button class="speed-btn active" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="5">5x</button>
+                    <button class="speed-btn" data-speed="10">10x</button>
+                    <button class="speed-btn" data-speed="30">30x</button>
+                    <button class="speed-btn" data-speed="60">60x</button>
+                </div>
+                <div class="anim-clock" id="anim-clock">07:00</div>
+                <div class="anim-progress-container">
+                    <input type="range" id="anim-progress" min="0" max="1000" value="0" class="anim-slider">
+                </div>
+            </div>
 
             <!-- Results Summary -->
             <div class="results-summary" id="results-summary">
+                <div class="result-stat">
+                    <div class="stat-value" id="stat-test-num">—</div>
+                    <div class="stat-label">Test #</div>
+                </div>
                 <div class="result-stat">
                     <div class="stat-value" id="stat-routes">—</div>
                     <div class="stat-label">Routes</div>
@@ -152,15 +170,69 @@
             </div>
         </div>
 
-        <!-- ═══ RIGHT: History Panel ═══ -->
-        <div class="panel history-panel">
-            <div class="panel-header">
-                <h2><span class="icon">📋</span> Test History</h2>
+        <!-- ═══ RIGHT: Multi-tab Panel ═══ -->
+        <div class="panel right-panel">
+            <!-- Tab Bar -->
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="history" onclick="switchTab('history')">📋 History</button>
+                <button class="tab-btn" data-tab="engineers" onclick="switchTab('engineers')">👷 Engineers</button>
+                <button class="tab-btn" data-tab="activitylog" onclick="switchTab('activitylog')">📜 Log</button>
+                <button class="tab-btn" data-tab="remixes" onclick="switchTab('remixes')">🔁 Remixes</button>
             </div>
-            <div class="history-list" id="history-list">
-                <div class="empty-state" id="history-empty">
-                    <div class="empty-icon">🧪</div>
-                    <p>No tests run yet.<br>Configure and run your first simulation.</p>
+
+            <!-- History Tab -->
+            <div class="tab-content active" id="tab-history">
+                <div class="history-list" id="history-list">
+                    <div class="empty-state" id="history-empty">
+                        <div class="empty-icon">🧪</div>
+                        <p>No tests run yet.<br>Configure and run your first simulation.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Engineers Tab -->
+            <div class="tab-content" id="tab-engineers">
+                <div class="engineer-list" id="engineer-list">
+                    <div class="empty-state" id="engineer-empty">
+                        <div class="empty-icon">👷</div>
+                        <p>Run a simulation to see engineer stats.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Log Tab -->
+            <div class="tab-content" id="tab-activitylog">
+                <div class="log-controls" id="log-controls" style="display:none;">
+                    <label class="form-label" style="margin-bottom:4px;">Select Engineer</label>
+                    <select id="log-engineer-select" class="log-select" onchange="renderActivityLog()"></select>
+                </div>
+                <div class="activity-log" id="activity-log">
+                    <div class="empty-state" id="log-empty">
+                        <div class="empty-icon">📜</div>
+                        <p>Run a simulation to see activity logs.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remixes Tab -->
+            <div class="tab-content" id="tab-remixes">
+                <div class="remix-controls" id="remix-controls" style="display:none;">
+                    <label class="form-label" style="margin-bottom:4px;">Source Test Run</label>
+                    <select id="remix-source-select" class="log-select"></select>
+                    <label class="form-label" style="margin-top:12px;margin-bottom:4px;">Remix Strategy</label>
+                    <select id="remix-strategy-select" class="log-select">
+                        <option value="naive">Naive</option>
+                        <option value="inhouse">In-House</option>
+                        <option value="tomtom_premium">TomTom Premium</option>
+                    </select>
+                    <button id="remix-btn" class="run-btn" style="margin-top:12px;" onclick="runRemix()">🔁 Run
+                        Remix</button>
+                </div>
+                <div class="history-list" id="remix-list">
+                    <div class="empty-state" id="remix-empty">
+                        <div class="empty-icon">🔁</div>
+                        <p>No remixes yet. Run a test first, then remix it here.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -168,4 +240,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

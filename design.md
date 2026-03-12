@@ -24,8 +24,8 @@ The orchestrator will follow a sequential processing pipeline designed for real-
 To validate the engine against heavy payloads (e.g., 2,500+ matrix pairs) without incurring massive external API costs or rate limit throttling, the system requires a local implementation for matrix resolution and routing engine execution.
 
 ### Local Execution Strategy
-- **Local Implementations (Preferred):** Due to the corporate IT environment, preference is given to native local executables or Python-based alternatives for routing (base distance/duration) and the VROOM solver.
-- **Docker as Last Resort:** Docker must NOT be used as a default assumption because environment access is not finalized. It should only be considered as an absolute last resort, and explicit approval must be obtained before any attempt to containerize the stack.
+- **Docker (Preferred):** Docker is the default for running the VROOM solver (vroom-express) and any other services that benefit from containerisation. Use official Docker images (e.g., `ghcr.io/vroom-project/vroom-docker`) wherever possible.
+- **Native Local Fallback:** Native local executables or Python-based alternatives may still be used when Docker is impractical for a specific component.
 - **Stress Test Implementation:**
   - Develop an automated Python benchmarking script (`stress_test.py`) to blast the local solver with 2,500+ geographic location pairs, validating matrix computation speeds, solver efficiency, and orchestrator memory management.
 

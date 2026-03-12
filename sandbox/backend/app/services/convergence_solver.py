@@ -19,9 +19,9 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
 
-from src.temporal.tomtom_client import TomTomClient
-from src.temporal.matrix_weighter import TrafficMatrixWeighter
-from src.solver.vroom_interface import VroomSolverInterface
+from app.core.tomtom_client import TomTomClient
+from app.services.matrix_weighter import TrafficMatrixWeighter
+from app.core.vroom_interface import VroomSolverInterface
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -143,7 +143,8 @@ class ConvergenceSolver:
         vroom_endpoint: str = "http://localhost:3000/",
         max_iterations: int = 3,
         penalty_threshold: float = 1.25,
-        penalty_weight: int = 120
+        penalty_weight: int = 120,
+        tt_client: Optional[TomTomClient] = None
     ):
         self.api_key = api_key or os.environ.get("TOMTOM_API_KEY")
         self.max_iterations = max_iterations
@@ -151,7 +152,7 @@ class ConvergenceSolver:
         self.penalty_weight = penalty_weight
         
         # Initialize components
-        self.tt_client = TomTomClient(api_key=self.api_key or "MOCK_KEY")
+        self.tt_client = tt_client or TomTomClient(api_key=self.api_key or "MOCK_KEY")
         self.weighter = TrafficMatrixWeighter(api_key=self.api_key)
         self.solver = VroomSolverInterface(endpoint_url=vroom_endpoint)
         self.geo_filter = GeospatialFilter()
@@ -684,61 +685,4 @@ def load_mock_data(
     return vehicles, jobs, locations
 
 
-# ════════════════════════════════════════════════
-# Main Entry Point
-# ════════════════════════════════════════════════
-
-if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Morning Planner — Iterative TDVRP Solver")
-    parser.add_argument("--jobs", default="data/mock/jobs.json", help="Path to jobs JSON")
-    parser.add_argument("--engineers", default="data/mock/engineers.json", help="Path to engineers JSON")
-    parser.add_argument("--skills", default="data/mock/skills.json", help="Path to skills mapping JSON")
-    parser.add_argument("--iterations", type=int, default=3, help="Max convergence iterations")
-    parser.add_argument("--threshold", type=float, default=1.25, help="Penalty threshold (e.g. 1.25 = 25%%)")
-    parser.add_argument("--output", default="morning_shift_plan.json", help="Output file path")
-    
-    args = parser.parse_args()
-    
-    logger.info("Loading mock data...")
-    vehicles, jobs, locations = load_mock_data(args.jobs, args.engineers, args.skills)
-    
-    logger.info(f"Loaded {len(vehicles)} vehicles, {len(jobs)} jobs, {len(locations)} locations")
-    
-    # Use the first vehicle's shift start as the departure time
-    shift_start = vehicles[0].get("time_window", [0, 0])[0]
-    if shift_start == 0:
-        shift_start = int(datetime.now(timezone.utc).timestamp())
-    
-    # Run convergence solver
-    solver = ConvergenceSolver(
-        max_iterations=args.iterations,
-        penalty_threshold=args.threshold
-    )
-    
-    result = solver.solve(vehicles, jobs, locations, shift_start)
-    
-    # Save output
-    with open(args.output, "w") as f:
-        json.dump(result, f, indent=2)
-    
-    logger.info(f"\n{'='*60}")
-    logger.info(f"OUTPUT SAVED: {args.output}")
-    logger.info(f"Status: {result['status']}")
-    logger.info(f"Iterations: {result['total_iterations']}")
-    logger.info(f"Mock solution: {result['is_mock_solution']}")
-    logger.info(f"{'='*60}")
-    
-    # Print ETA summary
-    if result["eta_report"]:
-        logger.info("\n📋 FINAL ETA REPORT:")
-        logger.info("-" * 50)
-        for eta in result["eta_report"]:
-            logger.info(
-                f"  Job {eta['job_id']:>4}: "
-                f"ETA {eta['expected_arrival_utc']} → "
-                f"depart {eta['expected_departure_utc']} "
-                f"(svc={eta['service_time_minutes']:.0f}min, "
-                f"travel={eta['travel_to_minutes']:.1f}min)"
-            )
+# End of convergence_solver.py

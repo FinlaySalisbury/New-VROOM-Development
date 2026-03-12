@@ -12,7 +12,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from app.core.tomtom_client import TomTomClient
-from app.core.matrix_weighter import TrafficMatrixWeighter
+from app.services.matrix_weighter import TrafficMatrixWeighter
 
 logger = logging.getLogger(__name__)
 
