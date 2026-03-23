@@ -229,8 +229,8 @@ def run_simulation(
                     avail_desc = ""
                     if vehicle_def and vehicle_def.get("time_window"):
                         tw = vehicle_def["time_window"]
-                        avail_start = _unix_to_time_of_day(shift_start + tw[0])
-                        avail_end = _unix_to_time_of_day(shift_start + tw[1])
+                        avail_start = _unix_to_time_of_day(tw[0])
+                        avail_end = _unix_to_time_of_day(tw[1])
                         avail_desc = f" (available {avail_start}–{avail_end})"
                     activity_log.append({
                         "order": len(activity_log) + 1,
@@ -326,8 +326,8 @@ def run_simulation(
             avail_end_str = None
             if vehicle_def and vehicle_def.get("time_window"):
                 tw = vehicle_def["time_window"]
-                avail_start_str = _unix_to_time_of_day(shift_start + tw[0])
-                avail_end_str = _unix_to_time_of_day(shift_start + tw[1])
+                avail_start_str = _unix_to_time_of_day(tw[0])
+                avail_end_str = _unix_to_time_of_day(tw[1])
 
             routes_data.append({
                 "vehicle_id": vehicle_id,

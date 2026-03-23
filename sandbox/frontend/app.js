@@ -715,7 +715,7 @@ function formatTime(iso) {
 // ═══ Animation Engine ════════════════════════════════════
 let animState = {
     isPlaying: false,
-    speedMultiplier: 1,
+    speedMultiplier: 120,
     currentUnix: 0,
     startUnix: 0,
     endUnix: 0,
@@ -777,6 +777,15 @@ function setupAnimation(result) {
             }
         });
         
+        // Get the engineer's availability window (absolute unix timestamps)
+        const tw = rd.vehicle_time_window;
+        const availStart = tw ? tw[0] : null;
+        const availEnd = tw ? tw[1] : null;
+
+        // Use availability start to set the global timeline start
+        if (availStart !== null && availStart < globalMin) globalMin = availStart;
+        if (availEnd !== null && availEnd > globalMax) globalMax = availEnd;
+
         if (path.length > 0) {
             path.sort((a,b) => a.unix - b.unix);
             const eid = rd.vehicle_id;
@@ -787,7 +796,9 @@ function setupAnimation(result) {
                 engineerId: eid,
                 name: rd.vehicle_name,
                 color: color,
-                path: path
+                path: path,
+                availStart: availStart,
+                availEnd: availEnd
             });
             
             const marker = L.marker([path[0].lat, path[0].lon], {
@@ -876,6 +887,18 @@ function drawFrame() {
         const path = traj.path;
         if (!path.length) return;
         
+        const marker = animState.markers[traj.engineerId];
+        if (!marker) return;
+        const el = marker.getElement();
+
+        // Hide engineer before their availability window starts
+        if (traj.availStart !== null && time < traj.availStart) {
+            if (el) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
+            return;
+        }
+        // Show the marker once their shift has started
+        if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
+
         let pos = path[0];
         if (time <= path[0].unix) {
             pos = path[0];
@@ -901,9 +924,6 @@ function drawFrame() {
             }
         }
         
-        const marker = animState.markers[traj.engineerId];
-        if (marker) {
-            marker.setLatLng([pos.lat, pos.lon]);
-        }
+        marker.setLatLng([pos.lat, pos.lon]);
     });
 }
