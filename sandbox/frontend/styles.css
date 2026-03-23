@@ -162,6 +162,24 @@ body {
     font-size: 13px;
     font-weight: 600;
     color: var(--primary);
+    background: transparent;
+    border: none;
+    outline: none;
+    text-align: right;
+    width: 60px;
+    -moz-appearance: textfield;
+    border-bottom: 2px solid transparent;
+    transition: border-color var(--transition-fast);
+}
+
+.form-label .value-display:focus {
+    border-bottom-color: var(--primary);
+}
+
+.form-label .value-display::-webkit-outer-spin-button,
+.form-label .value-display::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 /* Slider Styling */
@@ -361,30 +379,27 @@ body {
     }
 }
 
-/* ─── Cost Guide (Floating) ──────────────────────── */
+/* ─── Cost Guide (Inline Panel) ──────────────────── */
 .cost-guide {
-    position: absolute;
-    top: var(--space-lg);
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
+    margin-top: var(--space-md);
     background: var(--bg-card);
     backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--glass-shadow);
-    padding: var(--space-md) var(--space-lg);
-    min-width: 360px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
-    transition: all var(--transition-slow);
+    transform: translateY(-5px);
+    transition: all var(--transition-normal);
     pointer-events: none;
+    display: none;
 }
 
 .cost-guide.visible {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
     pointer-events: all;
+    display: block;
+    animation: fadeIn 0.3s ease-out;
 }
 
 .cost-guide-title {

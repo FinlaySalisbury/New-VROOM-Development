@@ -27,7 +27,7 @@
                 <div class="form-group">
                     <label class="form-label">
                         Engineers
-                        <span class="value-display" id="engineers-value">5</span>
+                        <input type="number" class="value-display number-input" id="engineers-input" value="5" min="1" max="50">
                     </label>
                     <input type="range" id="engineers-slider" class="range-slider" min="1" max="50" value="5">
                     <div class="slider-bounds"><span>1</span><span>50</span></div>
@@ -37,7 +37,7 @@
                 <div class="form-group">
                     <label class="form-label">
                         Jobs
-                        <span class="value-display" id="jobs-value">20</span>
+                        <input type="number" class="value-display number-input" id="jobs-input" value="20" min="1" max="500">
                     </label>
                     <input type="range" id="jobs-slider" class="range-slider" min="1" max="500" value="20">
                     <div class="slider-bounds"><span>1</span><span>500</span></div>
@@ -79,6 +79,25 @@
                             <span class="strategy-tag tag-premium">PREMIUM</span>
                         </label>
                     </div>
+
+                    <!-- Cost Guide -->
+                    <div class="cost-guide" id="cost-guide">
+                        <div class="cost-guide-title"><span>💰</span> TomTom API Cost Estimate</div>
+                        <div class="cost-guide-grid">
+                            <div class="cost-metric">
+                                <div class="metric-value" id="cost-waypoints">25</div>
+                                <div class="metric-label">Waypoints</div>
+                            </div>
+                            <div class="cost-metric">
+                                <div class="metric-value" id="cost-elements">625</div>
+                                <div class="metric-label">Transactions</div>
+                            </div>
+                            <div class="cost-metric">
+                                <div class="metric-value cost" id="cost-gbp">£0.26</div>
+                                <div class="metric-label">Est. Cost</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <hr class="divider">
@@ -108,24 +127,7 @@
 
         <!-- ═══ CENTER: Map ═══ -->
         <div class="map-container">
-            <!-- Cost Guide -->
-            <div class="cost-guide" id="cost-guide">
-                <div class="cost-guide-title"><span>💰</span> TomTom API Cost Estimate</div>
-                <div class="cost-guide-grid">
-                    <div class="cost-metric">
-                        <div class="metric-value" id="cost-waypoints">25</div>
-                        <div class="metric-label">Waypoints</div>
-                    </div>
-                    <div class="cost-metric">
-                        <div class="metric-value" id="cost-elements">625</div>
-                        <div class="metric-label">Matrix Cells</div>
-                    </div>
-                    <div class="cost-metric">
-                        <div class="metric-value cost" id="cost-eur">€0.26</div>
-                        <div class="metric-label">Est. Cost</div>
-                    </div>
-                </div>
-            </div>
+
 
             <div id="map"></div>
 

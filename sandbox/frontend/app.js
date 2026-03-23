@@ -137,8 +137,31 @@ function initMap() {
 // ═══ Sliders ═════════════════════════════════════════════
 function initSliders() {
     const es = $('#engineers-slider'), js = $('#jobs-slider');
-    es.addEventListener('input', () => { state.numEngineers = +es.value; $('#engineers-value').textContent = es.value; updateCostGuide(); });
-    js.addEventListener('input', () => { state.numJobs = +js.value; $('#jobs-value').textContent = js.value; updateCostGuide(); });
+    const ei = $('#engineers-input'), ji = $('#jobs-input');
+
+    const updateEngineers = (val) => {
+        let v = Math.min(Math.max(1, +val), 50);
+        state.numEngineers = v;
+        es.value = v;
+        ei.value = v;
+        updateCostGuide();
+    };
+
+    const updateJobs = (val) => {
+        let v = Math.min(Math.max(1, +val), 500);
+        state.numJobs = v;
+        js.value = v;
+        ji.value = v;
+        updateCostGuide();
+    };
+
+    es.addEventListener('input', (e) => updateEngineers(e.target.value));
+    ei.addEventListener('input', (e) => updateEngineers(e.target.value));
+    ei.addEventListener('change', (e) => updateEngineers(e.target.value));
+    
+    js.addEventListener('input', (e) => updateJobs(e.target.value));
+    ji.addEventListener('input', (e) => updateJobs(e.target.value));
+    ji.addEventListener('change', (e) => updateJobs(e.target.value));
 }
 
 // ═══ Strategy ════════════════════════════════════════════
@@ -157,10 +180,11 @@ function initStrategy() {
 function updateCostGuide() {
     const g = $('#cost-guide');
     if (state.strategy === 'tomtom_premium') {
-        const n = state.numEngineers + state.numJobs, c = n * n;
-        $('#cost-waypoints').textContent = n;
-        $('#cost-elements').textContent = c.toLocaleString();
-        $('#cost-eur').textContent = `€${(c * 0.00042).toFixed(2)}`;
+        const w = state.numEngineers + state.numJobs;
+        const txns = (w * w) + (3 * w);
+        $('#cost-waypoints').textContent = w;
+        $('#cost-elements').textContent = txns.toLocaleString();
+        $('#cost-gbp').textContent = `£${(txns * 0.0004).toFixed(2)}`;
         g.classList.add('visible');
     } else {
         g.classList.remove('visible');
@@ -386,8 +410,8 @@ async function replayRun(id) {
         state.numJobs = d.num_jobs;
         $('#engineers-slider').value = d.num_engineers;
         $('#jobs-slider').value = d.num_jobs;
-        $('#engineers-value').textContent = d.num_engineers;
-        $('#jobs-value').textContent = d.num_jobs;
+        $('#engineers-input').value = d.num_engineers;
+        $('#jobs-input').value = d.num_jobs;
         await runSimulation(d.scenario_state);
     } catch (err) { console.error(err); }
 }
