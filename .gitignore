@@ -1,0 +1,53 @@
+# ===========================
+# Environment & Secrets
+# ===========================
+.env
+.env.*
+!.env.example
+
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ===========================
+# IDE / Editor
+# ===========================
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===========================
+# Docker
+# ===========================
+sandbox/sandbox_history.db
+
+# ===========================
+# OS Files
+# ===========================
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ===========================
+# Logs & Debug Output
+# ===========================
+*.log
+debug_tomtom.log
+
+# ===========================
+# Temporary / Output Files
+# ===========================
+*.tmp
