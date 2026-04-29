@@ -1081,7 +1081,7 @@ function renderJobLists() {
             <div class="card-meta">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span>📦 ${jl.jobCount} jobs</span>
-                    ${jl.classifiedBy === 'claude-sonnet' 
+                    ${jl.classifiedBy && jl.classifiedBy.includes('claude') 
                         ? '<span style="font-size:9px; background:var(--primary-soft); color:var(--primary); padding:2px 6px; border-radius:4px;">🤖 AI</span>' 
                         : '<span style="font-size:9px; background:var(--bg-hover); color:var(--text-muted); padding:2px 6px; border-radius:4px;">📋 Rules</span>'}
                 </div>
@@ -1285,7 +1285,7 @@ async function classifyWithClaude(jobBatch) {
             'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
+            model: 'claude-sonnet-4.6',
             max_tokens: 8192,
             system: AI_SYSTEM_PROMPT,
             messages: [{ role: 'user', content: `Classify these ${jobBatch.length} jobs:\n\n${jobLines}` }]
@@ -1408,7 +1408,7 @@ function aiReviewAcceptAll() {
         jobCount: validJobs.length,
         jobs: validJobs,
         createdAt: new Date().toISOString(),
-        classifiedBy: classifyMode === 'ai' ? 'claude-sonnet' : 'legacy'
+        classifiedBy: classifyMode === 'ai' ? 'claude-sonnet-4.6' : 'legacy'
     };
 
     const all = StorageManager.getJobLists();
@@ -1537,7 +1537,7 @@ async function importAndSaveJobList() {
         if (classifyMode === 'ai') {
             // ── AI Classification Path ──
             try {
-                statusEl.innerHTML = `🤖 Sending ${validJobs.length} jobs to Claude Sonnet...<div class="ai-progress-bar"><div class="ai-progress-fill" style="width:60%"></div></div>`;
+                statusEl.innerHTML = `🤖 Sending ${validJobs.length} jobs to Claude Sonnet 4.6...<div class="ai-progress-bar"><div class="ai-progress-fill" style="width:60%"></div></div>`;
 
                 const result = await classifyWithClaude(aiBatch);
                 const cls = result.classifications;
