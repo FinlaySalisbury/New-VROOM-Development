@@ -14,7 +14,7 @@ services:
       dockerfile: Dockerfile
     container_name: inview-sandbox
     ports:
-      - "8000:8000"
+      - "80:8000"
     environment:
       - TOMTOM_API_KEY=${TOMTOM_API_KEY:-MOCK_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}

@@ -1,0 +1,50 @@
+Code,Brand Prefix,Brand / Category,Action / Meaning
+1001,10,General,Install EV Charging Point (EV1)
+1002,10,General,Commission/Config EV Charging Point (EV2)
+1003,10,General,Maintenance Fault Finding (EV3)
+1005,10,General,SW Diagnostics / Inspection & Testing
+1006,10,General,Forecourt / ATEX Hazardous Area Awareness [PROPOSED]
+1101,11,Alfen,Installation & Commissioning
+1102,11,Alfen,SW / Config
+1103,11,Alfen,Maintenance Fault Finding & PI
+1201,12,Etrel,Installation & Commissioning
+1202,12,Etrel,SW / Config
+1203,12,Etrel,Maintenance Fault Finding & PI
+1301,13,Tritium,Installation
+1303,13,Tritium,Maintenance
+1401,14,Unknown / Efacec,Installation
+1402,14,Unknown / Efacec,SW / Config
+1403,14,Unknown / Efacec,Maintenance Fault Finding
+1501,15,Wallbox,Installation & Commissioning
+1502,15,Wallbox,SW / Config
+1503,15,Wallbox,Maintenance
+1601,16,Kempower,Installation
+1602,16,Kempower,SW / Config
+1603,16,Kempower,Maintenance
+1701,17,CTEK,Installation
+1702,17,CTEK,SW / Config
+1703,17,CTEK,Maintenance
+1801,18,Delta,Installation
+1802,18,Delta,SW / Config
+1803,18,Delta,Maintenance
+1901,19,Star Charger,Installation
+1902,19,Star Charger,SW / Config
+1903,19,Star Charger,Maintenance
+2001,20,Compleo,Installation
+2002,20,Compleo,SW / Config
+2003,20,Compleo,Maintenance
+2101,21,Urban Fox,Installation
+2102,21,Urban Fox,SW / Config
+2103,21,Urban Fox,Maintenance
+2201,22,Ingeteam,Installation
+2202,22,Ingeteam,SW / Config
+2203,22,Ingeteam,Maintenance
+2301,23,Autel,Installation
+2302,23,Autel,SW / Config
+2303,23,Autel,Maintenance
+2401,24,Siemens,Installation
+2402,24,Siemens,SW / Config
+2403,24,Siemens,Maintenance
+2501,25,Zerova,Installation
+2502,25,Zerova,SW / Config
+2503,25,Zerova,Maintenance

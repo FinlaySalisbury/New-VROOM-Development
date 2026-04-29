@@ -1,0 +1,17 @@
+VROOM Job Template Skill Requirements — Enfield Depot,Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7
+job.skills gate: a job is only routable to an engineer whose vehicle holds ALL listed codes. Derived from ≥10-incident patterns with noise removed by counter-example audit. Empty skills [ ] = open to any engineer.,,,,,,,
+Manufacturer,Site Type,Fault Type,Incidents,Engineers,"Required Skills
+(codes)","Required Skills
+(meaning)",Rationale / Change Summary
+Alfen,22kWAC,RCD Trip,75,11,[ ] — none,Open to any engineer,Reset job — junior engineers and Garry Brown (no 1001/1101/1103) handle freely. No cert gate needed.
+Alfen,22kWAC,Comms Fault,74,10,"1102, 1103",Alfen SW/Config (EV2); Alfen Fault Finding (EV3),Removed 1101 (install): comms diagnosis does not require installation cert. 1102+1103 retained as genuine gates.
+Etrel,22kWAC,RCD Trip,48,6,1203,Etrel Fault Finding (EV3),Replaced Alfen codes (1101-1103) with Etrel fault-finding code 1203. Engineers were flagged Etrel-cert by EVCI evidence; 1101-1103 were noise from correlated Alfen work.
+Alfen,22kWAC,Power Issue,47,9,"1101, 1102, 1103",Alfen Install (EV1); Alfen SW/Config (EV2); Alfen Fault Finding (EV3),Removed 1003 (General Maintenance): Garry Brown handled 14 incidents without it — not a genuine gate. Alfen 1101/1102/1103 retained.
+Etrel,22kWAC,Comms Fault,43,9,"1202, 1203",Etrel SW/Config (EV2); Etrel Fault Finding (EV3),Replaced Alfen codes with Etrel 1202 (SW/Config) + 1203 (Fault Finding). Original Alfen codes were noise.
+Etrel,22kWAC,Power Issue,37,5,1203,Etrel Fault Finding (EV3),"Removed 1003, 1101, 1102, 1501, 1502. Garry Brown (no 1003) handled 14 jobs. Only Etrel fault-finding cert 1203 retained as genuine gate."
+Alfen,22kWAC,External Damage,37,6,[ ] — none,Open to any engineer,Removed 1001 and 1101: only 17% coverage. Damage assessment/report requires no formal cert — observable by any engineer.
+Alfen,22kWAC,Connector Fault,33,6,"1101, 1103",Alfen Install (EV1); Alfen Fault Finding (EV3),1101 (Install) + 1103 (Fault Finding) retained: physical connector work requires Alfen install cert. 1102 removed — SW config not relevant.
+Alfen,22kWAC,AC Connector Fault,28,5,"1101, 1103",Alfen Install (EV1); Alfen Fault Finding (EV3),"Removed 1102 (SW/Config): AC connector swap is physical, not software. 1101 + 1103 retained."
+Alfen,22kWAC,Update Firmware / Hardware,16,5,"1003, 1102, 1103",EV3 General Maintenance; Alfen SW/Config (EV2); Alfen Fault Finding (EV3),Removed 1101 (Install) — firmware update needs SW access (1102) not install cert. 1003 + 1102 + 1103 retained.
+Alfen,22kWAC,Actuator Fault,15,5,"1003, 1103",EV3 General Maintenance; Alfen Fault Finding (EV3),"Removed 1101, 1102, 1501, 1502: Garry Brown handled 4 jobs at 80% without them; correlation noise. 1003 + 1103 retained as genuine maintenance gates."
+Alfen,7kWAC,Comms Fault,13,5,"1102, 1103",Alfen SW/Config (EV2); Alfen Fault Finding (EV3),"Same logic as 22kWAC Comms Fault: removed 1101, 1501, 1502. Comms diagnosis = 1102 + 1103 only."

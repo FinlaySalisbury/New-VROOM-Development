@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 
 <body>
@@ -100,9 +101,39 @@
                     </div>
                 </div>
 
+                               <button id="run-btn" class="run-btn">▶ Run Simulation</button>
+
                 <hr class="divider">
 
-                <button id="run-btn" class="run-btn">▶ Run Simulation</button>
+                <!-- ═══ Optimisation Bridge ═══ -->
+                <div class="panel-header" style="padding: var(--space-md) 0 var(--space-sm); border: none;">
+                    <h2><span class="icon">⚡</span> Optimisation</h2>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label class="form-label">Job List</label>
+                    <select id="opt-job-select" class="log-select" onchange="onOptJobSelected()"></select>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label class="form-label">Engineers</label>
+                    <div style="margin-bottom:4px;">
+                        <button class="btn-sm" onclick="optSelectAllEngineers(true)" style="font-size:10px;">All</button>
+                        <button class="btn-sm" onclick="optSelectAllEngineers(false)" style="font-size:10px;">None</button>
+                    </div>
+                    <div id="opt-engineer-checklist" style="max-height:150px; overflow-y:auto;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label class="form-label">Main Depot Coordinates</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="number" step="0.0001" id="opt-depot-lat" class="sidebar-input" placeholder="Lat" value="51.5074" style="flex:1;">
+                        <input type="number" step="0.0001" id="opt-depot-lon" class="sidebar-input" placeholder="Lon" value="-0.1278" style="flex:1;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label class="form-label">Rota Matrix</label>
+                    <div id="opt-rota-matrix" style="overflow-x:auto;"></div>
+                </div>
+                <button id="opt-run-btn" class="run-btn" onclick="runOptimisation()">⚡ Run Optimisation</button>
+                <div id="opt-status" style="font-size:11px; color:#888; margin-top:8px;"></div>
             </div>
 
             <!-- Download Section -->
@@ -177,10 +208,13 @@
             <!-- Tab Bar -->
             <div class="tab-bar">
                 <button class="tab-btn active" data-tab="history" onclick="switchTab('history')">📋 History</button>
-                <button class="tab-btn" data-tab="engineers" onclick="switchTab('engineers')">👷 Engineers</button>
+                <button class="tab-btn" data-tab="engineers" onclick="switchTab('engineers')">👷 Stats</button>
                 <button class="tab-btn" data-tab="activitylog" onclick="switchTab('activitylog')">📜 Log</button>
                 <button class="tab-btn" data-tab="remixes" onclick="switchTab('remixes')">🔁 Remixes</button>
                 <button class="tab-btn" data-tab="ai" onclick="switchTab('ai')">🤖 AI</button>
+                <div style="flex-grow:1;"></div>
+                <button class="tab-btn tab-btn-settings" data-tab="mgmt-engineers" onclick="switchTab('mgmt-engineers')">👷 Engineers</button>
+                <button class="tab-btn tab-btn-settings" data-tab="mgmt-jobs" onclick="switchTab('mgmt-jobs')">📋 Jobs</button>
             </div>
 
             <!-- History Tab -->
@@ -270,6 +304,102 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Manage Engineers Tab -->
+            <div class="tab-content" id="tab-mgmt-engineers">
+                <div class="sidebar-panel-header">
+                    <h3>Engineer Profiles</h3>
+                    <button class="btn-add" onclick="showEngineerForm()">+ Add</button>
+                </div>
+                <div id="engineer-form-container" style="display:none; padding: 12px;">
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label">Name *</label>
+                        <input type="text" id="eng-form-name" class="sidebar-input" placeholder="e.g. Joe Watson">
+                    </div>
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label">Skills (JSON Array)</label>
+                        <input type="text" id="eng-form-skills" class="sidebar-input" placeholder='e.g. [1103, 1203]' value="[1003]">
+                    </div>
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label">Home Location Label</label>
+                        <input type="text" id="eng-form-loc-label" class="sidebar-input" placeholder="e.g. Croydon Home">
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;"><label class="form-label">Latitude</label><input type="number" step="any" id="eng-form-lat" class="sidebar-input" value="51.5074"></div>
+                        <div style="flex:1;"><label class="form-label">Longitude</label><input type="number" step="any" id="eng-form-lon" class="sidebar-input" value="-0.1278"></div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <div style="flex:1;"><label class="form-label">Shift Start</label><input type="time" id="eng-form-start" class="sidebar-input" value="08:00"></div>
+                        <div style="flex:1;"><label class="form-label">Shift End</label><input type="time" id="eng-form-end" class="sidebar-input" value="18:00"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label">Notes</label>
+                        <textarea id="eng-form-notes" class="sidebar-input" rows="2" placeholder="Internal notes..."></textarea>
+                    </div>
+                    <input type="hidden" id="eng-form-id" value="">
+                    <div style="display:flex; gap:8px;">
+                        <button class="run-btn" style="padding:10px;" onclick="saveEngineer()">💾 Save</button>
+                        <button class="btn-sm" style="padding:10px; flex:1;" onclick="hideEngineerForm()">Cancel</button>
+                    </div>
+                </div>
+                <div id="saved-engineer-list" class="sidebar-list" style="padding:8px;"></div>
+            </div>
+
+            <!-- Manage Jobs Tab -->
+            <div class="tab-content" id="tab-mgmt-jobs">
+                <div class="sidebar-panel-header">
+                    <h3>Saved Job Lists</h3>
+                    <button class="btn-add" onclick="showJobImport()">+ Import</button>
+                </div>
+                <div id="job-import-container" style="display:none; padding: 12px;">
+                    <div class="form-group" style="margin-bottom:10px;"><label class="form-label">List Name *</label><input type="text" id="job-import-name" class="sidebar-input" placeholder="e.g. Monday PI Batch"></div>
+                    <div class="form-group" style="margin-bottom:10px;"><label class="form-label">Notes</label><textarea id="job-import-notes" class="sidebar-input" rows="2" placeholder="e.g. Exported from Believ..."></textarea></div>
+                    <div class="form-group" style="margin-bottom:10px;"><label class="form-label">Jobs CSV</label><input type="file" id="job-import-csv" accept=".csv" class="file-input" style="width:100%; font-size:12px;"></div>
+                    <div class="form-group" style="margin-bottom:10px;"><label class="form-label">Sites CSV</label><input type="file" id="job-import-sites" accept=".csv" class="file-input" style="width:100%; font-size:12px;"></div>
+
+                    <!-- AI Classification Toggle -->
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label">Skill Classification</label>
+                        <div style="display:flex; gap:4px; margin-top:4px;">
+                            <button class="btn-sm ai-mode-btn active" id="ai-mode-ai" onclick="setClassifyMode('ai')" style="flex:1; padding:6px; font-size:11px;">🤖 AI (Claude)</button>
+                            <button class="btn-sm ai-mode-btn" id="ai-mode-legacy" onclick="setClassifyMode('legacy')" style="flex:1; padding:6px; font-size:11px;">📋 Rule-Based</button>
+                        </div>
+                    </div>
+
+                    <!-- API Key Config (shown when AI mode is selected) -->
+                    <div id="ai-key-config" class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label">Claude API Key</label>
+                        <div style="display:flex; gap:4px;">
+                            <input type="password" id="ai-claude-key" class="sidebar-input" placeholder="sk-ant-api03-..." style="flex:1; font-size:11px;">
+                            <button class="btn-sm" onclick="toggleKeyVisibility()" style="padding:4px 8px; font-size:10px;" title="Show/hide key">👁️</button>
+                        </div>
+                        <div style="font-size:10px; color:#666; margin-top:4px;">Key is stored locally in your browser. Never sent anywhere except Anthropic's API.</div>
+                    </div>
+
+                    <div id="job-import-status" style="font-size:11px; color:#888; margin-bottom:8px;"></div>
+                    <div style="display:flex; gap:8px;"><button class="run-btn" style="padding:10px;" onclick="importAndSaveJobList()">🔄 Parse & Save</button><button class="btn-sm" style="padding:10px; flex:1;" onclick="hideJobImport()">Cancel</button></div>
+                </div>
+                <div id="saved-job-list" class="sidebar-list" style="padding:8px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Review Modal -->
+    <div id="ai-review-modal" class="ai-review-overlay" style="display:none;">
+        <div class="ai-review-dialog">
+            <div class="ai-review-header">
+                <h3>🤖 AI Skill Classification Review</h3>
+                <div class="ai-review-meta" id="ai-review-meta"></div>
+                <button class="ai-review-close" onclick="closeAiReview()">✕</button>
+            </div>
+            <div class="ai-review-toolbar">
+                <span id="ai-review-stats" style="font-size:12px; color:#aaa;"></span>
+                <div style="display:flex; gap:6px;">
+                    <button class="btn-sm" onclick="aiReviewAcceptAll()" style="background:#1a7a3a; color:#fff; border:none; padding:6px 14px;">✓ Accept All</button>
+                    <button class="btn-sm" onclick="closeAiReview()" style="padding:6px 14px;">Cancel</button>
+                </div>
+            </div>
+            <div class="ai-review-body" id="ai-review-body"></div>
         </div>
     </div>
 

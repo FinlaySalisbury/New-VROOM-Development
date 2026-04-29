@@ -1371,3 +1371,536 @@ body {
     cursor: not-allowed;
     transform: none;
 }
+
+/* ─── Bridge Tool ─────────────────────────────── */
+.file-input {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.file-input::file-selector-button {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    padding: 4px 8px;
+    margin-right: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.file-input::file-selector-button:hover {
+    background: #374151;
+}
+
+/* ─── Sidebar ────────────────────────────────────── */
+.sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: var(--bg-panel);
+    backdrop-filter: var(--glass-blur);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.sidebar-nav {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+}
+
+.sidebar-nav-item {
+    flex: 1;
+    padding: 10px 4px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.sidebar-nav-item:hover {
+    color: var(--text-secondary);
+    background: var(--bg-hover);
+}
+
+.sidebar-nav-item.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.sidebar-content {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-content.active {
+    display: flex;
+}
+
+.sidebar-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-panel-header h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.btn-add {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: var(--font-sans);
+}
+
+.btn-add:hover {
+    background: var(--accent);
+    color: var(--text-inverse);
+}
+
+.sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-sm);
+    scrollbar-width: thin;
+}
+
+.sidebar-card {
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
+    animation: fadeIn 0.3s ease-out;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-card:hover {
+    border-color: var(--border-active);
+}
+
+.sidebar-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.sidebar-card .card-name {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.sidebar-card .card-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.sidebar-card .card-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background var(--transition-fast);
+}
+
+.sidebar-card .card-actions button:hover {
+    background: var(--bg-hover);
+}
+
+.sidebar-card .card-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.sidebar-input {
+    width: 100%;
+    padding: 7px 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.sidebar-input:focus {
+    border-color: var(--primary);
+}
+
+.sidebar-input::placeholder {
+    color: var(--text-muted);
+}
+
+textarea.sidebar-input {
+    resize: vertical;
+    min-height: 40px;
+}
+
+.sidebar-empty {
+    text-align: center;
+    padding: var(--space-lg);
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.sidebar-empty .empty-icon {
+    font-size: 28px;
+    margin-bottom: var(--space-sm);
+    opacity: 0.4;
+}
+
+/* Optimise checklist items */
+.opt-eng-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.opt-eng-item:hover {
+    background: var(--bg-hover);
+}
+
+.opt-eng-item input[type="checkbox"] {
+    cursor: pointer;
+}
+
+/* Settings tabs at end of tab bar */
+.tab-btn-settings {
+    border-left: 1px solid var(--border);
+    opacity: 0.7;
+    font-size: 10px !important;
+}
+
+.tab-btn-settings.active {
+    opacity: 1;
+}
+
+/* ─── AI Classification Mode Toggle ─────────────── */
+.ai-mode-btn {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.ai-mode-btn.active {
+    background: linear-gradient(135deg, hsl(270, 70%, 45%), hsl(290, 65%, 50%));
+    color: white;
+    border-color: hsl(270, 70%, 50%);
+    box-shadow: 0 2px 12px rgba(140, 80, 220, 0.3);
+}
+
+.ai-mode-btn:hover:not(.active) {
+    border-color: var(--border-active);
+    background: var(--bg-hover);
+}
+
+/* ─── AI Review Modal ────────────────────────────── */
+.ai-review-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInOverlay 0.25s ease-out;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.ai-review-dialog {
+    width: min(92vw, 900px);
+    max-height: 85vh;
+    background: var(--bg-panel);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUpModal 0.3s ease-out;
+}
+
+@keyframes slideUpModal {
+    from { opacity: 0; transform: translateY(30px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ai-review-header {
+    padding: 20px 24px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+
+.ai-review-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, hsl(270, 80%, 65%), hsl(310, 70%, 60%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.ai-review-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.ai-review-close {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    padding: 4px 8px;
+}
+
+.ai-review-close:hover {
+    color: var(--danger);
+}
+
+.ai-review-toolbar {
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(22, 30, 48, 0.5);
+}
+
+.ai-review-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) transparent;
+}
+
+/* Individual job classification card */
+.ai-job-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    transition: all var(--transition-fast);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.ai-job-card:hover {
+    border-color: var(--border-active);
+    background: var(--bg-hover);
+}
+
+.ai-job-card .ai-job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.ai-job-card .ai-job-ref {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.ai-job-card .ai-job-type {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.ai-job-card .ai-job-site {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.ai-job-card .ai-job-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.ai-job-card .ai-skill-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, hsl(270, 60%, 25%), hsl(290, 50%, 30%));
+    color: hsl(270, 80%, 80%);
+    border: 1px solid hsl(270, 50%, 40%);
+}
+
+.ai-job-card .ai-skill-badge.no-skill {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.ai-job-card .ai-mfg-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ai-mfg-badge.mfg-alfen { background: rgba(66, 133, 244, 0.15); color: hsl(220, 80%, 65%); }
+.ai-mfg-badge.mfg-etrel { background: rgba(50, 200, 150, 0.15); color: hsl(160, 70%, 55%); }
+.ai-mfg-badge.mfg-tritium { background: rgba(255, 160, 50, 0.15); color: hsl(35, 90%, 60%); }
+.ai-mfg-badge.mfg-efacec { background: rgba(200, 80, 220, 0.15); color: hsl(290, 60%, 65%); }
+.ai-mfg-badge.mfg-wallbox { background: rgba(100, 200, 255, 0.15); color: hsl(200, 80%, 65%); }
+.ai-mfg-badge.mfg-unknown { background: rgba(120, 120, 140, 0.15); color: var(--text-muted); }
+
+.ai-job-card .ai-job-reasoning {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.ai-job-card .ai-override-row {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-job-card .ai-override-input {
+    flex: 1;
+    padding: 4px 8px;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.ai-job-card .ai-override-input:focus {
+    border-color: var(--primary);
+}
+
+/* Unmatched job warning */
+.ai-unmatched-warning {
+    background: rgba(200, 50, 50, 0.1);
+    border: 1px solid rgba(200, 50, 50, 0.3);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+}
+
+.ai-unmatched-warning h4 {
+    font-size: 12px;
+    color: var(--danger);
+    margin-bottom: 6px;
+}
+
+.ai-unmatched-warning ul {
+    font-size: 11px;
+    color: var(--text-secondary);
+    list-style: none;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.ai-unmatched-warning ul li::before {
+    content: "⚠ ";
+}
+
+/* AI Classification progress bar */
+.ai-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-input);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.ai-progress-bar .ai-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, hsl(270, 70%, 50%), hsl(310, 65%, 55%));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    animation: aiPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes aiPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
