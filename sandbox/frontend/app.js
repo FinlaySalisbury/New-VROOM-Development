@@ -1,5 +1,5 @@
 /**
- * InView VROOM Simulation Sandbox — Application Logic v1.1
+ * InView VROOM Simulation Sandbox -- Application Logic v1.1
  * 
  * Features:
  *  - Sliders, strategy selection, cost guide
@@ -15,42 +15,429 @@ const API_BASE = window.location.origin + '/api';
 
 // ═══ Storage Manager ═════════════════════════════════════════
 const StorageManager = {
-    getEngineers()     { return JSON.parse(localStorage.getItem('vroom_engineers') || '[]'); },
-    saveEngineers(arr) { localStorage.setItem('vroom_engineers', JSON.stringify(arr)); },
-    getJobLists()      { return JSON.parse(localStorage.getItem('vroom_job_lists') || '[]'); },
-    saveJobLists(arr)  { localStorage.setItem('vroom_job_lists', JSON.stringify(arr)); },
-    getDepot()         { return JSON.parse(localStorage.getItem('vroom_main_depot') || '[-0.1278, 51.5074]'); },
-    saveDepot(lon, lat) { localStorage.setItem('vroom_main_depot', JSON.stringify([lon, lat])); }
+    async getEngineers() {
+        try {
+            const resp = await fetch(API_BASE + '/config/engineers');
+            return await resp.json();
+        } catch(e) { return []; }
+    },
+    async saveEngineers(arr) {
+        await fetch(API_BASE + '/config/engineers', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(arr)
+        });
+    },
+    async getJobLists() {
+        try {
+            const resp = await fetch(API_BASE + '/config/job-lists');
+            return await resp.json();
+        } catch(e) { return []; }
+    },
+    async saveJobLists(arr) {
+        await fetch(API_BASE + '/config/job-lists', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(arr)
+        });
+    },
+    async getDepot() {
+        try {
+            const resp = await fetch(API_BASE + '/config/settings/depot');
+            return await resp.json();
+        } catch(e) { return [-0.1278, 51.5074]; }
+    },
+    async saveDepot(lon, lat) {
+        await fetch(API_BASE + '/config/settings/depot', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify([lon, lat])
+        });
+    },
+    async migrateFromLocalStorage() {
+        if (localStorage.getItem('vroom_engineers')) {
+            await this.saveEngineers(JSON.parse(localStorage.getItem('vroom_engineers')));
+            localStorage.removeItem('vroom_engineers');
+        }
+        if (localStorage.getItem('vroom_job_lists')) {
+            await this.saveJobLists(JSON.parse(localStorage.getItem('vroom_job_lists')));
+            localStorage.removeItem('vroom_job_lists');
+        }
+        if (localStorage.getItem('vroom_main_depot')) {
+            const depot = JSON.parse(localStorage.getItem('vroom_main_depot'));
+            await this.saveDepot(depot[0], depot[1]);
+            localStorage.removeItem('vroom_main_depot');
+        }
+    }
 };
 
-// ═══ Sidebar Navigation ═════════════════════════════════════
-function switchSidebar(panel) {
-    document.querySelectorAll('.sidebar-nav-item').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.sidebar-content').forEach(p => p.classList.remove('active'));
-    const btn = document.querySelector(`.sidebar-nav-item[data-panel="${panel}"]`);
-    const content = document.getElementById(`sidebar-${panel}`);
+// ═══ Navigation ═════════════════════════════════════
+function switchAppView(viewName) {
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
+    const btn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
+    const view = document.getElementById(`view-${viewName}`);
     if (btn) btn.classList.add('active');
-    if (content) content.classList.add('active');
+    if (view) view.classList.add('active');
+    if (viewName === 'map' && map) setTimeout(() => map.invalidateSize(), 100);
+}
+
+// ═══ Modals ════════════════════════════════════════
+function showPreflightModal() { 
+    renderOptimisePanel(); 
+    document.getElementById('preflight-modal').style.display = 'flex'; 
+}
+function hidePreflightModal() { 
+    document.getElementById('preflight-modal').style.display = 'none'; 
+}
+function toggleChatPanel() {
+    const p = document.getElementById('chat-slide-panel');
+    p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+    if (p.style.display === 'flex') {
+        const input = document.getElementById('chat-input');
+        if (input) input.focus();
+    }
+}
+
+function openEngineerCardsModal() {
+    const modal = document.getElementById('engineers-cards-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        renderEngineerCardsModal();
+    }
+}
+
+function closeEngineerCardsModal() {
+    const modal = document.getElementById('engineers-cards-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        currentEngineerModalGroup = null; // Reset on close
+    }
+}
+
+let currentEngineerModalGroup = null;
+
+function renderEngineerCardsModal() {
+    const sel = document.getElementById('day-filter-select');
+    const result = state.currentResult;
+    if (!result || !result.scenario_state) return;
+
+    const dayValue = sel ? sel.value : 'all';
+    
+    // Build routes
+    const routes = [];
+    const filterDayPattern = dayValue === 'all' ? null : `_Day${parseInt(dayValue)}`;
+
+    (result.scenario_state?.vehicles || []).forEach(v => {
+        if (!filterDayPattern || (v.name || '').endsWith(filterDayPattern)) {
+            const existingRoute = (result.routes_data || []).find(rd => rd.vehicle_id === v.id);
+            if (existingRoute) {
+                // Clone the route so we don't mutate the original result data when grouping
+                routes.push(JSON.parse(JSON.stringify(existingRoute)));
+            } else {
+                routes.push({
+                    vehicle_id: v.id,
+                    vehicle_name: v.name,
+                    vehicle_skills: v.skills || [],
+                    num_jobs_assigned: 0,
+                    legs: [],
+                    activity_log: [],
+                    idle: true
+                });
+            }
+        }
+    });
+
+    const grid = document.getElementById('engineers-cards-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (dayValue === 'all') {
+        // Hierarchical Grouping
+        const groupedMap = new Map();
+        routes.forEach(rd => {
+            const parsed = parseEngineerName(rd.vehicle_name, rd.vehicle_id);
+            const groupKey = `${parsed.name}_${parsed.id}`;
+            if (!groupedMap.has(groupKey)) {
+                groupedMap.set(groupKey, {
+                    baseName: parsed.name,
+                    origId: parsed.id,
+                    displayName: parsed.id ? `${parsed.name} (ID: ${parsed.id})` : parsed.name,
+                    routes: []
+                });
+            }
+            groupedMap.get(groupKey).routes.push({ ...rd, parsed });
+        });
+        
+        if (currentEngineerModalGroup && groupedMap.has(currentEngineerModalGroup)) {
+            // Screen 2: Engineer Days View
+            const backContainer = document.createElement('div');
+            backContainer.style.gridColumn = '1 / -1';
+            backContainer.style.marginBottom = '8px';
+            
+            const backBtn = document.createElement('button');
+            backBtn.className = 'yx-btn yx-btn-secondary yx-btn-sm';
+            backBtn.innerHTML = '← Back to All Engineers';
+            backBtn.onclick = () => {
+                currentEngineerModalGroup = null;
+                renderEngineerCardsModal();
+            };
+            backContainer.appendChild(backBtn);
+            grid.appendChild(backContainer);
+            
+            const group = groupedMap.get(currentEngineerModalGroup);
+            group.routes.sort((a,b) => a.parsed.day - b.parsed.day).forEach(rd => {
+                grid.appendChild(createDayCard(rd));
+            });
+            
+        } else {
+            // Screen 1: All Engineers View
+            groupedMap.forEach((group, key) => {
+                // Aggregate stats across all days
+                let totalJobs = 0, totalWorkTime = 0, totalTravelTime = 0;
+                group.routes.forEach(rd => {
+                    if (!rd.idle) {
+                        totalJobs += (rd.num_jobs_assigned || 0);
+                        const actService = rd.activity_log?.filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0) || 0;
+                        const legDuration = rd.legs?.reduce((s, l) => s + (l.duration_s || 0), 0) || 0;
+                        totalWorkTime += actService + legDuration;
+                        totalTravelTime += legDuration;
+                    }
+                });
+                const allIdle = group.routes.every(r => r.idle);
+
+                // Top Level Engineer Card
+                const card = document.createElement('div');
+                card.className = `engineer-stat-card ${allIdle ? 'idle' : ''}`;
+                card.style.cursor = 'pointer';
+                card.onclick = () => {
+                    currentEngineerModalGroup = key;
+                    renderEngineerCardsModal();
+                };
+
+                const ci = Array.from(groupedMap.keys()).indexOf(key) % ROUTE_COLORS.length;
+                const color = allIdle ? '#9e9e9e' : ROUTE_COLORS[ci];
+
+                card.innerHTML = `
+                    <div class="eng-card-header">
+                        <div class="eng-card-avatar" style="background-color: ${color}">${group.displayName.charAt(0)}</div>
+                        <div>
+                            <div class="eng-card-title">${group.displayName}</div>
+                            <div class="eng-card-subtitle" style="font-size:11px; margin-top:2px;">Weekly Summary: ${allIdle ? 'Idle' : 'Active'}</div>
+                        </div>
+                    </div>
+                    <div class="eng-card-body">
+                        <div class="eng-stat-row">
+                            <span class="eng-stat-label">Total Jobs</span>
+                            <span class="eng-stat-val highlight">${totalJobs}</span>
+                        </div>
+                        <div class="eng-stat-row">
+                            <span class="eng-stat-label">Total Work</span>
+                            <span class="eng-stat-val">${formatDuration(totalWorkTime)}</span>
+                        </div>
+                        <div class="eng-stat-row">
+                            <span class="eng-stat-label">Total Travel</span>
+                            <span class="eng-stat-val">${formatDuration(totalTravelTime)}</span>
+                        </div>
+                        <div class="eng-stat-row" style="margin-top:10px; justify-content:center;">
+                            <span style="color:var(--primary-color); font-size:12px; font-weight:600;">View Daily Breakdown →</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    } else {
+        // Just show cards for the specific day
+        routes.forEach(rd => {
+            const rdClone = {...rd, parsed: parseEngineerName(rd.vehicle_name, rd.vehicle_id)};
+            grid.appendChild(createDayCard(rdClone));
+        });
+    }
+}
+
+function createDayCard(rd) {
+    const eid = rd.vehicle_id;
+    const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
+    const color = rd.idle ? '#9e9e9e' : ROUTE_COLORS[ci];
+    
+    const jobs = rd.num_jobs_assigned || 0;
+    
+    let originText = "N/A";
+    let destText = "N/A";
+    let workTime = "0h 0m";
+    let travelTime = "0h 0m";
+
+    if (!rd.idle) {
+        const activities = rd.activity_log || [];
+        const starts = activities.filter(a => a.action === 'start');
+        const ends = activities.filter(a => a.action === 'end');
+        
+        if (starts.length) originText = formatTime(starts[0].time);
+        if (ends.length) destText = formatTime(ends[ends.length-1].time);
+        
+        const totalDuration = (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0)
+            + activities.filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0);
+        
+        const totalTravel = (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0);
+        
+        workTime = formatDuration(totalDuration);
+        travelTime = formatDuration(totalTravel);
+    }
+
+    const card = document.createElement('div');
+    const isSelected = selectedEngineers.has(eid);
+    
+    card.className = `engineer-stat-card ${rd.idle ? 'idle' : ''} ${isSelected ? 'selected' : ''}`;
+    // Add styling for selected state (yunex blue tint)
+    if (isSelected) {
+        card.style.border = '2px solid var(--primary-color)';
+        card.style.backgroundColor = 'rgba(0, 153, 153, 0.05)';
+    }
+    
+    card.style.cursor = 'pointer';
+    card.onclick = () => {
+        toggleEngineer(eid);
+        // Refresh the modal to update selection styles immediately
+        renderEngineerCardsModal();
+    };
+
+    const displayTitle = rd.parsed ? `Day ${rd.parsed.day}` : (rd.vehicle_name || 'Engineer ' + eid);
+    const subtitleText = rd.parsed?.id ? `${rd.parsed.name} (ID: ${rd.parsed.id})` : '';
+
+    card.innerHTML = `
+        <div class="eng-card-header">
+            <div class="eng-card-avatar" style="background-color: ${color}">${displayTitle.charAt(0)}</div>
+            <div>
+                <div class="eng-card-title">${displayTitle}</div>
+                <div class="eng-card-subtitle">${subtitleText}</div>
+                <div class="eng-card-subtitle" style="font-size:11px; margin-top:2px;">${rd.idle ? 'Idle - No routes assigned' : 'Active Shift'}</div>
+            </div>
+        </div>
+        <div class="eng-card-body">
+            <div class="eng-stat-row">
+                <span class="eng-stat-label">Jobs Attended</span>
+                <span class="eng-stat-val highlight">${jobs}</span>
+            </div>
+            <div class="eng-stat-row">
+                <span class="eng-stat-label">Origin Departure</span>
+                <span class="eng-stat-val">${originText}</span>
+            </div>
+            <div class="eng-stat-row">
+                <span class="eng-stat-label">Dest. Arrival</span>
+                <span class="eng-stat-val">${destText}</span>
+            </div>
+            <div class="eng-stat-row">
+                <span class="eng-stat-label">Working Time</span>
+                <span class="eng-stat-val">${workTime}</span>
+            </div>
+            <div class="eng-stat-row">
+                <span class="eng-stat-label">Travel Time</span>
+                <span class="eng-stat-val">${travelTime}</span>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+function sendQuickPrompt(text) {
+    const input = document.getElementById('chat-input');
+    if (input) {
+        input.value = text;
+        sendChatMessage();
+    }
+}
+
+function appendChatMessage(role, text, isHtml = false) {
+    const msgContainer = document.getElementById('chat-messages');
+    const emptyState = document.getElementById('chat-empty');
+    if (emptyState) emptyState.style.display = 'none';
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${role}`;
+    if (isHtml) {
+        bubble.innerHTML = text;
+    } else {
+        bubble.textContent = text;
+    }
+
+    msgContainer.appendChild(bubble);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+    return bubble;
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (!state.currentResult || !state.currentResult.id) {
+        appendChatMessage('bot', 'Please run a simulation first so I have data to analyze.');
+        input.value = '';
+        return;
+    }
+
+    // Append user message
+    appendChatMessage('user', text);
+    input.value = '';
+
+    // Show typing indicator
+    const typingBubble = appendChatMessage('bot', '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', true);
+
+    try {
+        const res = await fetch(`${API_BASE}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                run_id: state.currentResult.id,
+                message: text,
+                history: state.chatHistory
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to connect to AI');
+        }
+
+        const data = await res.json();
+        
+        // Remove typing indicator
+        typingBubble.remove();
+        
+        // Update history and append bot response
+        state.chatHistory = data.history;
+        appendChatMessage('bot', data.reply);
+        
+    } catch (e) {
+        console.error(e);
+        typingBubble.remove();
+        appendChatMessage('bot', `Error: ${e.message}`);
+    }
 }
 
 const ROUTE_COLORS = [
-    '#4285f4', '#ea4335', '#34a853', '#fbbc04', '#9c27b0',
-    '#00bcd4', '#ff5722', '#607d8b', '#e91e63', '#3f51b5',
-    '#009688', '#ff9800', '#795548', '#cddc39', '#673ab7',
+    '#1E2ED9', '#00E38C', '#F47738', '#688ABA', '#A483FF',
+    '#9DBBFF', '#FFE564', '#4A4A4A', '#AFFAD7', '#DEECFF',
+    '#000000', '#E4EDED', '#6B7280', '#00bcd4', '#795548',
 ];
 
 const URGENCY_COLORS = {
-    critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e',
+    critical: '#F47738', high: '#FFE564', medium: '#9DBBFF', low: '#00E38C',
 };
 
 // ═══ State ═══════════════════════════════════════════════
 let selectedEngineers = new Set();
 
-function toggleEngineer(eid) {
-    if (selectedEngineers.has(eid)) {
-        selectedEngineers.delete(eid);
+function toggleEngineer(eids) {
+    if (!Array.isArray(eids)) eids = [eids];
+    
+    // Check if the first one is selected to determine toggle state
+    const isSelected = selectedEngineers.has(eids[0]);
+    if (isSelected) {
+        eids.forEach(id => selectedEngineers.delete(id));
     } else {
-        selectedEngineers.add(eid);
+        eids.forEach(id => selectedEngineers.add(id));
     }
     updateSelections();
 }
@@ -104,8 +491,8 @@ function updateSelections() {
         const eid = Number(card.dataset.engineerId);
         if (!hasSelection || selectedEngineers.has(eid)) {
             card.style.opacity = '1';
-            card.style.borderLeft = selectedEngineers.has(eid) ? '4px solid #4f46e5' : '4px solid transparent';
-            card.style.backgroundColor = selectedEngineers.has(eid) ? '#f8fafc' : 'white';
+            card.style.borderLeft = selectedEngineers.has(eid) ? '4px solid #1E2ED9' : '4px solid transparent';
+            card.style.backgroundColor = selectedEngineers.has(eid) ? '#F7FAFB' : 'white';
         } else {
             card.style.opacity = '0.4';
             card.style.borderLeft = '4px solid transparent';
@@ -122,6 +509,7 @@ let state = {
     currentResult: null,
     history: [],
     remixHistory: [],
+    chatHistory: []
 };
 
 let map = null;
@@ -133,7 +521,8 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
 // ═══ Init ════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await StorageManager.migrateFromLocalStorage();
     initMap();
     initSliders();
     initStrategy();
@@ -145,10 +534,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initMap() {
     map = L.map('map', { center: [51.505, -0.09], zoom: 11, zoomControl: true });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OSM &copy; CARTO',
-        subdomains: 'abcd', maxZoom: 19,
-    }).addTo(map);
+    
+    const apiKey = 'Hd7rWKWhXYo1rIGRXkmNDWE0kXeRUrLA';
+    
+    // Explicitly fetch 512px (High-Res) tiles from TomTom but tell Leaflet they are 256px.
+    // This forces Leaflet to squish the 512px image into a 256px CSS box, creating perfect Retina 2x density.
+    const tileOptions = {
+        attribution: '&copy; <a href="https://developer.tomtom.com/">TomTom</a>',
+        maxZoom: 19,
+        tileSize: 256,
+        zoomOffset: 0
+    };
+
+    const tomtomLight = L.tileLayer(`https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${apiKey}&tileSize=512`, tileOptions);
+    const tomtomDark = L.tileLayer(`https://api.tomtom.com/map/1/tile/basic/night/{z}/{x}/{y}.png?key=${apiKey}&tileSize=512`, tileOptions);
+    const tomtomMono = L.tileLayer(`https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${apiKey}&tileSize=512`, {
+        ...tileOptions,
+        className: 'map-monochrome'
+    });
+
+    tomtomLight.addTo(map); // Set Light as default
+    L.control.layers({ 
+        "Light": tomtomLight, 
+        "Dark": tomtomDark,
+        "Monochrome": tomtomMono 
+    }, null, { position: 'topright' }).addTo(map);
+
     routeLayerGroup = L.layerGroup().addTo(map);
     jobLayerGroup = L.layerGroup().addTo(map);
     depotLayerGroup = L.layerGroup().addTo(map);
@@ -175,6 +586,8 @@ function initSliders() {
         updateCostGuide();
     };
 
+    if (!es || !ei || !js || !ji) return;
+
     es.addEventListener('input', (e) => updateEngineers(e.target.value));
     ei.addEventListener('input', (e) => updateEngineers(e.target.value));
     ei.addEventListener('change', (e) => updateEngineers(e.target.value));
@@ -188,22 +601,51 @@ function initSliders() {
 function initStrategy() {
     $$('.strategy-option').forEach(opt => {
         opt.addEventListener('click', () => {
-            $$('.strategy-option').forEach(o => o.classList.remove('active'));
+            // Only handle routing strategies, ignore classification strategies
+            if (!opt.dataset.strategy) return;
+            
+            $$('.strategy-option[data-strategy]').forEach(o => o.classList.remove('active'));
             opt.classList.add('active');
-            opt.querySelector('input[type="radio"]').checked = true;
+            
+            const radio = opt.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+            
             state.strategy = opt.dataset.strategy;
             updateCostGuide();
         });
     });
 }
 
-function updateCostGuide() {
+async function updateCostGuide() {
     const g = $('#cost-guide');
-    if (state.strategy === 'tomtom_premium') {
-        const w = state.numEngineers + state.numJobs;
+    // Read strategy from the modal radio buttons
+    const strategyRadio = document.querySelector('#strategy-group input[name="strategy"]:checked');
+    const currentStrategy = strategyRadio ? strategyRadio.value : state.strategy;
+
+    if (currentStrategy === 'tomtom_premium') {
+        // Count vehicle-days from the rota matrix checkboxes (each checked day = 1 vehicle)
+        const checkedDays = document.querySelectorAll('#opt-rota-matrix .rota-day-cb:checked');
+        let numVehicleDays = checkedDays.length;
+        // Fallback: if matrix not yet rendered, estimate from raw engineer count
+        if (numVehicleDays === 0) {
+            const engineers = await StorageManager.getEngineers();
+            numVehicleDays = engineers.length;
+        }
+
+        // Count jobs from the selected job list
+        let numJobs = 0;
+        const jobSelect = document.getElementById('opt-job-select');
+        if (jobSelect && jobSelect.value) {
+            const jobLists = await StorageManager.getJobLists();
+            const selected = jobLists.find(jl => jl.id === jobSelect.value);
+            if (selected) numJobs = selected.jobCount || 0;
+        }
+
+        const w = numVehicleDays + numJobs;
         const txns = (w * w) + (3 * w);
         $('#cost-waypoints').textContent = w;
-        $('#cost-elements').textContent = txns.toLocaleString();
+        const elEl = document.getElementById('cost-elements');
+        if (elEl) elEl.textContent = txns.toLocaleString();
         $('#cost-gbp').textContent = `£${(txns * 0.0004).toFixed(2)}`;
         g.classList.add('visible');
     } else {
@@ -213,7 +655,9 @@ function updateCostGuide() {
 
 // ═══ Run Simulation ══════════════════════════════════════
 function initRunButton() {
-    $('#run-btn').addEventListener('click', () => { if (!state.isRunning) runSimulation(); });
+    const btn = $('#run-btn');
+    if (!btn) return;
+    btn.addEventListener('click', () => { if (!state.isRunning) runSimulation(); });
 }
 
 async function runSimulation(replayScenario = null) {
@@ -235,6 +679,7 @@ async function runSimulation(replayScenario = null) {
         const result = await res.json();
         state.currentResult = result;
         renderMap(result);
+        populateDaySelector(result);
         showResults(result);
         renderEngineerStats(result.routes_data || []);
         populateLogDropdown(result.routes_data || []);
@@ -253,7 +698,7 @@ async function runSimulation(replayScenario = null) {
 }
 
 // ═══ Map Rendering ═══════════════════════════════════════
-function renderMap(result) {
+function renderMap(result, filterVehicleIds = null) {
     routeLayerGroup.clearLayers();
     jobLayerGroup.clearLayers();
     depotLayerGroup.clearLayers();
@@ -267,6 +712,8 @@ function renderMap(result) {
         result.routes_geojson.features.forEach((f, idx) => {
             if (f.geometry.type !== 'LineString') return;
             const eid = f.properties.engineer_id;
+            // Skip if day filter is active and this vehicle isn't in the filter set
+            if (filterVehicleIds && !filterVehicleIds.has(eid)) return;
             const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
             const color = ROUTE_COLORS[ci];
             const mult = f.properties.traffic_multiplier || 1.0;
@@ -279,8 +726,10 @@ function renderMap(result) {
             pl.engineerId = eid;
             pl._baseWeight = weight;
             pl.on('click', () => toggleEngineer(eid));
+            const routeData = result.routes_data?.find(r => r.vehicle_id === eid);
+            const parsed = parseEngineerName(routeData?.vehicle_name, eid);
             pl.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px">
-                <strong>Engineer #${eid}</strong><br>
+                <strong>${parsed.displayName}</strong><br>
                 <span style="color:#888">Leg:</span> ${f.properties.leg_id}<br>
                 <span style="color:#888">Traffic:</span> ${mult}x<br>
                 <span style="color:#888">Duration:</span> ${formatDuration(f.properties.duration_s)}
@@ -294,6 +743,7 @@ function renderMap(result) {
     if (result.routes_data) {
         result.routes_data.forEach(rd => {
             const eid = rd.vehicle_id;
+            if (filterVehicleIds && !filterVehicleIds.has(eid)) return;
             const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
             const color = ROUTE_COLORS[ci];
 
@@ -307,8 +757,9 @@ function renderMap(result) {
                 });
                 dm.engineerId = eid;
                 dm.on('click', () => toggleEngineer(eid));
+                const parsed = parseEngineerName(rd.vehicle_name, eid);
                 dm.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px">
-                    <strong>🏠 Depot — Engineer #${eid}</strong><br>
+                    <strong>Depot -- ${parsed.displayName}</strong><br>
                     <span style="color:#888">Name:</span> ${rd.vehicle_name}<br>
                     <span style="color:#888">Skills:</span> ${(rd.vehicle_skills || []).join(', ') || 'None'}
                 </div>`);
@@ -324,9 +775,12 @@ function renderMap(result) {
             if (f.geometry.type !== 'Point') return;
             const [lon, lat] = f.geometry.coordinates;
             const p = f.properties;
+            const assigned = p.status === 'Assigned';
+            // Day filter: show assigned jobs only if their vehicle is in the filter set
+            // Unassigned jobs are always shown
+            if (filterVehicleIds && assigned && !filterVehicleIds.has(p.assigned_engineer_id)) return;
             const urgency = p.urgency_level || 'medium';
             const color = URGENCY_COLORS[urgency] || URGENCY_COLORS.medium;
-            const assigned = p.status === 'Assigned';
             const skills = p.required_skills || [];
 
             const m = L.circleMarker([lat, lon], {
@@ -335,12 +789,18 @@ function renderMap(result) {
                 color: assigned ? '#fff' : '#ff4444',
                 weight: assigned ? 1 : 2, opacity: 1, fillOpacity: 0.85,
             });
+            let assignedStr = '';
+            if (assigned) {
+                const assignedRd = result.routes_data?.find(r => r.vehicle_id === p.assigned_engineer_id);
+                const assignedParsed = parseEngineerName(assignedRd?.vehicle_name, p.assigned_engineer_id);
+                assignedStr = `<span style="color:#888">Assigned to:</span> ${assignedParsed.displayName}<br>`;
+            }
             m.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px">
                 <strong>Job #${p.job_id}</strong><br>
                 <span style="color:#888">Status:</span> <span style="color:${assigned ? '#22c55e' : '#ef4444'}">${p.status}</span><br>
                 <span style="color:#888">Urgency:</span> ${urgency}<br>
                 ${skills.length ? `<span style="color:#888">Required Skills:</span> ${skills.map(s => `<span style="background:rgba(66,133,244,0.15);color:#4285f4;padding:0 4px;border-radius:3px;font-size:11px">${s}</span>`).join(' ')}<br>` : ''}
-                ${assigned ? `<span style="color:#888">Assigned to:</span> Engineer #${p.assigned_engineer_id}<br>` : ''}
+                ${assignedStr}
                 <span style="color:#888">Service:</span> ${formatDuration(p.service_time_s)}<br>
                 ${p.description ? `<span style="color:#888">Desc:</span> ${p.description}` : ''}
             </div>`);
@@ -355,12 +815,120 @@ function renderMap(result) {
 // ═══ Results ═════════════════════════════════════════════
 function showResults(result) {
     const s = result.vroom_summary || {};
-    $('#stat-test-num').textContent = result.test_number ? `#${result.test_number}` : '—';
-    $('#stat-routes').textContent = s.routes || '—';
+    $('#stat-test-num').textContent = result.test_number ? `#${result.test_number}` : '--';
+    $('#stat-routes').textContent = s.routes || '--';
     $('#stat-duration').textContent = formatDuration(s.duration);
     $('#stat-unassigned').textContent = s.unassigned || '0';
     $('#stat-strategy').textContent = formatStrategy(result.strategy);
     $('#results-summary').classList.add('visible');
+}
+
+// ═══ Day Selector (Multi-Day Dispatch) ═══════════════════
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function populateDaySelector(result) {
+    const sel = document.getElementById('day-filter-select');
+    if (!sel) return;
+
+    // Parse day numbers from vehicle names (pattern: Name_DayN)
+    const dayMap = new Map(); // dayNum -> Set of vehicle_ids
+    (result.scenario_state?.vehicles || []).forEach(v => {
+        const match = (v.name || '').match(/_Day(\d+)$/);
+        if (match) {
+            const dayNum = parseInt(match[1]);
+            if (!dayMap.has(dayNum)) dayMap.set(dayNum, new Set());
+            dayMap.get(dayNum).add(v.id);
+        }
+    });
+
+    sel.innerHTML = '<option value="all">All Days</option>';
+
+    if (dayMap.size <= 1) {
+        // Single-day dispatch -- hide the selector
+        sel.parentElement.style.display = 'none';
+    } else {
+        sel.parentElement.style.display = '';
+    }
+
+    const engBtn = document.getElementById('all-engineers-btn-wrapper');
+    if (engBtn) engBtn.style.display = 'flex';
+
+    // Sort by day number and build options
+    const sortedDays = Array.from(dayMap.keys()).sort((a, b) => a - b);
+    sortedDays.forEach(dayNum => {
+        const dayName = DAY_NAMES[(dayNum - 1) % 7] || `Day ${dayNum}`;
+        const opt = document.createElement('option');
+        opt.value = String(dayNum);
+        opt.textContent = `${dayName} -- Day ${dayNum}`;
+        sel.appendChild(opt);
+    });
+}
+
+function filterByDay() {
+    const sel = document.getElementById('day-filter-select');
+    const result = state.currentResult;
+    if (!sel || !result) return;
+
+    const dayValue = sel.value;
+
+    // Helper to build routes including idle ones
+    const buildRoutes = (filterDayPattern) => {
+        const routes = [];
+        const activeVehicleIds = new Set();
+        (result.scenario_state?.vehicles || []).forEach(v => {
+            if (!filterDayPattern || (v.name || '').endsWith(filterDayPattern)) {
+                activeVehicleIds.add(v.id);
+                const existingRoute = (result.routes_data || []).find(rd => rd.vehicle_id === v.id);
+                if (existingRoute) {
+                    routes.push(existingRoute);
+                } else {
+                    routes.push({
+                        vehicle_id: v.id,
+                        vehicle_name: v.name,
+                        vehicle_skills: v.skills || [],
+                        num_jobs_assigned: 0,
+                        legs: [],
+                        activity_log: [],
+                        idle: true
+                    });
+                }
+            }
+        });
+        return { routes, activeVehicleIds };
+    };
+
+    if (dayValue === 'all') {
+        const { routes: allRoutes } = buildRoutes(null);
+        renderMap(result);
+        showResults(result);
+        renderEngineerStats(allRoutes);
+        populateLogDropdown(allRoutes);
+        renderActivityLog();
+        return;
+    }
+
+    const dayNum = parseInt(dayValue);
+    const dayPattern = `_Day${dayNum}`;
+    const { routes: filteredRoutes, activeVehicleIds: dayVehicleIds } = buildRoutes(dayPattern);
+
+    // Render filtered map
+    renderMap(result, dayVehicleIds);
+
+    // Update stats for filtered day
+    const totalDuration = filteredRoutes.reduce((sum, rd) => {
+        return sum + (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0)
+            + (rd.activity_log || []).filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0);
+    }, 0);
+    const totalJobs = filteredRoutes.reduce((sum, rd) => sum + (rd.num_jobs_assigned || 0), 0);
+    const dayName = DAY_NAMES[(dayNum - 1) % 7];
+    $('#stat-routes').textContent = filteredRoutes.length;
+    $('#stat-duration').textContent = formatDuration(totalDuration);
+    $('#stat-test-num').textContent = dayName;
+
+    // Update engineer stats and activity log for this day only
+    renderEngineerStats(filteredRoutes);
+    populateLogDropdown(filteredRoutes);
+    renderActivityLog();
 }
 
 // ═══ Tabs ════════════════════════════════════════════════
@@ -376,6 +944,7 @@ async function loadHistory() {
         if (!res.ok) return;
         state.history = await res.json();
         renderHistory();
+        populateHistoryDropdown();
     } catch { }
 }
 
@@ -393,16 +962,39 @@ function renderHistory() {
                 <span class="item-time">${formatTime(r.created_at)}</span>
             </div>
             <div class="item-meta">
-                <span>👷 ${r.num_engineers}</span>
-                <span>🔧 ${r.num_jobs}</span>
-                ${r.total_duration_s ? `<span>⏱️ ${formatDuration(r.total_duration_s)}</span>` : ''}
+                <span>${r.num_engineers} engineers</span>
+                <span>${r.num_jobs} jobs</span>
+                ${r.total_duration_s ? `<span>${formatDuration(r.total_duration_s)}</span>` : ''}
             </div>
             <div class="item-actions">
-                <button class="btn-sm" onclick="viewHistoryRun('${r.id}')">View</button>
-                <button class="btn-sm btn-replay" onclick="replayRun('${r.id}')">↻ Replay</button>
+                <button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="viewHistoryRun('${r.id}')">View</button>
+                <button class="yx-btn yx-btn-ghost yx-btn-sm btn-replay" onclick="replayRun('${r.id}')">↻ Replay</button>
             </div>`;
         c.appendChild(el);
     });
+}
+
+function populateHistoryDropdown() {
+    const sel = $('#history-filter-select');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">History...</option>';
+    if (!state.history.length) {
+        sel.parentElement.style.display = 'none';
+        return;
+    }
+    sel.parentElement.style.display = '';
+    state.history.forEach(r => {
+        const o = document.createElement('option');
+        o.value = r.id;
+        o.textContent = `${r.name || 'Dispatch #' + (r.test_number || '?')} - ${formatTime(r.created_at)}`;
+        sel.appendChild(o);
+    });
+}
+
+function runHistorySelect() {
+    const sel = $('#history-filter-select');
+    if (!sel || !sel.value) return;
+    viewHistoryRun(sel.value);
 }
 
 async function viewHistoryRun(id) {
@@ -411,7 +1003,12 @@ async function viewHistoryRun(id) {
         if (!res.ok) throw new Error('Not found');
         const d = await res.json();
         state.currentResult = d;
+        
+        const sel = $('#history-filter-select');
+        if (sel) sel.value = id;
+
         renderMap(d);
+        populateDaySelector(d);
         showResults(d);
         renderEngineerStats(d.routes_data || []);
         populateLogDropdown(d.routes_data || []);
@@ -439,24 +1036,53 @@ async function replayRun(id) {
 // ═══ Engineer Stats ══════════════════════════════════════
 function renderEngineerStats(routesData) {
     const c = $('#engineer-list'), e = $('#engineer-empty');
+    if (!c) return;
     c.querySelectorAll('.engineer-card').forEach(el => el.remove());
     if (!routesData.length) { e.style.display = 'block'; return; }
     e.style.display = 'none';
 
+    // Group by base engineer name
+    const groupedMap = new Map();
     routesData.forEach(rd => {
+        const baseName = (rd.vehicle_name || '').split('_Day')[0];
+        if (!groupedMap.has(baseName)) {
+            groupedMap.set(baseName, {
+                eids: [],
+                vehicle_id: rd.vehicle_id, 
+                vehicle_name: baseName,
+                vehicle_skills: rd.vehicle_skills,
+                num_jobs_assigned: 0,
+                legs: [],
+                activity_log: [],
+                availability_start: rd.availability_start,
+                availability_end: rd.availability_end
+            });
+        }
+        const agg = groupedMap.get(baseName);
+        agg.eids.push(rd.vehicle_id);
+        agg.num_jobs_assigned += (rd.num_jobs_assigned || 0);
+        agg.legs.push(...(rd.legs || []));
+        agg.activity_log.push(...(rd.activity_log || []));
+        // Keep earliest start / latest end? Or just keep first one for now.
+    });
+    
+    // Convert back to array
+    const aggregatedRoutes = Array.from(groupedMap.values());
+
+    aggregatedRoutes.forEach(rd => {
         const eid = rd.vehicle_id;
         const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
         const color = ROUTE_COLORS[ci];
         const skills = (rd.vehicle_skills || []).map(s => String(s)).filter(s => !s.startsWith('_remix'));
         const totalTravel = (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0);
         const totalService = (rd.activity_log || []).filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0);
-        const availStart = rd.availability_start || '—';
-        const availEnd = rd.availability_end || '—';
+        const availStart = rd.availability_start || '--';
+        const availEnd = rd.availability_end || '--';
 
         const el = document.createElement('div');
         el.className = 'engineer-card';
         el.dataset.engineerId = eid;
-        el.onclick = () => toggleEngineer(eid);
+        el.onclick = () => toggleEngineer(rd.eids);
         el.style.cursor = 'pointer';
         el.style.transition = 'all 0.2s ease-in-out';
         el.innerHTML = `
@@ -465,11 +1091,11 @@ function renderEngineerStats(routesData) {
                 <span class="eng-id">#${eid}</span>
             </div>
             <div class="eng-meta">
-                <span>🕐 Available: ${availStart} – ${availEnd}</span>
-                <span>🔧 ${rd.num_jobs_assigned || 0} jobs assigned</span>
-                <span>🚗 Travel: ${formatDuration(totalTravel)}</span>
-                <span>🔧 Service: ${formatDuration(totalService)}</span>
-                <span>🏷️ ${skills.length ? skills.map(s => `<span class="skill-tag">${s}</span>`).join('') : 'No skills'}</span>
+                <span>Available: ${availStart} — ${availEnd}</span>
+                <span>${rd.num_jobs_assigned || 0} jobs assigned</span>
+                <span>Travel: ${formatDuration(totalTravel)}</span>
+                <span>Service: ${formatDuration(totalService)}</span>
+                <span>${skills.length ? skills.map(s => `<span class="skill-tag">${s}</span>`).join('') : 'No skills'}</span>
             </div>`;
         c.appendChild(el);
     });
@@ -478,51 +1104,118 @@ function renderEngineerStats(routesData) {
 // ═══ Activity Log ════════════════════════════════════════
 function populateLogDropdown(routesData) {
     const sel = $('#log-engineer-select');
+    if (!sel) return;
     sel.innerHTML = '';
-    if (!routesData.length) { $('#log-controls').style.display = 'none'; return; }
-    $('#log-controls').style.display = 'block';
+    if (!routesData.length) { 
+        if ($('#activity-overlay')) $('#activity-overlay').style.display = 'none'; 
+        if ($('#breakdown-btn-wrapper')) $('#breakdown-btn-wrapper').style.display = 'none';
+        return; 
+    }
+    if ($('#activity-overlay')) $('#activity-overlay').style.display = 'flex';
+    if ($('#breakdown-btn-wrapper')) $('#breakdown-btn-wrapper').style.display = 'flex';
+    
+    // Add "All Engineers" option by default
+    const allOpt = document.createElement('option');
+    allOpt.value = 'all';
+    allOpt.textContent = 'All Engineers';
+    sel.appendChild(allOpt);
+
     routesData.forEach(rd => {
         const o = document.createElement('option');
         o.value = rd.vehicle_id;
-        o.textContent = `Engineer #${rd.vehicle_id} — ${rd.vehicle_name || ''}`;
+        o.textContent = `${rd.vehicle_name || 'Engineer #' + rd.vehicle_id}`;
         sel.appendChild(o);
     });
 }
 
+function openActivityOverlay() {
+    if ($('#activity-overlay')) $('#activity-overlay').style.display = 'flex';
+}
+
+function closeActivityOverlay() {
+    if ($('#activity-overlay')) $('#activity-overlay').style.display = 'none';
+}
+
 function renderActivityLog() {
     const c = $('#activity-log'), e = $('#log-empty');
-    c.querySelectorAll('.log-entry').forEach(el => el.remove());
+    if (!c || !e) return;
+    c.innerHTML = '';
+    c.appendChild(e); // Keep the empty state div around
     const rd = state.currentResult?.routes_data;
     if (!rd?.length) { e.style.display = 'block'; return; }
     e.style.display = 'none';
 
-    const selectedId = +$('#log-engineer-select').value;
-    const route = rd.find(r => r.vehicle_id === selectedId);
-    if (!route?.activity_log) return;
+    const selectedId = $('#log-engineer-select').value;
+    
+    // Check if we need to filter by day as well
+    const daySel = $('#day-filter-select');
+    const selectedDay = daySel ? daySel.value : 'all';
 
-    route.activity_log.forEach(entry => {
-        const icons = { shift_start: '🟢', service: '🔧', travel: '🚗', shift_end: '🔴' };
-        const icon = icons[entry.action] || '•';
-        const timeOfDay = entry.time_of_day || '';
+    const routesToRender = rd.filter(r => {
+        if (selectedId !== 'all' && r.vehicle_id !== +selectedId) return false;
+        
+        if (selectedDay !== 'all') {
+            // Only show routes that belong to this day
+            const dayNum = (r.vehicle_name && r.vehicle_name.includes('_Day')) 
+                ? parseInt(r.vehicle_name.split('_Day')[1]) 
+                : null;
+            if (dayNum !== null && dayNum !== parseInt(selectedDay)) return false;
+        }
+        return true;
+    });
 
-        let metaHtml = '';
-        if (entry.duration_s > 0) metaHtml += `${formatDuration(entry.duration_s)}`;
-        if (entry.traffic_multiplier !== null && entry.traffic_multiplier !== undefined) {
-            const m = entry.traffic_multiplier;
-            const cls = m > 2 ? 'traffic-red' : m > 1.3 ? 'traffic-amber' : 'traffic-green';
-            metaHtml += ` <span class="traffic-badge ${cls}">${m}x</span>`;
+    if (routesToRender.length === 0) {
+        e.style.display = 'block';
+        return;
+    }
+
+    routesToRender.forEach(route => {
+        const hdr = document.createElement('div');
+        hdr.style.padding = '8px 12px';
+        hdr.style.backgroundColor = 'var(--bg-card)';
+        hdr.style.fontWeight = '600';
+        hdr.style.fontSize = '13px';
+        hdr.style.position = 'sticky';
+        hdr.style.top = '0';
+        hdr.style.zIndex = '5';
+        hdr.style.borderBottom = '1px solid var(--border-light)';
+        hdr.innerHTML = `<span style="color:var(--primary-color)">■</span> ${route.vehicle_name || 'Engineer #' + route.vehicle_id}`;
+        c.appendChild(hdr);
+
+        if (!route.activity_log || route.activity_log.length === 0) {
+            const noAct = document.createElement('div');
+            noAct.style.padding = '12px';
+            noAct.style.fontSize = '12px';
+            noAct.style.color = 'var(--text-muted)';
+            noAct.innerHTML = '<em>No activity.</em>';
+            c.appendChild(noAct);
+            return;
         }
 
-        const el = document.createElement('div');
-        el.className = 'log-entry';
-        el.innerHTML = `
-            <span class="log-time">${timeOfDay}</span>
-            <span class="log-icon">${icon}</span>
-            <div class="log-detail">
-                <div class="log-desc">${entry.description}</div>
-                ${metaHtml ? `<div class="log-meta">${metaHtml}</div>` : ''}
-            </div>`;
-        c.appendChild(el);
+        route.activity_log.forEach(entry => {
+            const icons = { shift_start: '⌚', service: '⌛', travel: '--', shift_end: '⌚' };
+            const icon = icons[entry.action] || '•';
+            const timeOfDay = entry.time_of_day || '';
+
+            let metaHtml = '';
+            if (entry.duration_s > 0) metaHtml += `${formatDuration(entry.duration_s)}`;
+            if (entry.traffic_multiplier !== null && entry.traffic_multiplier !== undefined) {
+                const m = entry.traffic_multiplier;
+                const cls = m > 2 ? 'traffic-red' : m > 1.3 ? 'traffic-amber' : 'traffic-green';
+                metaHtml += ` <span class="traffic-badge ${cls}">${m}x</span>`;
+            }
+
+            const el = document.createElement('div');
+            el.className = 'log-entry';
+            el.innerHTML = `
+                <span class="log-time">${timeOfDay}</span>
+                <span class="log-icon">${icon}</span>
+                <div class="log-detail">
+                    <div class="log-desc">${entry.description}</div>
+                    ${metaHtml ? `<div class="log-meta">${metaHtml}</div>` : ''}
+                </div>`;
+            c.appendChild(el);
+        });
     });
 }
 
@@ -536,7 +1229,7 @@ function updateRemixDropdown() {
     state.history.forEach(r => {
         const o = document.createElement('option');
         o.value = r.id;
-        o.textContent = `#${r.test_number || '?'} — ${formatStrategy(r.strategy)} (${r.num_engineers}eng/${r.num_jobs}jobs)`;
+        o.textContent = `#${r.test_number || '?'} -- ${formatStrategy(r.strategy)} (${r.num_engineers}eng/${r.num_jobs}jobs)`;
         sel.appendChild(o);
     });
 }
@@ -571,7 +1264,7 @@ async function runRemix() {
         console.error(err);
         alert(`Remix failed: ${err.message}`);
     } finally {
-        btn.disabled = false; btn.innerHTML = '🔁 Run Remix';
+        btn.disabled = false; btn.innerHTML = 'Run remix ⌛';
     }
 }
 
@@ -594,15 +1287,15 @@ function renderRemixHistory() {
         el.className = 'history-item';
         el.innerHTML = `
             <div class="item-header">
-                <span><span class="test-number">#${r.test_number || '?'}</span> <span class="item-strategy strategy-${r.strategy}">${formatStrategy(r.strategy)}</span> 🔁</span>
+                <span><span class="test-number">#${r.test_number || '?'}</span> <span class="item-strategy strategy-${r.strategy}">${formatStrategy(r.strategy)}</span> (remix)</span>
                 <span class="item-time">${formatTime(r.created_at)}</span>
             </div>
             <div class="item-meta">
-                <span>👷 ${r.num_engineers}</span> <span>🔧 ${r.num_jobs}</span>
-                ${r.total_duration_s ? `<span>⏱️ ${formatDuration(r.total_duration_s)}</span>` : ''}
+                <span>${r.num_engineers} engineers</span> <span>${r.num_jobs} jobs</span>
+                ${r.total_duration_s ? `<span>${formatDuration(r.total_duration_s)}</span>` : ''}
             </div>
             <div class="item-actions">
-                <button class="btn-sm" onclick="viewHistoryRun('${r.id}')">View</button>
+                <button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="viewHistoryRun('${r.id}')">View</button>
             </div>`;
         c.appendChild(el);
     });
@@ -642,7 +1335,7 @@ function renderChatMessages() {
     chatHistory.forEach(msg => {
         const bubble = document.createElement('div');
         bubble.className = `chat-bubble chat-bubble-${msg.role === 'user' ? 'user' : 'ai'}`;
-        const icon = msg.role === 'user' ? '🧑' : '🤖';
+        const icon = msg.role === 'user' ? 'You' : 'AI';
         bubble.innerHTML = `
             <div class="chat-bubble-icon">${icon}</div>
             <div class="chat-bubble-content">${msg.role === 'user' ? msg.content.replace(/</g, '&lt;') : miniMarkdown(msg.content)}</div>
@@ -658,7 +1351,7 @@ function showChatLoading() {
     const loader = document.createElement('div');
     loader.className = 'chat-loading';
     loader.innerHTML = `
-        <div class="chat-bubble-icon">🤖</div>
+        <div class="chat-bubble-icon">AI</div>
         <div class="chat-bubble-content">
             <span class="chat-loading-text">Analyzing VROOM telemetry</span>
             <span class="chat-loading-dots"><span>.</span><span>.</span><span>.</span></span>
@@ -706,7 +1399,7 @@ async function sendChatMessage() {
 
         if (!res.ok) {
             const err = await res.json();
-            chatHistory.push({ role: 'assistant', content: `⚠️ Error: ${err.detail || 'API request failed'}` });
+            chatHistory.push({ role: 'assistant', content: `Error: ${err.detail || 'API request failed'}` });
         } else {
             const data = await res.json();
             chatHistory.push({ role: 'assistant', content: data.reply });
@@ -715,7 +1408,7 @@ async function sendChatMessage() {
         renderChatMessages();
     } catch (err) {
         hideChatLoading();
-        chatHistory.push({ role: 'assistant', content: `⚠️ Network error: ${err.message}` });
+        chatHistory.push({ role: 'assistant', content: `Network error: ${err.message}` });
         renderChatMessages();
     } finally {
         btn.disabled = false;
@@ -745,8 +1438,38 @@ function downloadFile(type) {
 }
 
 // ═══ Utilities ═══════════════════════════════════════════
+function parseEngineerName(vehicleName, vehicleId) {
+    if (!vehicleName) return { name: `Engineer #${vehicleId}`, id: '', day: 1, displayName: `Engineer #${vehicleId}` };
+    
+    let baseName = vehicleName;
+    let day = 1;
+    let origId = '';
+
+    const daySplit = vehicleName.split('_Day');
+    if (daySplit.length === 2) {
+        baseName = daySplit[0];
+        day = daySplit[1];
+    }
+    
+    if (baseName.includes('|')) {
+        const idSplit = baseName.split('|');
+        baseName = idSplit[0];
+        origId = idSplit[1];
+    }
+    
+    let displayName = baseName;
+    if (origId) {
+        displayName += ` (ID: ${origId})`;
+    }
+    if (daySplit.length === 2) {
+        displayName += ` - Day ${day}`;
+    }
+    
+    return { name: baseName, id: origId, day: day, displayName: displayName };
+}
+
 function formatDuration(s) {
-    if (!s && s !== 0) return '—';
+    if (!s && s !== 0) return '--';
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
@@ -848,7 +1571,7 @@ function setupAnimation(result) {
             const marker = L.marker([path[0].lat, path[0].lon], {
                 icon: L.divIcon({
                     className: '',
-                    html: `<div style="width:24px;height:24px;background:${color};border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,0,0,0.5);font-size:12px;color:white;font-weight:bold;z-index:1000">🚚</div>`,
+                    html: `<div style="width:24px;height:24px;background:${color};border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,0,0,0.3);font-size:11px;color:white;font-weight:bold;z-index:1000">${eid}</div>`,
                     iconSize: [24, 24],
                     iconAnchor: [12, 12]
                 }),
@@ -973,211 +1696,208 @@ function drawFrame() {
 }
 
 // ═══ Engineer CRUD ═══════════════════════════════════════════
-function renderEngineerList() {
+async function renderEngineerList() {
     const list = document.getElementById('saved-engineer-list');
-    const engineers = StorageManager.getEngineers();
+    const engineers = await StorageManager.getEngineers();
     if (engineers.length === 0) {
-        list.innerHTML = '<div class="sidebar-empty"><div class="empty-icon">👷</div><p>No engineers saved yet.<br>Click "+ Add" to create one.</p></div>';
+        list.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>No engineers saved yet.<br>Click "+ Add engineer" to create one.</p></div>';
         return;
     }
     list.innerHTML = engineers.map(e => `
-        <div class="sidebar-card">
-            <div class="card-header">
-                <span class="card-name">${e.name}</span>
-                <div class="card-actions">
-                    <button onclick="editEngineer('${e.id}')" title="Edit">✏️</button>
-                    <button onclick="deleteEngineer('${e.id}')" title="Delete">🗑️</button>
-                </div>
+        <div class="data-card" onclick="editEngineer('${e.id}')">
+            <div class="data-card-header">
+                <span class="data-card-title">${e.name}</span>
+                <button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="event.stopPropagation(); deleteEngineer('${e.id}')" title="Delete">&#x2715;</button>
             </div>
-            <div class="card-meta">
-                <div>${(e.skills || []).map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>
-                ${e.locationLabel ? `<div>📍 ${e.locationLabel}</div>` : ''}
-                <div>⏰ ${e.defaultShiftStart || '08:00'} – ${e.defaultShiftEnd || '18:00'}</div>
-                ${e.notes ? `<div style="color:var(--text-muted); font-style:italic; margin-top:2px;">${e.notes}</div>` : ''}
+            <div class="data-card-meta">
+                <div>${(e.skills || []).map(s => `<span class="data-tag">${s}</span>`).join(' ')}</div>
+                <div>${e.location.lat}, ${e.location.lon}</div>
+                <div>${e.defaultShiftStart || '08:00'} — ${e.defaultShiftEnd || '18:00'}</div>
+                ${e.capacity ? `<div>Capacity: ${e.capacity} tasks</div>` : ''}
+                ${e.breakDuration ? `<div>Break: ${e.breakDuration}m (${e.breakStart} - ${e.breakEnd})</div>` : ''}
             </div>
         </div>
     `).join('');
 }
 
 function showEngineerForm(eng) {
-    const form = document.getElementById('engineer-form-container');
-    form.style.display = 'block';
+    const modal = document.getElementById('engineer-form-modal');
+    modal.style.display = 'flex';
     document.getElementById('eng-form-id').value = eng ? eng.id : '';
     document.getElementById('eng-form-name').value = eng ? eng.name : '';
     document.getElementById('eng-form-skills').value = eng ? JSON.stringify(eng.skills) : '[1003]';
-    const locLabel = document.getElementById('eng-form-loc-label');
-    if (locLabel) locLabel.value = eng ? (eng.locationLabel || '') : '';
     document.getElementById('eng-form-lat').value = eng ? eng.location.lat : '51.5074';
     document.getElementById('eng-form-lon').value = eng ? eng.location.lon : '-0.1278';
     document.getElementById('eng-form-start').value = eng ? eng.defaultShiftStart : '08:00';
     document.getElementById('eng-form-end').value = eng ? eng.defaultShiftEnd : '18:00';
-    document.getElementById('eng-form-notes').value = eng ? eng.notes : '';
+    
+    // Optional Fields
+    document.getElementById('eng-form-capacity').value = (eng && eng.capacity) ? eng.capacity : '';
+    document.getElementById('eng-form-break-duration').value = (eng && eng.breakDuration) ? eng.breakDuration : '';
+    document.getElementById('eng-form-break-start').value = (eng && eng.breakStart) ? eng.breakStart : '12:00';
+    document.getElementById('eng-form-break-end').value = (eng && eng.breakEnd) ? eng.breakEnd : '14:00';
 }
 
 function hideEngineerForm() {
-    document.getElementById('engineer-form-container').style.display = 'none';
+    document.getElementById('engineer-form-modal').style.display = 'none';
 }
 
-function saveEngineer() {
+async function saveEngineer() {
     const name = document.getElementById('eng-form-name').value.trim();
     if (!name) { alert('Name is required.'); return; }
     let skills;
     try { skills = JSON.parse(document.getElementById('eng-form-skills').value); } 
     catch(e) { alert('Skills must be a valid JSON array e.g. [1103, 1203]'); return; }
     
-    const locLabelEl = document.getElementById('eng-form-loc-label');
+    const capacityVal = document.getElementById('eng-form-capacity').value;
+    const breakDurationVal = document.getElementById('eng-form-break-duration').value;
+
     const eng = {
         id: document.getElementById('eng-form-id').value || 'eng_' + Date.now(),
         name,
         skills,
-        locationLabel: locLabelEl ? locLabelEl.value.trim() : '',
         location: {
             lat: parseFloat(document.getElementById('eng-form-lat').value) || 51.5074,
             lon: parseFloat(document.getElementById('eng-form-lon').value) || -0.1278
         },
         defaultShiftStart: document.getElementById('eng-form-start').value || '08:00',
         defaultShiftEnd: document.getElementById('eng-form-end').value || '18:00',
-        notes: document.getElementById('eng-form-notes').value.trim(),
+        
+        capacity: capacityVal ? parseInt(capacityVal, 10) : null,
+        breakDuration: breakDurationVal ? parseInt(breakDurationVal, 10) : null,
+        breakStart: document.getElementById('eng-form-break-start').value || '12:00',
+        breakEnd: document.getElementById('eng-form-break-end').value || '14:00',
+        
         createdAt: new Date().toISOString()
     };
 
-    const all = StorageManager.getEngineers();
+    const all = await StorageManager.getEngineers();
     const idx = all.findIndex(e => e.id === eng.id);
     if (idx >= 0) all[idx] = eng; else all.push(eng);
-    StorageManager.saveEngineers(all);
+    await StorageManager.saveEngineers(all);
     hideEngineerForm();
     renderEngineerList();
-    renderOptimisePanel();
 }
 
-function editEngineer(id) {
-    const eng = StorageManager.getEngineers().find(e => e.id === id);
+async function editEngineer(id) {
+    const eng = (await StorageManager.getEngineers()).find(e => e.id === id);
     if (eng) showEngineerForm(eng);
 }
 
-function deleteEngineer(id) {
+async function deleteEngineer(id) {
     if (!confirm('Delete this engineer?')) return;
-    StorageManager.saveEngineers(StorageManager.getEngineers().filter(e => e.id !== id));
+    await StorageManager.saveEngineers((await StorageManager.getEngineers()).filter(e => e.id !== id));
     renderEngineerList();
     renderOptimisePanel();
 }
 
 // ═══ Job List CRUD ═══════════════════════════════════════════
-function renderJobLists() {
+async function renderJobLists() {
     const list = document.getElementById('saved-job-list');
-    const jobLists = StorageManager.getJobLists();
+    const jobLists = await StorageManager.getJobLists();
     if (jobLists.length === 0) {
-        list.innerHTML = '<div class="sidebar-empty"><div class="empty-icon">📋</div><p>No job lists saved yet.<br>Click "+ Import" to add one.</p></div>';
+        list.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><p>No job lists saved yet.<br>Click "+ Import batch" to add one.</p></div>';
         return;
     }
     list.innerHTML = jobLists.map(jl => `
-        <div class="sidebar-card">
-            <div class="card-header">
-                <span class="card-name">${jl.name}</span>
-                <div class="card-actions">
-                    <button onclick="deleteJobList('${jl.id}')" title="Delete">🗑️</button>
-                </div>
+        <div class="data-card">
+            <div class="data-card-header">
+                <span class="data-card-title">${jl.name}</span>
+                <button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="deleteJobList('${jl.id}')" title="Delete">&#x2715;</button>
             </div>
-            <div class="card-meta">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>📦 ${jl.jobCount} jobs</span>
-                    ${jl.classifiedBy && jl.classifiedBy.includes('claude') 
-                        ? '<span style="font-size:9px; background:var(--primary-soft); color:var(--primary); padding:2px 6px; border-radius:4px;">🤖 AI</span>' 
-                        : '<span style="font-size:9px; background:var(--bg-hover); color:var(--text-muted); padding:2px 6px; border-radius:4px;">📋 Rules</span>'}
+            <div class="data-card-meta">
+                <div>${jl.jobCount} jobs parsed</div>
+                <div>${jl.classifiedBy && jl.classifiedBy.includes('claude') 
+                        ? '<span class="data-tag" style="background: rgba(30,46,217,0.1); color: #1E2ED9;">AI Classified</span>' 
+                        : '<span class="data-tag">Rule-Based</span>'}
                 </div>
-                ${jl.notes ? `<div style="color:var(--text-muted); font-style:italic; margin-top:4px;">${jl.notes}</div>` : ''}
+                ${jl.breakdownLog ? `<button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="showBreakdown('${jl.id}')">View Breakdown</button>` : ''}
             </div>
         </div>
     `).join('');
 }
 
-function showJobImport() { document.getElementById('job-import-container').style.display = 'block'; }
-function hideJobImport() { document.getElementById('job-import-container').style.display = 'none'; document.getElementById('job-import-status').textContent = ''; }
+function showJobImport() { document.getElementById('job-import-modal').style.display = 'flex'; }
+function hideJobImport() { document.getElementById('job-import-modal').style.display = 'none'; document.getElementById('job-import-status').textContent = ''; }
 
-function deleteJobList(id) {
+async function deleteJobList(id) {
     if (!confirm('Delete this job list?')) return;
-    StorageManager.saveJobLists(StorageManager.getJobLists().filter(jl => jl.id !== id));
+    await StorageManager.saveJobLists((await StorageManager.getJobLists()).filter(jl => jl.id !== id));
     renderJobLists();
     renderOptimisePanel();
 }
 
 // ═══ Optimise Panel ══════════════════════════════════════════
-function renderOptimisePanel() {
+async function renderOptimisePanel() {
     // Populate job list dropdown
     const jobSelect = document.getElementById('opt-job-select');
-    const jobLists = StorageManager.getJobLists();
-    jobSelect.innerHTML = '<option value="">— Select a Job List —</option>' + 
+    const jobLists = await StorageManager.getJobLists();
+    jobSelect.innerHTML = '<option value="">-- Select a Job List --</option>' + 
         jobLists.map(jl => `<option value="${jl.id}">${jl.name} (${jl.jobCount} jobs)</option>`).join('');
 
-    // Populate engineer checklist
-    const engList = document.getElementById('opt-engineer-checklist');
-    const engineers = StorageManager.getEngineers();
-    if (engineers.length === 0) {
-        engList.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:8px;">No saved engineers. Add some in the Engineers tab.</div>';
-    } else {
-        engList.innerHTML = engineers.map(e => `
-            <label class="opt-eng-item">
-                <input type="checkbox" class="opt-eng-cb" value="${e.id}" checked onchange="renderOptimiseMatrix()">
-                <span>${e.name}</span>
-                <span style="margin-left:auto;">${(e.skills||[]).map(s=>'<span class="skill-tag">'+s+'</span>').join('')}</span>
-            </label>
-        `).join('');
-    }
+    // Populate engineer checklist was removed, Rota Matrix now acts as the list
+    const engineers = await StorageManager.getEngineers();
     renderOptimiseMatrix();
 }
 
 function optSelectAllEngineers(selectAll) {
-    document.querySelectorAll('.opt-eng-cb').forEach(cb => cb.checked = selectAll);
-    renderOptimiseMatrix();
+    document.querySelectorAll('.rota-day-cb').forEach(cb => cb.checked = selectAll);
+    updateCostGuide();
 }
 
-function onOptJobSelected() { /* future: could show a preview */ }
+function onOptJobSelected() { updateCostGuide(); }
 
-function renderOptimiseMatrix() {
+async function renderOptimiseMatrix() {
     const container = document.getElementById('opt-rota-matrix');
-    const engineers = StorageManager.getEngineers();
-    const checkedIds = Array.from(document.querySelectorAll('.opt-eng-cb:checked')).map(cb => cb.value);
-    const selected = engineers.filter(e => checkedIds.includes(e.id));
+    const engineers = await StorageManager.getEngineers();
     const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const fullDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-    if (selected.length === 0) {
-        container.innerHTML = '<div style="font-size:11px; color:var(--text-muted);">Select engineers above to configure their weekly rota.</div>';
+    if (engineers.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;">No engineers found. Please add engineers in the Engineers tab.</div>';
         return;
     }
 
-    let html = `<table class="props-table" style="width:100%; border-collapse:collapse; margin-top:4px;">
-        <thead><tr><th style="padding:4px; font-size:11px; color:#aaa; text-align:left;">Engineer</th>
-        <th style="padding:4px; font-size:11px; color:#aaa; text-align:left;">Route</th>`;
-    days.forEach(d => { html += `<th style="padding:4px; font-size:10px; color:#aaa; text-align:center;">${d}</th>`; });
+    let html = '<table class="rota-table"><thead><tr><th>Engineer</th><th>Route</th>';
+    days.forEach((d, di) => { html += `<th title="${fullDays[di]}">${d}</th>`; });
     html += '</tr></thead><tbody>';
 
-    selected.forEach(eng => {
-        html += `<tr data-eng-id="${eng.id}" data-skills='${JSON.stringify(eng.skills)}' data-lat="${eng.location.lat}" data-lon="${eng.location.lon}">
-            <td style="padding:4px; font-size:11px; font-weight:500;">${eng.name}</td>
-            <td style="padding:4px;">
-                <select class="row-location-mode log-select" style="font-size:9px; padding:2px;">
-                    <option value="home">H → H</option>
-                    <option value="depot">D → D</option>
-                    <option value="home-depot">H → D</option>
-                    <option value="depot-home">D → H</option>
-                </select>
-            </td>`;
+    engineers.forEach(eng => {
+        const ss = eng.defaultShiftStart || '08:00';
+        const se = eng.defaultShiftEnd || '18:00';
+        html += `<tr data-eng-id="${eng.id}" data-skills='${JSON.stringify(eng.skills)}' data-lat="${eng.location.lat}" data-lon="${eng.location.lon}">`;
+        html += `<td><span class="rota-eng-name">${eng.name}</span></td>`;
+        html += '<td><select class="row-location-mode rota-route-select">';
+        html += '<option value="home">H \u2192 H</option><option value="depot">D \u2192 D</option>';
+        html += '<option value="home-depot">H \u2192 D</option><option value="depot-home">D \u2192 H</option>';
+        html += '</select></td>';
         days.forEach((d, di) => {
             const isWeekday = di < 5;
-            html += `<td style="padding:4px; text-align:center;">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
-                    <input type="checkbox" class="rota-day-cb" data-day="${di}" ${isWeekday ? 'checked' : ''} style="cursor:pointer;">
-                    <div style="display:flex; gap:1px;">
-                        <input type="time" class="rota-t log-select" data-type="start" data-day="${di}" value="${eng.defaultShiftStart || '08:00'}" style="width:52px; font-size:9px; padding:1px;">
-                        <input type="time" class="rota-t log-select" data-type="end" data-day="${di}" value="${eng.defaultShiftEnd || '18:00'}" style="width:52px; font-size:9px; padding:1px;">
-                    </div>
-                </div>
-            </td>`;
+            html += '<td><div class="rota-day-cell">';
+            html += `<input type="checkbox" class="rota-day-cb" data-day="${di}" ${isWeekday ? 'checked' : ''}>`;
+            html += '<div class="rota-time-pair">';
+            html += `<input type="time" class="rota-time-input" data-type="start" data-day="${di}" value="${ss}">`;
+            html += `<input type="time" class="rota-time-input" data-type="end" data-day="${di}" value="${se}">`;
+            html += '</div></div></td>';
         });
         html += '</tr>';
     });
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    // Wire checkbox changes to cost guide recalculation
+    container.addEventListener('change', (e) => {
+        if (e.target.classList.contains('rota-day-cb')) updateCostGuide();
+    });
+}
+
+function applyGlobalShiftTimes() {
+    const gs = document.getElementById('rota-global-start');
+    const ge = document.getElementById('rota-global-end');
+    const startVal = gs ? gs.value : '08:00';
+    const endVal = ge ? ge.value : '18:00';
+    document.querySelectorAll('#opt-rota-matrix .rota-time-input[data-type="start"]').forEach(inp => { inp.value = startVal; });
+    document.querySelectorAll('#opt-rota-matrix .rota-time-input[data-type="end"]').forEach(inp => { inp.value = endVal; });
 }
 
 // ═══ Data Bridge (Legacy + Job Import) ═══════════════════════
@@ -1222,7 +1942,8 @@ function saveClaudeKey(key) {
 }
 
 // Restore saved key on load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await StorageManager.migrateFromLocalStorage();
     const saved = localStorage.getItem('vroom_claude_key');
     if (saved) {
         const inp = document.getElementById('ai-claude-key');
@@ -1230,7 +1951,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Restore Main Depot
-    const depot = StorageManager.getDepot();
+    const depot = await StorageManager.getDepot();
     const latInp = document.getElementById('opt-depot-lat');
     const lonInp = document.getElementById('opt-depot-lon');
     if (latInp && lonInp) {
@@ -1285,7 +2006,7 @@ async function classifyWithClaude(jobBatch) {
             'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
-            model: 'claude-sonnet-4.6',
+            model: 'claude-sonnet-4-6',
             max_tokens: 8192,
             system: AI_SYSTEM_PROMPT,
             messages: [{ role: 'user', content: `Classify these ${jobBatch.length} jobs:\n\n${jobLines}` }]
@@ -1317,7 +2038,12 @@ function legacyClassify(siteDesc) {
 
 // ═══ AI Review Modal ═════════════════════════════════════════
 function showAiReview(validJobs, classifications, unmatchedRefs, meta) {
-    pendingAiReview = { validJobs, classifications };
+    pendingAiReview = { 
+        name: pendingAiReview ? pendingAiReview.name : '', 
+        notes: pendingAiReview ? pendingAiReview.notes : '',
+        validJobs, 
+        classifications 
+    };
     const modal = document.getElementById('ai-review-modal');
     const body = document.getElementById('ai-review-body');
     const metaEl = document.getElementById('ai-review-meta');
@@ -1330,7 +2056,7 @@ function showAiReview(validJobs, classifications, unmatchedRefs, meta) {
 
     // Unmatched warning
     if (unmatchedRefs && unmatchedRefs.length > 0) {
-        html += `<div class="ai-unmatched-warning"><h4>⚠ ${unmatchedRefs.length} jobs could not be linked to sites</h4><ul>`;
+        html += `<div class="ai-unmatched-warning"><h4>${unmatchedRefs.length} jobs could not be linked to sites</h4><ul>`;
         unmatchedRefs.slice(0, 20).forEach(r => { html += `<li>${r}</li>`; });
         if (unmatchedRefs.length > 20) html += `<li>...and ${unmatchedRefs.length - 20} more</li>`;
         html += `</ul></div>`;
@@ -1374,7 +2100,7 @@ function closeAiReview() {
     pendingAiReview = null;
 }
 
-function aiReviewAcceptAll() {
+async function aiReviewAcceptAll() {
     if (!pendingAiReview) return;
     const { validJobs, classifications } = pendingAiReview;
 
@@ -1411,9 +2137,9 @@ function aiReviewAcceptAll() {
         classifiedBy: classifyMode === 'ai' ? 'claude-sonnet-4.6' : 'legacy'
     };
 
-    const all = StorageManager.getJobLists();
+    const all = await StorageManager.getJobLists();
     all.push(jl);
-    StorageManager.saveJobLists(all);
+    await StorageManager.saveJobLists(all);
 
     closeAiReview();
     hideJobImport();
@@ -1464,6 +2190,10 @@ async function importAndSaveJobList() {
         const unmatchedRefs = [];
         let jobIdCounter = 1000;
         const nowMs = Date.now();
+        
+        let noSiteRef = 0;
+        let dateFails = 0;
+        let sampleKeys = [];
 
         const parseDate = (dStr) => {
             if (!dStr) return null;
@@ -1474,20 +2204,26 @@ async function importAndSaveJobList() {
             let dd, mm, yyyy;
             if (dParts[0].length === 4) { yyyy = dParts[0]; mm = dParts[1]; dd = dParts[2]; }
             else { dd = dParts[0]; mm = dParts[1]; yyyy = dParts[2]; }
-            const isoStr = `${yyyy.length === 2 ? '20'+yyyy : yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}T${parts[1].padStart(5, '0')}:00Z`;
+            
+            // Fix: ensure time string has exactly HH:MM:SS format
+            let tStr = parts[1];
+            if (tStr.split(':').length === 2) tStr += ':00'; // Append seconds if missing
+            
+            const isoStr = `${yyyy.length === 2 ? '20'+yyyy : yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}T${tStr}Z`;
             const ms = Date.parse(isoStr);
             return isNaN(ms) ? null : Math.floor(ms / 1000);
         };
 
-        jobsCsv.data.forEach(row => {
+        jobsCsv.data.forEach((row, idx) => {
             const keys = Object.keys(row);
+            if (idx === 0) sampleKeys = keys;
             const refKey = keys.find(k => k.trim().toLowerCase() === 'site ref' || k.includes('Site Ref') || k.includes('site ref'));
             const typeKey = keys.find(k => k.trim().toLowerCase() === 'type' || k.includes('Type'));
             const startKey = keys.find(k => k.trim().toLowerCase() === 'start window' || k.includes('Start'));
             const endKey = keys.find(k => k.trim().toLowerCase() === 'end window' || k.includes('End'));
             const siteKey = keys.find(k => k.trim().toLowerCase() === 'site' || k.includes('Site'));
             const siteRefRaw = refKey ? row[refKey] : null;
-            if (!siteRefRaw) return;
+            if (!siteRefRaw) { noSiteRef++; return; }
             const siteRef = siteRefRaw.trim();
             const normRef = siteRef.toUpperCase();
             const site = sitesDict[normRef];
@@ -1501,7 +2237,7 @@ async function importAndSaveJobList() {
 
             const twStart = parseDate(startKey ? row[startKey] : null);
             const twEnd = parseDate(endKey ? row[endKey] : null);
-            if (!twStart || !twEnd) return;
+            if (!twStart || !twEnd) { dateFails++; return; }
 
             const daysUntilEnd = ((twEnd * 1000) - nowMs) / (1000*60*60*24);
             let priority = daysUntilEnd <= 2 ? 100 : daysUntilEnd <= 7 ? 80 : daysUntilEnd <= 14 ? 60 : 40;
@@ -1527,25 +2263,24 @@ async function importAndSaveJobList() {
         });
 
         if (validJobs.length === 0) {
-            statusEl.textContent = '❌ Parsed 0 valid jobs. Check CSV headers.';
-            if (unmatchedRefs.length > 0) statusEl.textContent += ` (${unmatchedRefs.length} unmatched site refs)`;
+            statusEl.innerHTML = `Parsed 0 valid jobs.<br>Found headers: ${sampleKeys.join(', ')}<br>- No Site Ref: ${noSiteRef}<br>- Unmatched Sites: ${unmatchedRefs.length}<br>- Date format fails: ${dateFails}`;
             return;
         }
 
-        statusEl.textContent = `✅ ${validJobs.length} jobs linked. Classifying skills...`;
+        statusEl.textContent = `${validJobs.length} jobs linked. Classifying skills...`;
 
         if (classifyMode === 'ai') {
-            // ── AI Classification Path ──
+            // ══ AI Classification Path ══
             try {
-                statusEl.innerHTML = `🤖 Sending ${validJobs.length} jobs to Claude Sonnet 4.6...<div class="ai-progress-bar"><div class="ai-progress-fill" style="width:60%"></div></div>`;
+                statusEl.innerHTML = `Sending ${validJobs.length} jobs to Claude Sonnet 4.6...<div class="ai-progress-bar"><div class="ai-progress-fill" style="width:60%"></div></div>`;
 
                 const result = await classifyWithClaude(aiBatch);
                 const cls = result.classifications;
 
-                statusEl.innerHTML = `✅ AI classified ${cls.length} jobs. Review and confirm.`;
+                statusEl.innerHTML = `AI classified ${cls.length} jobs. Review and confirm.`;
 
                 // Store name/notes in pending review for later save
-                pendingAiReview = { name, notes: document.getElementById('job-import-notes').value.trim() };
+                pendingAiReview = { name, notes: document.getElementById('job-import-notes') ? document.getElementById('job-import-notes').value.trim() : '' };
 
                 const usageInfo = result.usage
                     ? `${result.usage.input_tokens} in / ${result.usage.output_tokens} out tokens`
@@ -1554,7 +2289,7 @@ async function importAndSaveJobList() {
 
             } catch (aiErr) {
                 console.error('AI Classification failed:', aiErr);
-                statusEl.textContent = `⚠️ AI failed: ${aiErr.message}. Falling back to rule-based.`;
+                statusEl.textContent = `AI failed: ${aiErr.message}. Falling back to rule-based.`;
 
                 // Fallback to legacy
                 validJobs.forEach(job => {
@@ -1564,14 +2299,14 @@ async function importAndSaveJobList() {
                 const classifications = validJobs.map(j => ({
                     skills: j.skills,
                     manufacturer: 'Fallback',
-                    reasoning: 'AI unavailable — used rule-based matching'
+                    reasoning: 'AI unavailable -- used rule-based matching'
                 }));
 
-                pendingAiReview = { name, notes: document.getElementById('job-import-notes').value.trim() };
+                pendingAiReview = { name, notes: document.getElementById('job-import-notes') ? document.getElementById('job-import-notes').value.trim() : '' };
                 showAiReview(validJobs, classifications, unmatchedRefs, 'Rule-based fallback');
             }
         } else {
-            // ── Legacy Classification Path ──
+            // ══ Legacy Classification Path ══
             validJobs.forEach(job => {
                 job.skills = legacyClassify(job.siteDesc);
             });
@@ -1586,12 +2321,12 @@ async function importAndSaveJobList() {
                 reasoning: 'Rule-based manufacturer string match'
             }));
 
-            pendingAiReview = { name, notes: document.getElementById('job-import-notes').value.trim() };
+            pendingAiReview = { name, notes: document.getElementById('job-import-notes') ? document.getElementById('job-import-notes').value.trim() : '' };
             showAiReview(validJobs, classifications, unmatchedRefs, 'Rule-based classification');
         }
 
     } catch(e) {
-        statusEl.textContent = '❌ Parse error: ' + e.message;
+        statusEl.textContent = 'Parse error: ' + e.message;
         console.error(e);
     }
 }
@@ -1600,90 +2335,236 @@ async function importAndSaveJobList() {
 async function runOptimisation() {
     const jobListId = document.getElementById('opt-job-select').value;
     if (!jobListId) { alert('Please select a job list.'); return; }
-    const jobList = StorageManager.getJobLists().find(jl => jl.id === jobListId);
+    const jobList = (await StorageManager.getJobLists()).find(jl => jl.id === jobListId);
     if (!jobList) { alert('Job list not found.'); return; }
 
     const trs = document.querySelectorAll('#opt-rota-matrix tbody tr');
-    if (trs.length === 0) { alert('No engineers in the rota matrix. Select engineers and configure their days.'); return; }
+    if (trs.length === 0) { alert('No engineers in the rota matrix. Please add engineers in the Engineers tab.'); return; }
 
     const btn = document.getElementById('opt-run-btn');
+    const statusEl = document.getElementById('opt-status');
     btn.innerHTML = '<span class="spinner"></span> Building...';
     btn.disabled = true;
+    statusEl.innerHTML = '<span style="color:var(--text-muted);">Preparing vehicles and jobs...</span>';
 
-    const vehicles = [];
-    const locations = [];
-    let engIdCounter = 1;
-    const nowMs = Date.now();
-    const baseDate = new Date(nowMs);
-    // Align to the next Monday
-    const dayOfWeek = baseDate.getUTCDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-    baseDate.setUTCDate(baseDate.getUTCDate() + daysUntilMonday);
-    baseDate.setUTCHours(0,0,0,0);
+    try {
+        const vehicles = [];
+        const locations = [];
+        let engIdCounter = 1;
+        const nowMs = Date.now();
+        const baseDate = new Date(nowMs);
+        // Align to the next Monday
+        const dayOfWeek = baseDate.getUTCDay();
+        const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+        baseDate.setUTCDate(baseDate.getUTCDate() + daysUntilMonday);
+        baseDate.setUTCHours(0,0,0,0);
 
-    const depotLon = parseFloat(document.getElementById('opt-depot-lon')?.value) || -0.1278;
-    const depotLat = parseFloat(document.getElementById('opt-depot-lat')?.value) || 51.5074;
-    const globalDepot = [depotLon, depotLat];
-    StorageManager.saveDepot(depotLon, depotLat); // Ensure it's saved when run
+        const depotLon = parseFloat(document.getElementById('opt-depot-lon')?.value) || -0.1278;
+        const depotLat = parseFloat(document.getElementById('opt-depot-lat')?.value) || 51.5074;
+        const globalDepot = [depotLon, depotLat];
+        await StorageManager.saveDepot(depotLon, depotLat);
 
-    trs.forEach(tr => {
-        const engName = tr.querySelector('td').textContent.trim();
-        let skills = [1003];
-        try { skills = JSON.parse(tr.getAttribute('data-skills')); } catch(e){}
-        const lat = parseFloat(tr.getAttribute('data-lat')) || 51.5074;
-        const lon = parseFloat(tr.getAttribute('data-lon')) || -0.1278;
-        const homeCoord = [lon, lat];
+        const allEngineersData = await StorageManager.getEngineers();
 
-        const locationMode = tr.querySelector('.row-location-mode')?.value || 'home';
+        trs.forEach(tr => {
+            const engName = tr.querySelector('td').textContent.trim();
+            let skills = [1003];
+            try { skills = JSON.parse(tr.getAttribute('data-skills')); } catch(e){}
+            const lat = parseFloat(tr.getAttribute('data-lat')) || 51.5074;
+            const lon = parseFloat(tr.getAttribute('data-lon')) || -0.1278;
+            const homeCoord = [lon, lat];
 
-        let startCoord, endCoord;
-        switch (locationMode) {
-            case 'depot':      startCoord = globalDepot; endCoord = globalDepot; break;
-            case 'home-depot': startCoord = homeCoord;   endCoord = globalDepot; break;
-            case 'depot-home': startCoord = globalDepot; endCoord = homeCoord;   break;
-            default:           startCoord = homeCoord;   endCoord = homeCoord;
+            const locationMode = tr.querySelector('.row-location-mode')?.value || 'home';
+
+            let startCoord, endCoord;
+            switch (locationMode) {
+                case 'depot':      startCoord = globalDepot; endCoord = globalDepot; break;
+                case 'home-depot': startCoord = homeCoord;   endCoord = globalDepot; break;
+                case 'depot-home': startCoord = globalDepot; endCoord = homeCoord;   break;
+                default:           startCoord = homeCoord;   endCoord = homeCoord;
+            }
+
+            for (let di = 0; di < 7; di++) {
+                const cb = tr.querySelector(`input[type="checkbox"][data-day="${di}"]`);
+                if (!cb || !cb.checked) continue;
+
+                const sInput = tr.querySelector(`input[data-type="start"][data-day="${di}"]`);
+                const eInput = tr.querySelector(`input[data-type="end"][data-day="${di}"]`);
+                const [cSh, cSm] = (sInput ? sInput.value : '08:00').split(':').map(Number);
+                const [cEh, cEm] = (eInput ? eInput.value : '18:00').split(':').map(Number);
+
+                const dayBaseMs = baseDate.getTime() + (di * 24*60*60*1000);
+                const shiftStartS = Math.floor((dayBaseMs + cSh*3600000 + cSm*60000) / 1000);
+                const shiftEndS = Math.floor((dayBaseMs + cEh*3600000 + cEm*60000) / 1000);
+
+                const origId = tr.getAttribute('data-eng-id') || '';
+                const vConfig = {
+                    id: engIdCounter++,
+                    name: `${engName}|${origId}_Day${di+1}`,
+                    start: startCoord,
+                    end: endCoord,
+                    skills,
+                    time_window: [shiftStartS, shiftEndS]
+                };
+
+                const engProfile = allEngineersData.find(e => String(e.id) === String(tr.getAttribute('data-eng-id')));
+                if (engProfile && engProfile.capacity) {
+                    vConfig.max_tasks = parseInt(engProfile.capacity, 10);
+                }
+
+                if (engProfile && engProfile.breakDuration) {
+                    const [bSh, bSm] = (engProfile.breakStart || '12:00').split(':').map(Number);
+                    const [bEh, bEm] = (engProfile.breakEnd || '14:00').split(':').map(Number);
+                    const breakStartS = Math.floor((dayBaseMs + bSh*3600000 + bSm*60000) / 1000);
+                    const breakEndS = Math.floor((dayBaseMs + bEh*3600000 + bEm*60000) / 1000);
+
+                    vConfig.breaks = [{
+                        id: 1,
+                        time_windows: [[breakStartS, breakEndS]],
+                        service: engProfile.breakDuration * 60
+                    }];
+                }
+
+                vehicles.push(vConfig);
+                locations.push(startCoord);
+                if (endCoord !== startCoord) locations.push(endCoord);
+            }
+        });
+
+        // Add job locations to the unified locations list
+        const jobs = jobList.jobs;
+        
+        // Apply load balancing variance if specified
+        const varianceInput = document.getElementById('opt-variance')?.value;
+        if (varianceInput && vehicles.length > 0) {
+            const variance = parseFloat(varianceInput);
+            if (!isNaN(variance)) {
+                const avgJobs = jobs.length / vehicles.length;
+                const maxTasksVariance = Math.max(1, Math.ceil(avgJobs * (1 + (variance / 100))));
+                
+                vehicles.forEach(v => {
+                    if (v.max_tasks !== undefined) {
+                        v.max_tasks = Math.min(v.max_tasks, maxTasksVariance);
+                    } else {
+                        v.max_tasks = maxTasksVariance;
+                    }
+                });
+            }
+        }
+        // Handle expired jobs & prioritization
+        const simStartMs = baseDate.getTime();
+        const simEndMs = simStartMs + (7 * 24 * 60 * 60 * 1000); // 7-day horizon
+        const simStartS = Math.floor(simStartMs / 1000);
+        const simEndS = Math.floor(simEndMs / 1000);
+
+        jobs.forEach(j => {
+            // Normal jobs get a higher baseline priority
+            j.priority = 50; 
+            locations.push(j.location);
+
+            if (j.time_windows && j.time_windows.length > 0) {
+                // Find the absolute latest deadline across all time windows for this job
+                let maxJobEndTimeS = 0;
+                j.time_windows.forEach(tw => {
+                    if (tw[1] > maxJobEndTimeS) maxJobEndTimeS = tw[1];
+                });
+
+                // If the job's deadline is entirely in the past relative to the simulation start
+                if (maxJobEndTimeS < simStartS) {
+                    // Set it to the lowest possible priority
+                    j.priority = 0; 
+                    
+                    // Extend its time window so VROOM's mathematical engine doesn't reject it
+                    j.time_windows.forEach(tw => {
+                        tw[1] = Math.max(tw[1], simEndS);
+                    });
+                }
+            }
+        });
+
+        if (vehicles.length === 0) {
+            statusEl.innerHTML = '<span style="color:var(--warning);">No active vehicle-days found. Check that at least one day is checked per engineer.</span>';
+            return;
         }
 
-        for (let di = 0; di < 7; di++) {
-            const cb = tr.querySelector(`input[type="checkbox"][data-day="${di}"]`);
-            if (!cb || !cb.checked) continue;
+        // --- ENFORCE LOAD BALANCING ---
+        // VROOM inherently minimizes the number of vehicles used. To ensure jobs are 
+        // distributed across all available engineers rather than assigned to just one,
+        // we calculate a 'fair share' max_tasks limit based on the unique engineers selected.
+        const uniqueEngineersCount = new Set(vehicles.map(v => v.name.split('_Day')[0])).size || 1;
+        const fairShare = Math.ceil(jobs.length / uniqueEngineersCount);
+        const balancedLimit = fairShare + 1; // +1 buffer for flexibility
 
-            const sInput = tr.querySelector(`input[data-type="start"][data-day="${di}"]`);
-            const eInput = tr.querySelector(`input[data-type="end"][data-day="${di}"]`);
-            const [cSh, cSm] = (sInput ? sInput.value : '08:00').split(':').map(Number);
-            const [cEh, cEm] = (eInput ? eInput.value : '18:00').split(':').map(Number);
+        vehicles.forEach(v => {
+            if (v.max_tasks !== undefined) {
+                // If user set a profile capacity, we respect it as the absolute maximum, 
+                // but we still enforce the balanced limit if it's smaller, 
+                // to prevent one engineer from hoarding all jobs.
+                v.max_tasks = Math.min(v.max_tasks, balancedLimit);
+            } else {
+                v.max_tasks = balancedLimit;
+            }
+        });
+        // ------------------------------
 
-            const dayBaseMs = baseDate.getTime() + (di * 24*60*60*1000);
-            const shiftStartS = Math.floor((dayBaseMs + cSh*3600000 + cSm*60000) / 1000);
-            const shiftEndS = Math.floor((dayBaseMs + cEh*3600000 + cEm*60000) / 1000);
+        // Read selected strategy from the modal radio buttons
+        const strategyRadio = document.querySelector('#strategy-group input[name="strategy"]:checked');
+        const strategy = strategyRadio ? strategyRadio.value : 'naive';
 
-            vehicles.push({
-                id: engIdCounter++,
-                name: `${engName}_Day${di+1}`,
-                start: startCoord,
-                end: endCoord,
-                skills,
-                time_window: [shiftStartS, shiftEndS]
-            });
-            locations.push(startCoord);
-            if (endCoord !== startCoord) locations.push(endCoord);
+        // Build the scenario object matching the backend's expected shape
+        const shiftStart = vehicles[0].time_window[0];
+        const scenario = {
+            vehicles,
+            jobs,
+            locations,
+            shift_start: shiftStart
+        };
+
+        statusEl.innerHTML = `<span style="color:var(--text-muted);">Sending ${jobs.length} jobs and ${vehicles.length} vehicle-days to solver (${strategy})...</span>`;
+        btn.innerHTML = '<span class="spinner"></span> Optimising...';
+
+        // POST to backend
+        const res = await fetch(`${API_BASE}/simulate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                num_engineers: vehicles.length,
+                num_jobs: jobs.length,
+                strategy: strategy,
+                replay_scenario: scenario,
+                name: jobList.name || 'Dispatch Run'
+            }),
+        });
+
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+            throw new Error(errBody.detail || `Server error ${res.status}`);
         }
-    });
 
-    jobList.jobs.forEach(j => locations.push(j.location));
+        const result = await res.json();
 
-    bridgeState.jobs = jobList.jobs;
-    bridgeState.vehicles = vehicles;
-    bridgeState.locations = locations;
-    bridgeState.shift_start = vehicles.length > 0 ? vehicles[0].time_window[0] : Math.floor(Date.now()/1000);
+        // Success -- hide modal and render results
+        hidePreflightModal();
+        switchAppView('map');
 
-    document.getElementById('opt-status').innerHTML = `<span style="color:#22c55e;">✅ ${jobList.jobs.length} Jobs, ${vehicles.length} Vehicles ready.</span>`;
-    btn.innerHTML = '⚡ Run Optimisation';
-    btn.disabled = false;
+        state.currentResult = result;
+        renderMap(result);
+        populateDaySelector(result);
+        showResults(result);
+        renderEngineerStats(result.routes_data || []);
+        populateLogDropdown(result.routes_data || []);
+        renderActivityLog();
+        $('#download-section').style.display = 'block';
+        setupAnimation(result);
+        await loadHistory();
+        updateRemixDropdown();
 
-    // Auto-inject into sandbox
-    if (typeof injectBridgeToSandbox === 'function') {
-        injectBridgeToSandbox();
+    } catch (err) {
+        console.error('Dispatch run failed:', err);
+        statusEl.innerHTML = `<span style="color:var(--danger);">Error: ${err.message}</span>`;
+    } finally {
+        btn.innerHTML = 'Execute route plan \u2192';
+        btn.disabled = false;
     }
 }
 
@@ -1850,7 +2731,12 @@ async function runDataBridge() {
                 } else {
                     dd = dParts[0]; mm = dParts[1]; yyyy = dParts[2];
                 }
-                const isoStr = `${yyyy.length === 2 ? '20'+yyyy : yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}T${parts[1].padStart(5, '0')}:00Z`;
+                
+                // Fix: ensure time string has exactly HH:MM:SS format
+                let tStr = parts[1];
+                if (tStr.split(':').length === 2) tStr += ':00'; // Append seconds if missing
+                
+                const isoStr = `${yyyy.length === 2 ? '20'+yyyy : yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}T${tStr}Z`;
                 const ms = Date.parse(isoStr);
                 return isNaN(ms) ? null : Math.floor(ms / 1000);
             };
@@ -1884,7 +2770,7 @@ async function runDataBridge() {
 
         if (validJobs.length === 0) {
             alert(`Parsed 0 jobs! Debug info:\n- Early fails (no Site Ref): ${noSiteRef}\n- Unmapped to sites: ${noSiteMap}\n- Failed Start/End Window dates: ${dateFails}`);
-            btn.innerHTML = '🔄 Parse & Convert CSV';
+            btn.innerHTML = 'ðŸ”„ Parse & Convert CSV';
             btn.disabled = false;
             return;
         }
@@ -1909,7 +2795,7 @@ async function runDataBridge() {
         const trs = document.querySelectorAll('#rota-matrix-container tbody tr');
         if (trs.length === 0) {
             alert("No engineers configured in the Rota Matrix. Please upload an Engineer Roster CSV first.");
-            btn.innerHTML = '🔄 Parse & Convert CSV';
+            btn.innerHTML = 'ðŸ”„ Parse & Convert CSV';
             btn.disabled = false;
             return;
         }
@@ -1964,13 +2850,13 @@ async function runDataBridge() {
         $('#bridge-metrics').textContent = `${validJobs.length} Jobs, ${vehicles.length} Vehicles mapped.`;
         $('#bridge-export-section').style.display = 'block';
 
-        btn.innerHTML = '🔄 Parse & Convert CSV';
+        btn.innerHTML = 'ðŸ”„ Parse & Convert CSV';
         btn.disabled = false;
         
     } catch (e) {
         console.error(e);
         alert("Error mapping data: " + e.message);
-        btn.innerHTML = '🔄 Parse & Convert CSV';
+        btn.innerHTML = 'ðŸ”„ Parse & Convert CSV';
         btn.disabled = false;
     }
 }
@@ -1980,12 +2866,22 @@ function parseCSV(file) {
         throw new Error("PapaParse library not loaded. Make sure the script is included in HTML.");
     }
     return new Promise((resolve, reject) => {
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: resolve,
-            error: reject
-        });
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let text = e.target.result;
+            // Clean up null bytes from UTF-16 encoded files read as UTF-8
+            if (text.indexOf('\x00') !== -1) {
+                text = text.replace(/\x00/g, '');
+            }
+            Papa.parse(text, {
+                header: true,
+                skipEmptyLines: true,
+                complete: resolve,
+                error: reject
+            });
+        };
+        reader.onerror = reject;
+        reader.readAsText(file);
     });
 }
 
@@ -2021,7 +2917,8 @@ async function injectBridgeToSandbox() {
 }
 
 // ═══ Initialise Sidebar on Page Load ═════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await StorageManager.migrateFromLocalStorage();
     renderEngineerList();
     renderJobLists();
     renderOptimisePanel();
