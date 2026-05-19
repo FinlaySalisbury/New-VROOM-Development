@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="DESIGN_LAYER" data-name="DESIGN LAYER" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32">
+  <defs>
+    
+    <linearGradient id="linear-gradient" x1="15.95" y1="-9.61" x2="15.95" y2="34.51" gradientUnits="userSpaceOnUse">
+      <stop offset=".31" stop-color="#192fe1"></stop>
+      <stop offset=".59" stop-color="#4f6cee"></stop>
+      <stop offset=".87" stop-color="#80a5fa"></stop>
+      <stop offset="1" stop-color="#94bbff"></stop>
+    </linearGradient>
+  </defs>
+  <rect class="cls-4" x="11.88" y="2.23" width="8.15" height="27.52"></rect>
+  <line class="cls-2" x1="11.88" y1="2.23" x2="11.88" y2="29.79"></line>
+  <line class="cls-2" x1="20.01" y1="2.23" x2="20.01" y2="29.79"></line>
+  <g>
+    <line class="cls-1" x1="15.8" y1="2.23" x2="15.8" y2="3.73"></line>
+    <line class="cls-3" x1="15.8" y1="6.46" x2="15.8" y2="26.92"></line>
+    <line class="cls-1" x1="15.8" y1="28.29" x2="15.8" y2="29.79"></line>
+  </g>
+</svg>

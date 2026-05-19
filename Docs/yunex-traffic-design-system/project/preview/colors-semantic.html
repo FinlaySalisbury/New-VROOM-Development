@@ -1,0 +1,19 @@
+<!doctype html><html><head>
+<meta charset="utf-8"><title>Semantic Status</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body{margin:0;padding:24px;background:#fff;font-family:var(--font-body);color:#000;}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .item{display:flex;flex-direction:column;border-radius:12px;border:1px solid #E4EDED;overflow:hidden;}
+  .chip{height:84px;display:flex;align-items:flex-end;padding:8px 12px;color:#000;font-weight:600;font-size:13px;}
+  .meta{padding:8px 12px;}
+  .name{font-family:var(--font-display);font-weight:700;font-size:13px;}
+  .role{font-size:11px;color:var(--fg-muted);}
+</style></head><body>
+<div class="grid">
+  <div class="item"><div class="chip" style="background:#00E38C">Success</div><div class="meta"><div class="name">Green</div><div class="role">--status-success</div></div></div>
+  <div class="item"><div class="chip" style="background:#FFE564">Warning</div><div class="meta"><div class="name">Yellow</div><div class="role">--status-warning</div></div></div>
+  <div class="item"><div class="chip" style="background:#F47738">Danger</div><div class="meta"><div class="name">Orange</div><div class="role">--status-danger</div></div></div>
+  <div class="item"><div class="chip" style="background:#1E2ED9;color:#fff">Info</div><div class="meta"><div class="name">Royal Blue</div><div class="role">--status-info</div></div></div>
+</div>
+</body></html>

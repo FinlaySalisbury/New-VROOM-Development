@@ -1,0 +1,20 @@
+<!doctype html><html><head>
+<meta charset="utf-8"><title>Gradient-Exclusive Colors</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body{margin:0;padding:24px;background:#fff;font-family:var(--font-body);}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .swatch{display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1px solid #E4EDED;}
+  .chip{height:110px;}
+  .meta{padding:10px 14px;}
+  .name{font-family:var(--font-display);font-weight:700;font-size:15px;}
+  .hex{font-size:11px;color:var(--fg-muted);}
+  .note{font-size:11px;color:var(--fg-muted);margin-top:14px;font-style:italic;}
+</style></head><body>
+<div class="grid">
+  <div class="swatch"><div class="chip" style="background:#688ABA"></div><div class="meta"><div class="name">Steel</div><div class="hex">#688ABA</div></div></div>
+  <div class="swatch"><div class="chip" style="background:#DEECFF"></div><div class="meta"><div class="name">Sky</div><div class="hex">#DEECFF</div></div></div>
+  <div class="swatch"><div class="chip" style="background:#AFFAD7"></div><div class="meta"><div class="name">Pistachio</div><div class="hex">#AFFAD7</div></div></div>
+</div>
+<div class="note">Use only inside gradients — never as a flat fill.</div>
+</body></html>

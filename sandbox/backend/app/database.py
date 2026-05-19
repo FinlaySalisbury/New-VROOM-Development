@@ -9,7 +9,8 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DATABASE_PATH = "sandbox_history.db"
+import os
+DATABASE_PATH = os.getenv("DATABASE_PATH", "sandbox_history.db")
 
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS test_runs (
@@ -33,6 +34,21 @@ CREATE TABLE IF NOT EXISTS test_runs (
     is_remix        INTEGER DEFAULT 0,
     parent_run_id   TEXT
 );
+
+CREATE TABLE IF NOT EXISTS engineers (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS job_lists (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS global_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 MIGRATE_SQL = [
@@ -41,6 +57,9 @@ MIGRATE_SQL = [
     "ALTER TABLE test_runs ADD COLUMN is_remix INTEGER DEFAULT 0",
     "ALTER TABLE test_runs ADD COLUMN parent_run_id TEXT",
     "ALTER TABLE test_runs ADD COLUMN combined_geojson TEXT",
+    "CREATE TABLE IF NOT EXISTS engineers (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS job_lists (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS global_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
 ]
 
 
@@ -55,7 +74,7 @@ async def create_tables():
     """Initialize the database schema."""
     db = await get_db()
     try:
-        await db.execute(CREATE_TABLE_SQL)
+        await db.executescript(CREATE_TABLE_SQL)
         # Attempt migrations for existing databases
         for sql in MIGRATE_SQL:
             try:

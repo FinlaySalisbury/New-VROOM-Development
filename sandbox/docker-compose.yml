@@ -15,6 +15,7 @@ services:
     container_name: inview-sandbox
     ports:
       - "80:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
       - TOMTOM_API_KEY=${TOMTOM_API_KEY:-MOCK_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -22,6 +23,8 @@ services:
       - DATABASE_PATH=/data/sandbox_history.db
     volumes:
       - sandbox-data:/data
+      - ./frontend:/app/frontend
+      - ./backend:/app/backend
     depends_on:
       vroom:
         condition: service_started

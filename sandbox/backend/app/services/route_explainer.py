@@ -52,6 +52,31 @@ def _format_time(unix_ts: int) -> str:
         return "??:??"
 
 
+def _parse_engineer_name(vehicle_name: str, vehicle_id: int) -> dict:
+    if not vehicle_name:
+        return {"name": f"Engineer #{vehicle_id}", "id": str(vehicle_id), "day": 1}
+        
+    base_name = vehicle_name
+    day = 1
+    orig_id = ""
+    
+    day_split = vehicle_name.split('_Day')
+    if len(day_split) == 2:
+        base_name = day_split[0]
+        try:
+            day = int(day_split[1])
+        except ValueError:
+            pass
+            
+    if '|' in base_name:
+        id_split = base_name.split('|')
+        base_name = id_split[0]
+        orig_id = id_split[1]
+        
+    display_id = orig_id if orig_id else str(vehicle_id)
+    return {"name": base_name, "id": display_id, "day": day}
+
+
 def assemble_context(run_data: dict) -> str:
     """
     Build the 4 XML context blocks from a stored test run.
@@ -79,6 +104,14 @@ def assemble_context(run_data: dict) -> str:
     if not skills_map:
         skills_map = DEFAULT_SKILLS_MAP
 
+    # Map daily vehicle_id to clean name and permanent ID for consistent references
+    vid_to_info = {}
+    for eng in scenario.get("vehicles", []):
+        vid = eng.get("id")
+        raw_name = eng.get("name", "")
+        parsed = _parse_engineer_name(raw_name, vid)
+        vid_to_info[vid] = parsed
+
     blocks = []
 
     # ── ENGINEER_PROFILES ──
@@ -86,7 +119,11 @@ def assemble_context(run_data: dict) -> str:
     eng_lines = []
     for eng in engineers:
         eid = eng.get("id")
-        name = eng.get("name", f"Engineer_{eid}")
+        info = vid_to_info.get(eid, _parse_engineer_name("", eid))
+        name = info["name"]
+        perm_id = info["id"]
+        day = info["day"]
+        
         skill_names = _resolve_skills(eng.get("skills", []), skills_map)
         tw = eng.get("time_window", [])
         tw_str = f"{_format_time(tw[0])} – {_format_time(tw[1])}" if len(tw) >= 2 else "unknown"
@@ -95,7 +132,7 @@ def assemble_context(run_data: dict) -> str:
         end = eng.get("end", [])
         
         eng_lines.append(
-            f"  Engineer #{eid} ({name}):\n"
+            f"  Engineer #{perm_id} ({name}, Day {day}):\n"
             f"    Skills: {', '.join(skill_names)}\n"
             f"    Shift Window: {tw_str} ({shift_dur_h}h)\n"
             f"    Depot: [{start[0]:.4f}, {start[1]:.4f}] → [{end[0]:.4f}, {end[1]:.4f}]"
@@ -130,11 +167,14 @@ def assemble_context(run_data: dict) -> str:
     if solution and "routes" in solution:
         for route in solution["routes"]:
             vid = route.get("vehicle")
+            info = vid_to_info.get(vid, _parse_engineer_name("", vid))
+            perm_id = info["id"]
+            
             steps = route.get("steps", [])
             dur = route.get("duration", 0)
             job_ids = [s.get("job", s.get("id")) for s in steps if s.get("type") == "job"]
             routes_summary.append(
-                f"  Vehicle #{vid}: {len(job_ids)} jobs → [{', '.join(str(j) for j in job_ids)}] "
+                f"  Vehicle #{perm_id} (Day {info['day']}): {len(job_ids)} jobs → [{', '.join(str(j) for j in job_ids)}] "
                 f"| Duration: {round(dur / 60)}min"
             )
     
@@ -159,6 +199,9 @@ def assemble_context(run_data: dict) -> str:
     if routes_data:
         for rd in routes_data:
             vid = rd.get("vehicle_id")
+            info = vid_to_info.get(vid, _parse_engineer_name("", vid))
+            perm_id = info["id"]
+            
             legs = rd.get("legs", [])
             total_actual = sum(l.get("duration_s", 0) for l in legs)
             total_ff = sum(l.get("free_flow_duration_s", 0) for l in legs)
@@ -169,7 +212,7 @@ def assemble_context(run_data: dict) -> str:
                 if legs else 1.0
             )
             traffic_lines.append(
-                f"  Engineer #{vid}: {len(legs)} legs | "
+                f"  Engineer #{perm_id} (Day {info['day']}): {len(legs)} legs | "
                 f"Traffic-aware: {round(total_actual / 60)}min | "
                 f"Free-flow: {round(total_ff / 60)}min | "
                 f"Delta: {delta_sign}{round(delta / 60)}min | "

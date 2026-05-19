@@ -1,0 +1,34 @@
+<!doctype html><html><head>
+<meta charset="utf-8"><title>Badges & Tags</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body{margin:0;padding:28px;background:#fff;font-family:var(--font-body);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .badge{font-family:var(--font-body);font-weight:500;font-size:12px;padding:5px 12px;border-radius:999px;letter-spacing:0.02em;display:inline-flex;align-items:center;gap:6px;}
+  .b-dark{background:#000;color:#fff;}
+  .b-light{background:#E4EDED;color:#000;}
+  .b-outline{background:#fff;color:#000;border:1px solid #000;}
+  .b-blue{background:#1E2ED9;color:#fff;}
+  .b-success{background:#00E38C;color:#000;}
+  .b-warn{background:#FFE564;color:#000;}
+  .b-danger{background:#F47738;color:#000;}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .tag{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#1E2ED9;font-weight:600;}
+</style></head><body>
+<div class="row">
+  <span class="badge b-dark">Press release</span>
+  <span class="badge b-light">News</span>
+  <span class="badge b-outline">Case study</span>
+  <span class="badge b-blue">New</span>
+</div>
+<div class="row">
+  <span class="badge b-success"><span class="dot"></span>Operational</span>
+  <span class="badge b-warn"><span class="dot"></span>Degraded</span>
+  <span class="badge b-danger"><span class="dot"></span>Incident</span>
+</div>
+<div class="row">
+  <span class="tag">Smart Mobility</span>
+  <span class="tag">— V2X</span>
+  <span class="tag">— Tolling</span>
+</div>
+</body></html>

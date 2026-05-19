@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 131.44 144.98">
+  <defs>
+    
+    <linearGradient id="linear-gradient" x1="65.71" y1="-11.03" x2="65.71" y2="37.14" gradientUnits="userSpaceOnUse">
+      <stop offset=".05" stop-color="#1e2ed9"></stop>
+      <stop offset="1" stop-color="#9dbbff"></stop>
+    </linearGradient>
+    <linearGradient id="Unbenannter_Verlauf_57" data-name="Unbenannter Verlauf 57" x1="31.15" y1="142.5" x2="31.15" y2="102.55" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e2ed9"></stop>
+      <stop offset=".1" stop-color="#1e2ed9" stop-opacity=".97"></stop>
+      <stop offset=".24" stop-color="#1e2ed9" stop-opacity=".89"></stop>
+      <stop offset=".4" stop-color="#1e2ed9" stop-opacity=".76"></stop>
+      <stop offset=".58" stop-color="#1e2ed9" stop-opacity=".57"></stop>
+      <stop offset=".77" stop-color="#1e2ed9" stop-opacity=".33"></stop>
+      <stop offset=".97" stop-color="#1e2ed9" stop-opacity=".05"></stop>
+      <stop offset="1" stop-color="#1e2ed9" stop-opacity="0"></stop>
+    </linearGradient>
+    <linearGradient id="Unbenannter_Verlauf_57-2" data-name="Unbenannter Verlauf 57" x1="100.27" y1="142.5" x2="100.27" y2="102.55" xlink:href="#Unbenannter_Verlauf_57"></linearGradient>
+    <linearGradient id="Unbenannter_Verlauf_46" data-name="Unbenannter Verlauf 46" x1="226.91" y1="103.43" x2="-42.81" y2="103.43" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#affad7"></stop>
+      <stop offset=".44" stop-color="#9dbbff"></stop>
+      <stop offset="1" stop-color="#1e2ed9"></stop>
+    </linearGradient>
+    <linearGradient id="linear-gradient-2" x1="33.62" y1="127.89" x2="106.78" y2="127.89" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9dbbff"></stop>
+      <stop offset=".8" stop-color="#affad7" stop-opacity=".6"></stop>
+    </linearGradient>
+    <linearGradient id="linear-gradient-3" x1="65.71" y1="59.22" x2="65.71" y2="59.21" gradientUnits="userSpaceOnUse">
+      <stop offset=".05" stop-color="#1e2ed9"></stop>
+      <stop offset=".75" stop-color="#9dbbff"></stop>
+    </linearGradient>
+    <linearGradient id="linear-gradient-4" x1="65.71" y1="91.56" x2="65.71" y2="13.65" xlink:href="#linear-gradient-3"></linearGradient>
+    <linearGradient id="Unbenannter_Verlauf_46-2" data-name="Unbenannter Verlauf 46" x1="-84.94" y1="54.74" x2="125.49" y2="54.74" xlink:href="#Unbenannter_Verlauf_46"></linearGradient>
+    <linearGradient id="linear-gradient-5" x1="17.83" y1="25.57" x2="113.5" y2="25.57" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#affad7" stop-opacity=".5"></stop>
+      <stop offset="1" stop-color="#9dbbff"></stop>
+    </linearGradient>
+    <linearGradient id="linear-gradient-6" x1="33.62" y1="101.5" x2="106.78" y2="101.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9dbbff"></stop>
+      <stop offset=".8" stop-color="#affad7" stop-opacity=".6"></stop>
+    </linearGradient>
+    <linearGradient id="Unbenannter_Verlauf_62" data-name="Unbenannter Verlauf 62" x1="52.61" y1="11.12" x2="17.83" y2="11.12" gradientUnits="userSpaceOnUse">
+      <stop offset=".05" stop-color="#1e2ed9"></stop>
+      <stop offset=".75" stop-color="#9dbbff"></stop>
+      <stop offset="1" stop-color="#affad7"></stop>
+    </linearGradient>
+    <linearGradient id="linear-gradient-7" x1="31.82" y1="-1.75" x2="31.82" y2="11.2" xlink:href="#linear-gradient-6"></linearGradient>
+    <linearGradient id="Unbenannter_Verlauf_62-2" data-name="Unbenannter Verlauf 62" x1="118.31" y1="11.12" x2="83.53" y2="11.12" xlink:href="#Unbenannter_Verlauf_62"></linearGradient>
+    <linearGradient id="linear-gradient-8" x1="97.52" y1="-1.75" x2="97.52" y2="11.2" xlink:href="#linear-gradient-6"></linearGradient>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <path class="cls-8" d="M12.16,73.69V7.89c0-1.01.9-1.83,2-1.83h103.11c1.1,0,2,.82,2,1.83v65.79H12.16Z"></path>
+      <g>
+        <path class="cls-15" d="M21.22,130.48h19.85v10.16c0,2.4-1.94,4.34-4.34,4.34h-11.17c-2.4,0-4.34-1.94-4.34-4.34v-10.16h0Z"></path>
+        <path class="cls-11" d="M90.35,130.48h19.85v10.16c0,2.4-1.94,4.34-4.34,4.34h-11.17c-2.4,0-4.34-1.94-4.34-4.34v-10.16h0Z"></path>
+      </g>
+      <path class="cls-16" d="M10.26,88v39.89c0,5.17,4.19,5.28,9.36,5.28h92.18c5.17,0,9.36-.12,9.36-5.28v-39.89l-1.89-14.08-107.11-.24-1.89,14.32Z"></path>
+      <path class="cls-7" d="M10.26,122.61v5.28c0,5.17,4.19,5.28,9.36,5.28h92.18c5.17,0,9.36-.12,9.36-5.28v-5.28H10.26Z"></path>
+      <line class="cls-6" x1="116.02" y1="59.21" x2="15.4" y2="59.22"></line>
+      <path class="cls-5" d="M119.26,73.69l-7.37-57.82c-.21-1.05-1.22-1.82-2.4-1.82H21.93c-1.18,0-2.19.77-2.4,1.82l-7.37,57.82"></path>
+      <polygon class="cls-12" points="15.16 73.92 116.42 73.69 111.16 35.55 20.26 35.55 15.16 73.92"></polygon>
+      <polygon class="cls-9" points="17.83 30.77 19.03 20.37 112.39 20.37 113.5 30.77 17.83 30.77"></polygon>
+      <path class="cls-1" d="M8.47,62.8v-8.15c0-.79-.65-1.43-1.43-1.43H1.43c-.79,0-1.43.65-1.43,1.43v12.62c0,.79.65,1.43,1.43,1.43h11.36l.75-5.9h-5.08Z"></path>
+      <path class="cls-1" d="M122.98,62.92v-8.15c0-.79.65-1.43,1.43-1.43h5.6c.79,0,1.43.65,1.43,1.43v12.62c0,.79-.65,1.43-1.43,1.43h-5.41s-.19,0-.19,0h-5.76s-.75-5.9-.75-5.9h5.08Z"></path>
+      <rect class="cls-4" x="10.26" y="92.4" width="110.89" height="18.18"></rect>
+      <circle class="cls-10" cx="17.11" cy="116.33" r="2.85"></circle>
+      <circle class="cls-10" cx="114.31" cy="116.33" r="2.85"></circle>
+      <g>
+        <rect class="cls-14" x="24.67" y="8.37" width="14.3" height="5.5"></rect>
+        <rect class="cls-3" x="27.23" width="9.18" height="8.37"></rect>
+      </g>
+      <g>
+        <rect class="cls-13" x="90.37" y="8.37" width="14.3" height="5.5"></rect>
+        <rect class="cls-2" x="92.93" width="9.18" height="8.37"></rect>
+      </g>
+      <path class="cls-10" d="M112.33,98.29l-16.3,2.34c-1.61.23-2.3,2.17-1.2,3.36l1.62,2.76c.36.39.85.62,1.37.65l14.49-.19c1.12.06,2.08-.81,2.13-1.93l.19-4.9c.05-1.26-1.05-2.25-2.3-2.07"></path>
+      <path class="cls-10" d="M19.09,98.29l16.3,2.34c1.61.23,2.3,2.17,1.2,3.36l-1.62,2.76c-.36.39-.85.62-1.37.65l-14.49-.19c-1.12.06-2.08-.81-2.13-1.93l-.19-4.9c-.05-1.26,1.05-2.25,2.3-2.07"></path>
+    </g>
+  </g>
+</svg>

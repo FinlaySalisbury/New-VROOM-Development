@@ -1,0 +1,99 @@
+<!doctype html><html><head>
+<meta charset="utf-8"><title>Primary Palette</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body{margin:0;padding:20px;background:#fff;font-family:var(--font-body);color:#000;}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .sw{border:1px solid #E4EDED;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;}
+  .chip{height:110px;}
+  .chip.bordered{box-shadow:inset 0 0 0 1px #E4EDED;}
+  .meta{padding:12px 14px 14px;display:flex;flex-direction:column;gap:3px;}
+  .name{font-family:var(--font-display);font-weight:700;font-size:18px;letter-spacing:-0.01em;line-height:1.1;margin-bottom:6px;}
+  .row{font-size:11px;line-height:1.4;color:#000;font-variant-numeric:tabular-nums;}
+  .row.muted{color:#5b6470;}
+</style></head><body>
+<div class="grid">
+
+  <div class="sw">
+    <div class="chip" style="background:#000000"></div>
+    <div class="meta">
+      <div class="name">Black</div>
+      <div class="row">RGB 0/0/0</div>
+      <div class="row">#000000</div>
+      <div class="row muted">C60 / M40 / Y20 / B100</div>
+      <div class="row muted">Pantone Black 6 C</div>
+      <div class="row muted">RAL 9005 Tiefschwarz</div>
+    </div>
+  </div>
+
+  <div class="sw">
+    <div class="chip bordered" style="background:#E4EDED"></div>
+    <div class="meta">
+      <div class="name">Gray</div>
+      <div class="row">RGB 228/237/237</div>
+      <div class="row">#E4EDED</div>
+      <div class="row muted">C12 / M3 / Y5 / B3</div>
+      <div class="row muted">Pantone 427 C</div>
+      <div class="row muted">RAL 7047 Telegrau</div>
+    </div>
+  </div>
+
+  <div class="sw">
+    <div class="chip" style="background:#00E38C"></div>
+    <div class="meta">
+      <div class="name">Green</div>
+      <div class="row">RGB 0/227/140</div>
+      <div class="row">#00E38C</div>
+      <div class="row muted">C66 / M0 / Y82 / B0</div>
+      <div class="row muted">Pantone 2256 C</div>
+      <div class="row muted">RAL 160 70 50 Malachitgrün</div>
+    </div>
+  </div>
+
+  <div class="sw">
+    <div class="chip" style="background:#1E2ED9"></div>
+    <div class="meta">
+      <div class="name">Royal Blue</div>
+      <div class="row">RGB 30/46/217</div>
+      <div class="row">#1E2ED9</div>
+      <div class="row muted">C100 / M75 / Y0 / B0</div>
+      <div class="row muted">Pantone 2728 C</div>
+      <div class="row muted">RAL 5002 Ultramarinblau</div>
+    </div>
+  </div>
+
+  <div class="sw">
+    <div class="chip" style="background:#9DBBFF"></div>
+    <div class="meta">
+      <div class="name">Lavender</div>
+      <div class="row">RGB 157/187/255</div>
+      <div class="row">#9DBBFF</div>
+      <div class="row muted">C40 / M20 / Y0 / B0</div>
+      <div class="row muted">Pantone 2716 C</div>
+      <div class="row muted">RAL 280 60 35 Organzaviolett</div>
+    </div>
+  </div>
+
+  <div class="sw">
+    <div class="chip bordered" style="background:#FFFFFF"></div>
+    <div class="meta">
+      <div class="name">White</div>
+      <div class="row">RGB 255/255/255</div>
+      <div class="row">#FFFFFF</div>
+      <div class="row muted">C0 / M0 / Y0 / B0</div>
+      <div class="row muted">—</div>
+      <div class="row muted">RAL 9003 Signalweiss</div>
+    </div>
+  </div>
+
+  <div class="sw" style="grid-column:span 2;">
+    <div class="chip" style="background:linear-gradient(115deg,#A8B5C4 0%,#FFFFFF 38%,#DEECFF 70%,#AFFAD7 100%);"></div>
+    <div class="meta">
+      <div class="name">Silver — gradient</div>
+      <div class="row">Steel → White → Sky → Pistachio</div>
+      <div class="row muted">The signature brand gradient. Use as full-bleed background or large panel; never trap small text on it.</div>
+    </div>
+  </div>
+
+</div>
+</body></html>

@@ -1,0 +1,51 @@
+Site Ref,Site,Type,Start Window,End Window,Assigned To,Incident Status,Inspection Done,Inspected By,OID
+"GB-LCL-A0289","[GB-LCL-A0289] Waltham Forest: 65-113 Crownfield Rd / ACE0189352 / E15 2BG","SRD",,,"phil.grenham,darren.gibson","Temp Clear","07/05/2026 12:40:00","phil.grenham",6499525
+"GB-LCL-A0981","[GB-LCL-A0981] Waltham Forest: Dawlish Road / ACE0493117 / E10 6QW","SRD",,,"phil.grenham","Temp Clear","07/05/2026 11:00:00","phil.grenham",6499530
+"GB-LCL-A0292","[GB-LCL-A0292] Waltham Forest: 97 Nottingham Rd / Leyton / E10 6EP / ACE0189315","SRD",,,"phil.grenham,darren.gibson","Temp Clear","07/05/2026 10:40:00","darren.gibson",6499526
+"GB-LCL-A0483","[GB-LCL-A0483] Waltham Forest: 97 Nottingham Rd / ACE0197216 / E10 6EP","SRD",,,"phil.grenham","Temp Clear","07/05/2026 10:40:00","phil.grenham",6499527
+"GB-LCL-A0499","[GB-LCL-A0499] Ealing: 9 Princes Gardens / ACE0422408 / W3 0LX","SLO","08/04/2026 00:00:00","29/04/2026 00:00:00","mukesh.kerai","In Progress",,,6450826
+"GB-LCL-A0596","[GB-LCL-A0596] Ealing: Bridge Avenue / ACE0422363 / W7 3DJ","SPD","07/05/2026 00:00:00","28/05/2026 00:00:00",,"Submitted",,,6910734
+"GB-LCL-A0840","[GB-LCL-A0840] Ealing: 22 Fowlers Walk / ACE0422828 / W5 1BD","SPD","07/05/2026 00:00:00","28/05/2026 00:00:00",,"Submitted",,,6910733
+"GB-LCL-A2776","[GB-LCL-A2776] Newham: 3-9 Brydges Road / 24480154 / E15 1NA","SPD","07/05/2026 00:00:00","28/05/2026 00:00:00",,"Submitted",,,6910732
+"GB-LCL-A2879","[GB-LCL-A2879] Ealing: The Farmlands / 24450370 / UB5 5EY","SPD","07/05/2026 00:00:00","28/05/2026 00:00:00",,"Submitted",,,6910736
+"GB-LCL-A0481","[GB-LCL-A0481] Waltham Forest: 1 Clyde Place / ACE0197276 / E10 5AS","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563498
+"GB-LCL-A0293","[GB-LCL-A0293] Waltham Forest: 1 Clyde Place / ACE0189317 / E10 5AS","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563499
+"GB-LCL-A0291","[GB-LCL-A0291] Waltham Forest: 61 Carnarvon Road / ACE0189356 / E10 6DL","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563500
+"GB-LCL-A0482","[GB-LCL-A0482] Waltham Forest: 61 Carnarvon Rd / ACE0197293 / E10 6DL","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563501
+"GB-LCL-A1199","[GB-LCL-A1199] Redbridge: Eton Road / ACE0493460 / IG1 2UE","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563502
+"GB-LCL-A0357","[GB-LCL-A0357] Waltham Forest: Ferndale Avenue / ACE0422377 / E17 9EE","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563503
+"GB-LCL-A0829","[GB-LCL-A0829] Redbridge: Hamilton Avenue / ACE0422803 / IG6 1AA","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563504
+"GB-LCL-A0818","[GB-LCL-A0818] Redbridge: Hampton Road / Side 137 of Richmond Road / ACE0422852 / IG1 1JT","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563505
+"GB-LCL-A0764","[GB-LCL-A0764] Redbridge: Opposite 10 Oxford Road / ACE0422817 / IG1 2XG","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563506
+"GB-LCL-A0813","[GB-LCL-A0813] Redbridge: Perth Road / ACE0422808 / IG2 6DZ","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563507
+"GB-LCL-A0880","[GB-LCL-A0880] Waltham Forest: Prospect Hill / ACE0493197 / E17 3EJ","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563508
+"GB-LCL-A0879","[GB-LCL-A0879] Waltham Forest: Prospect Hill / ACE0493132 / E17 3EJ","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563509
+"GB-LCL-A0814","[GB-LCL-A0814] Redbridge: Toronto Road / Side of 80 Coventry Road / ACE0422634 / IG1 4RE","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563510
+"GB-LCL-A0796","[GB-LCL-A0796] Redbridge: Woodlands Road / Side of 114 Mortake Road / ACE0422832 / IG1 2SZ","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563511
+"GB-LCL-A2751","[GB-LCL-A2751] Ealing: Templeman Road / North Hanwell / 24480153 / W7 1AS","SPO","15/04/2026 00:00:00","06/05/2026 00:00:00",,"Submitted",,,6563512
+"GB-LCL-A2806","[GB-LCL-A2806] Ealing: The Farmlands / 24450371 / UB5 5EY","SPD","07/05/2026 00:00:00","28/05/2026 00:00:00",,"Submitted",,,6910737
+"GB-LCL-A0597","[GB-LCL-A0597] Ealing: Bridge Avenue / ACE0422402 / W7 3DJ","SPD","07/05/2026 00:00:00","28/05/2026 00:00:00",,"Submitted",,,6910735
+"GB-LCL-A2799","[GB-LCL-A2799] Newham: 3-9 Brydges Rd / 24450367 / E15 1NA","SPD","07/05/2026 00:00:00","28/05/2026 00:00:00",,"Submitted",,,6910731
+"GB-LCL-A0751","[GB-LCL-A0751] Ealing: 38 The Avenue / ACE0189182 / W4 1HS","SPD","06/05/2026 00:00:00","27/05/2026 00:00:00",,"Submitted",,,6895018
+"GB-LCL-A0252","[GB-LCL-A0252] Kettering: Opp. 66 Montagu Street / ACE0261248 / NN16 8SE","SPD","05/05/2026 00:00:00","26/05/2026 00:00:00",,"Submitted",,,6879362
+"GB-LCL-A1143","[GB-LCL-A1143] Kettering: Linden Avenue / ACE0422464 / NN16 0EP","SPD","05/05/2026 00:00:00","26/05/2026 00:00:00",,"Submitted",,,6879360
+"GB-LCL-A0484","[GB-LCL-A0484] Walthamstow: 4 Farnan Ave,  / ACE0197243 / E17 4NX","SPD","03/05/2026 00:00:00","24/05/2026 00:00:00",,"Submitted",,,6847701
+"GB-LCL-A0816","[GB-LCL-A0816] Redbridge: Golfe Road / Gordon Road / ACE0422903 / IG1 1SU","SPD","03/05/2026 00:00:00","24/05/2026 00:00:00",,"Submitted",,,6847705
+"GB-LCL-A0359","[GB-LCL-A0359] Waltham Forest: Central Avenue / ACE0166110 / E11 4DJ","SPD","01/05/2026 00:00:00","22/05/2026 00:00:00",,"Submitted",,,6816106
+"GB-LCL-A2846","[GB-LCL-A2846] Newham: Honour Lea Ave / Peloton Ave / 24450368 / E20 1HB","SPD","01/05/2026 00:00:00","22/05/2026 00:00:00",,"Submitted",,,6816110
+"GB-LCL-A0358","[GB-LCL-A0358] Waltham Forest: Central Avenue / ACE0166111 / E11 4DJ","SPD","01/05/2026 00:00:00","22/05/2026 00:00:00",,"Submitted",,,6816105
+"GB-LCL-A2712","[GB-LCL-A2712] Newham: Honour Lea Ave / Peloton Ave / 24450363 / E20 1HB","SPD","01/05/2026 00:00:00","22/05/2026 00:00:00",,"Submitted",,,6816109
+"GB-LCL-A0876","[GB-LCL-A0876] Waltham Forest: St Egberts Way / ACE0493125 / E4 6AF","SLO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547838
+"GB-LCL-A0262","[GB-LCL-A0262] Hammersmith & Fulham: Opposite 1 Foxglove Street / ACE0166136 / W12 0QB","SPD","06/05/2026 00:00:00","27/05/2026 00:00:00",,"Submitted",,,6895020
+"GB-LCL-A0752","[GB-LCL-A0752] Ealing: 38 The Avenue / ACE0189173 / W4 1HS","SPD","06/05/2026 00:00:00","27/05/2026 00:00:00",,"Submitted",,,6895019
+"GB-LCL-A0763","[GB-LCL-A0763] Redbridge: 34 Riverdene Avenue / ACE0422804 / IG1 2AA","SPD","06/05/2026 00:00:00","27/05/2026 00:00:00",,"Submitted",,,6895017
+"GB-LCL-A0599","[GB-LCL-A0599] Waltham Forest: 41 James Lane, Leytonstone / ACE0197230 / E11 1NS","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547766
+"GB-LCL-A0878","[GB-LCL-A0878] Waltham Forest: Blenheim Road / ACE0493151 / E17 6JA","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547767
+"GB-LCL-A0877","[GB-LCL-A0877] Waltham Forest: Blenheim Road / ACE0493145 / E17 6JA","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547768
+"GB-LCL-A0286","[GB-LCL-A0286] Waltham Forest: Opp 2-14 Victoria Road / ACE0189323 / E17 4JU","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547769
+"GB-LCL-A0486","[GB-LCL-A0486] Waltham Forest: Opp 2-14 Victoria Road / ACE0197288 / E17 4JU","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547770
+"GB-LCL-A0285","[GB-LCL-A0285] Waltham Forest: Opp 91 Marten Road / ACE0189335 / E17 4NL","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547771
+"GB-LCL-A0485","[GB-LCL-A0485] Waltham Forest: Opp 91 Marten Road / ACE0197231 / E17 4NL","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547772
+"GB-LCL-A0875","[GB-LCL-A0875] Waltham Forest: Elmsfield Road / ACE0493105 / E4 7HU","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547773
+"GB-LCL-A0997","[GB-LCL-A0997] Waltham Forest: Essex Road / ACE0493192 / E17 8AN","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547774
+"GB-LCL-A0872","[GB-LCL-A0872] Waltham Forest: Galeborough Road / ACE0493166 / IG8 9LU","SPO","14/04/2026 00:00:00","05/05/2026 00:00:00",,"Submitted",,,6547775

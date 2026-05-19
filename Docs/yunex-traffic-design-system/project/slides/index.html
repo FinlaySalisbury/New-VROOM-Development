@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Yunex Traffic — Sample Slides</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<script src="deck-stage.js"></script>
+<style>
+  html,body{margin:0;background:#0a0a0a;color:#000;}
+  deck-stage{--slide-w:1280px;--slide-h:720px;}
+  section{
+    width:1280px;height:720px;background:#fff;position:relative;overflow:hidden;
+    font-family:var(--font-body);color:#000;box-sizing:border-box;
+  }
+  /* shared chrome */
+  .chrome-logo{position:absolute;top:32px;left:48px;width:148px;height:24px;background:url('../assets/logo-yunex-traffic-black.png') left center / contain no-repeat;}
+  .chrome-logo b,.chrome-logo span{display:none;}
+  .chrome-logo.on-dark{background-image:url('../assets/logo-yunex-traffic-white.png');}
+  .page-num{position:absolute;bottom:28px;right:48px;font-size:12px;color:#888;letter-spacing:0.08em;text-transform:uppercase;font-variant-numeric:tabular-nums;}
+  .page-num.on-dark{color:#9DBBFF;}
+  .eyebrow{font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#1E2ED9;font-weight:600;margin-bottom:24px;}
+  h1.big{font-family:var(--font-display);font-weight:700;font-size:96px;line-height:1.02;letter-spacing:-0.03em;margin:0;text-wrap:balance;}
+  h2.title{font-family:var(--font-display);font-weight:700;font-size:64px;line-height:1.05;letter-spacing:-0.025em;margin:0 0 28px;}
+  p.lead{font-size:22px;line-height:1.5;max-width:760px;margin:0;}
+  .hl{color:#1E2ED9;font-weight:500;}
+
+  /* SLIDE 1 — Title slide on Yunex Silver */
+  .s-title{background:linear-gradient(135deg,#688ABA 0%,#FFFFFF 38%,#DEECFF 70%,#AFFAD7 100%);}
+  .s-title .stack{position:absolute;left:80px;bottom:96px;right:80px;}
+  .s-title .meta{position:absolute;left:80px;top:96px;display:flex;gap:24px;align-items:center;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;}
+  .s-title .meta .pill{background:#000;color:#fff;padding:6px 14px;border-radius:999px;}
+
+  /* SLIDE 2 — Section divider, dark */
+  .s-section{background:#000;color:#fff;}
+  .s-section .num{position:absolute;left:80px;top:140px;font-family:var(--font-display);font-weight:700;font-size:200px;line-height:1;letter-spacing:-0.04em;
+    background:linear-gradient(135deg,#1E2ED9,#9DBBFF);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .s-section .label{position:absolute;left:80px;bottom:160px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#9DBBFF;}
+  .s-section .head{position:absolute;left:80px;bottom:80px;right:80px;font-family:var(--font-display);font-weight:700;font-size:80px;line-height:1.05;letter-spacing:-0.025em;}
+
+  /* SLIDE 3 — Three column / Our purpose */
+  .s-three{background:#fff;padding:88px 80px;}
+  .s-three .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:48px;margin-top:48px;}
+  .s-three .col .ico{width:48px;height:48px;margin-bottom:20px;}
+  .s-three .col h3{font-family:var(--font-display);font-weight:700;font-size:28px;letter-spacing:-0.015em;margin:0 0 12px;line-height:1.15;}
+  .s-three .col p{font-size:15px;line-height:1.55;color:#3a3a3a;margin:0;}
+  .s-three .col .n{font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:0.1em;color:#1E2ED9;margin-bottom:8px;}
+
+  /* SLIDE 4 — Big quote */
+  .s-quote{background:linear-gradient(135deg,#9DBBFF 0%,#DEECFF 55%,#FFFFFF 100%);padding:120px 100px;display:flex;flex-direction:column;justify-content:center;}
+  .s-quote .q{font-family:var(--font-display);font-weight:400;font-size:64px;line-height:1.15;letter-spacing:-0.02em;text-wrap:balance;max-width:1080px;}
+  .s-quote .q em{color:#1E2ED9;font-style:normal;font-weight:600;}
+  .s-quote .attr{margin-top:48px;font-size:14px;letter-spacing:0.08em;text-transform:uppercase;color:#000;}
+
+  /* SLIDE 5 — Stats */
+  .s-stats{background:#fff;padding:120px 80px;}
+  .s-stats .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:64px;margin-top:64px;}
+  .s-stats .num{font-family:var(--font-display);font-weight:700;font-size:120px;line-height:0.95;letter-spacing:-0.035em;color:#000;}
+  .s-stats .num em{color:#1E2ED9;font-style:normal;}
+  .s-stats .lbl{margin-top:16px;font-size:16px;line-height:1.4;color:#3a3a3a;max-width:280px;}
+
+  /* SLIDE 6 — Image + text */
+  .s-image{background:#000;color:#fff;display:grid;grid-template-columns:1fr 1fr;}
+  .s-image .img{background:linear-gradient(135deg,#688ABA 0%,#1E2ED9 60%,#000 100%);position:relative;overflow:hidden;}
+  .s-image .img svg{position:absolute;inset:0;width:100%;height:100%;opacity:0.95;}
+  .s-image .body{padding:96px 64px;display:flex;flex-direction:column;justify-content:center;}
+  .s-image h2{font-family:var(--font-display);font-weight:700;font-size:56px;line-height:1.05;letter-spacing:-0.025em;margin:0 0 24px;}
+  .s-image p{font-size:18px;line-height:1.55;color:#cfd6da;margin:0 0 24px;max-width:480px;}
+  .s-image .tag{font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#9DBBFF;margin-bottom:20px;}
+
+  /* SLIDE 7 — Closing */
+  .s-end{background:#000;color:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:80px;}
+  .s-end .small{font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#9DBBFF;margin-bottom:24px;}
+  .s-end .big2{font-family:var(--font-display);font-weight:700;font-size:120px;line-height:0.95;letter-spacing:-0.03em;
+    background:linear-gradient(135deg,#FFFFFF 0%,#9DBBFF 60%,#AFFAD7 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .s-end .cta{margin-top:48px;display:inline-flex;align-items:center;gap:10px;border:1px solid #fff;border-radius:999px;padding:14px 24px;font-size:14px;font-weight:600;}
+</style>
+</head>
+<body>
+<deck-stage>
+
+<!-- 1 — Title -->
+<section class="s-title" data-screen-label="01 Title">
+  <div class="meta">
+    <span class="pill">Brand Deck · 2026</span>
+    <span style="color:#000">v1.0 · Yunex Traffic UK</span>
+  </div>
+  <div class="stack">
+    <div class="eyebrow">Yunex Traffic</div>
+    <h1 class="big">Uniting<br>what's <span style="color:#1E2ED9">next</span><br>in traffic.</h1>
+  </div>
+  <div class="page-num">01 / 07</div>
+</section>
+
+<!-- 2 — Section divider -->
+<section class="s-section" data-screen-label="02 Section">
+  <div class="chrome-logo on-dark"><b>yunex</b><span>traffic</span></div>
+  <div class="num">01</div>
+  <div class="label">Chapter</div>
+  <div class="head">Who we are.</div>
+  <div class="page-num on-dark">02 / 07</div>
+</section>
+
+<!-- 3 — Three column -->
+<section class="s-three" data-screen-label="03 Our purpose">
+  <div class="chrome-logo"><b>yunex</b><span>traffic</span></div>
+  <div style="margin-top:80px">
+    <div class="eyebrow">Our purpose</div>
+    <h2 class="title">We make cities more livable.</h2>
+  </div>
+  <div class="grid">
+    <div class="col">
+      <img src="../assets/icons/colour/city.svg" class="ico">
+      <div class="n">01</div>
+      <h3>Liveable cities</h3>
+      <p>Intelligent traffic solutions that keep transport networks moving and improve quality of life for the citizens who live in them.</p>
+    </div>
+    <div class="col">
+      <img src="../assets/icons/colour/shield.svg" class="ico">
+      <div class="n">02</div>
+      <h3>Safer streets</h3>
+      <p>Our solutions save lives by improving the safety levels of road networks, intersections and tunnels.</p>
+    </div>
+    <div class="col">
+      <img src="../assets/icons/colour/leaf.svg" class="ico">
+      <div class="n">03</div>
+      <h3>Healthier planet</h3>
+      <p>We help reduce road-traffic emissions and actively support the solution to the climate crisis.</p>
+    </div>
+  </div>
+  <div class="page-num">03 / 07</div>
+</section>
+
+<!-- 4 — Big quote -->
+<section class="s-quote" data-screen-label="04 Big quote">
+  <div class="chrome-logo"><b>yunex</b><span>traffic</span></div>
+  <div class="eyebrow">Brand stance</div>
+  <p class="q">We don't talk about <em>innovation</em>.<br>We do it. It's our DNA.</p>
+  <div class="attr">— Yunex Traffic, brand stance</div>
+  <div class="page-num">04 / 07</div>
+</section>
+
+<!-- 5 — Stats -->
+<section class="s-stats" data-screen-label="05 Stats">
+  <div class="chrome-logo"><b>yunex</b><span>traffic</span></div>
+  <div style="margin-top:60px">
+    <div class="eyebrow">In numbers</div>
+    <h2 class="title">A century of tradition,<br>a decade of disruption.</h2>
+  </div>
+  <div class="grid">
+    <div><div class="num"><em>+</em>1,936</div><div class="lbl">vehicles managed per minute across our adaptive corridors</div></div>
+    <div><div class="num">−18%</div><div class="lbl">average delay reduction in deployed UK city centres</div></div>
+    <div><div class="num">600+</div><div class="lbl">cities running Yunex Traffic technology worldwide</div></div>
+  </div>
+  <div class="page-num">05 / 07</div>
+</section>
+
+<!-- 6 — Image + text -->
+<section class="s-image" data-screen-label="06 Solution">
+  <div class="img">
+    <svg viewBox="0 0 600 720" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="iv" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#1E2ED9"/>
+          <stop offset="1" stop-color="#9DBBFF"/>
+        </linearGradient>
+      </defs>
+      <g fill="#0e1a4a">
+        <rect x="0" y="430" width="120" height="290"/>
+        <rect x="120" y="380" width="80" height="340"/>
+        <rect x="200" y="450" width="100" height="270"/>
+        <rect x="300" y="350" width="70" height="370"/>
+        <rect x="370" y="420" width="90" height="300"/>
+        <rect x="460" y="380" width="60" height="340"/>
+        <rect x="520" y="440" width="80" height="280"/>
+      </g>
+      <g stroke="#1E2ED9" stroke-width="1" opacity="0.5">
+        <line x1="0" y1="380" x2="600" y2="380"/>
+        <line x1="0" y1="450" x2="600" y2="450"/>
+        <line x1="0" y1="520" x2="600" y2="520"/>
+      </g>
+      <g fill="url(#iv)">
+        <circle cx="120" cy="200" r="80" opacity="0.7"/>
+        <circle cx="380" cy="280" r="40" opacity="0.85"/>
+      </g>
+    </svg>
+  </div>
+  <div class="body">
+    <div class="tag">Solutions · Stratos</div>
+    <h2>Every junction,<br>on one map.</h2>
+    <p>Stratos connects every controller, camera, and sensor in your network — so operators can see what's happening, predict what's next, and act in seconds.</p>
+    <p>Adaptive control, V2X, tolling, and tunnel automation in a single cloud-native platform.</p>
+  </div>
+  <div class="page-num on-dark">06 / 07</div>
+</section>
+
+<!-- 7 — Closing -->
+<section class="s-end" data-screen-label="07 Closing">
+  <div class="small">Let's transform mobility, together.</div>
+  <div class="big2">Thank<br>you.</div>
+  <div class="cta">yunextraffic.com →</div>
+  <div class="page-num on-dark" style="left:48px;right:auto">07 / 07</div>
+</section>
+
+</deck-stage>
+
+<script type="application/json" id="speaker-notes">
+[
+  "Welcome — this deck reintroduces the Yunex Traffic brand. The signature Silver gradient is the strongest visual signal we have; lean on it for openers.",
+  "Section dividers go full-black with the chapter number set in a Deep Blue gradient. The number is bigger than anything else on the slide on purpose.",
+  "Our purpose, in three. Always lead with the eyebrow, then the headline. Icons stay flat black-and-white line.",
+  "Pull-quote slide. Use Jeko Regular at large size, italic only on the highlight word in Royal Blue.",
+  "Stats use the largest numerals in the system. Plus signs render in Royal Blue; the rest stays black for contrast.",
+  "Solutions slide — left half is brand imagery (gradient + abstracted geometry), right half is short copy and a small eyebrow tag.",
+  "Closing slide — gradient text on black, small uppercase prelude, optional CTA pill."
+]
+</script>
+</body>
+</html>

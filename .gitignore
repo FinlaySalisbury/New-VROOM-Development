@@ -53,3 +53,10 @@ debug_tomtom.log
 *.tmp
 
 gcp_credentials.json
+
+# ===========================
+# Design System
+# ===========================
+design-system/
+vroom_design_system.md
+design.md

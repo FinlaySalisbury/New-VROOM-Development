@@ -22,6 +22,20 @@ class TomTomClient:
         
         # Strategy 2: 10-Minute Time-Bucket Caching for Full Routes
         self._route_cache: Dict[str, Dict[str, Any]] = {}
+        
+        # Setup session with automatic retries for rate limiting (429) and server errors
+        self.session = requests.Session()
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        retry_strategy = Retry(
+            total=5,
+            backoff_factor=0.5,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
 
     def get_traffic_multiplier(self, origin: List[float], destination: List[float], departure_time: int) -> float:
         """
@@ -60,7 +74,7 @@ class TomTomClient:
 
         try:
             # Enforce corporate environment rule: verify=False
-            response = requests.get(url, params=params, verify=False, timeout=10)
+            response = self.session.get(url, params=params, verify=False, timeout=10)
             response.raise_for_status()
             
             data = response.json()
@@ -181,7 +195,7 @@ class TomTomClient:
         }
         
         try:
-            response = requests.get(url, params=params, verify=False, timeout=10)
+            response = self.session.get(url, params=params, verify=False, timeout=10)
             response.raise_for_status()
             data = response.json()
             
@@ -251,7 +265,7 @@ class TomTomClient:
         }
 
         try:
-            response = requests.get(url, params=params, verify=False, timeout=15)
+            response = self.session.get(url, params=params, verify=False, timeout=15)
             response.raise_for_status()
             data = response.json()
 

@@ -1,0 +1,23 @@
+<!doctype html><html><head>
+<meta charset="utf-8"><title>Gradients</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body{margin:0;padding:20px;background:#fff;font-family:var(--font-body);}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+  .item{border-radius:14px;overflow:hidden;border:1px solid #E4EDED;}
+  .swatch{height:140px;}
+  .meta{padding:10px 14px;background:#fff;}
+  .name{font-family:var(--font-display);font-weight:700;font-size:15px;}
+  .stops{font-size:11px;color:var(--fg-muted);margin-top:2px;}
+  .silver{background:linear-gradient(135deg,#688ABA 0%,#FFFFFF 38%,#DEECFF 70%,#AFFAD7 100%);}
+  .frosted{background:linear-gradient(135deg,#9DBBFF 0%,#DEECFF 55%,#FFFFFF 100%);}
+  .spring{background:linear-gradient(135deg,#DEECFF 0%,#E4EDED 50%,#AFFAD7 100%);}
+  .deepblue{background:linear-gradient(135deg,#1E2ED9 0%,#9DBBFF 100%);}
+</style></head><body>
+<div class="grid">
+  <div class="item"><div class="swatch silver"></div><div class="meta"><div class="name">Yunex Silver — primary</div><div class="stops">Steel → White → Sky → Pistachio</div></div></div>
+  <div class="item"><div class="swatch frosted"></div><div class="meta"><div class="name">Frosted</div><div class="stops">Lavender → Sky → White</div></div></div>
+  <div class="item"><div class="swatch spring"></div><div class="meta"><div class="name">Spring</div><div class="stops">Sky → Gray → Pistachio</div></div></div>
+  <div class="item"><div class="swatch deepblue"></div><div class="meta"><div class="name">Deep Blue</div><div class="stops">Royal Blue → Lavender</div></div></div>
+</div>
+</body></html>

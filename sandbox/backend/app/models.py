@@ -14,8 +14,8 @@ class RoutingStrategy(str, Enum):
 
 class SimulationRequest(BaseModel):
     """Request body for POST /api/simulate."""
-    num_engineers: int = Field(ge=1, le=50, default=5)
-    num_jobs: int = Field(ge=1, le=500, default=20)
+    num_engineers: int = Field(ge=1, le=500, default=5)
+    num_jobs: int = Field(ge=1, le=5000, default=20)
     strategy: RoutingStrategy = RoutingStrategy.INHOUSE
     name: Optional[str] = None
     # Optional: replay a previous scenario exactly

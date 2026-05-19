@@ -16,57 +16,125 @@ const API_BASE = window.location.origin + '/api';
 // ═══ Storage Manager ═════════════════════════════════════════
 const StorageManager = {
     async getEngineers() {
-        try {
-            const resp = await fetch(API_BASE + '/config/engineers');
-            return await resp.json();
-        } catch(e) { return []; }
+        return JSON.parse(localStorage.getItem('vroom_engineers') || '[]');
     },
     async saveEngineers(arr) {
-        await fetch(API_BASE + '/config/engineers', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(arr)
-        });
+        localStorage.setItem('vroom_engineers', JSON.stringify(arr));
+        try {
+            await fetch(API_BASE + '/config/engineers', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(arr)
+            });
+        } catch (e) {}
     },
     async getJobLists() {
-        try {
-            const resp = await fetch(API_BASE + '/config/job-lists');
-            return await resp.json();
-        } catch(e) { return []; }
+        return JSON.parse(localStorage.getItem('vroom_job_lists') || '[]');
     },
     async saveJobLists(arr) {
-        await fetch(API_BASE + '/config/job-lists', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(arr)
-        });
+        localStorage.setItem('vroom_job_lists', JSON.stringify(arr));
+        try {
+            await fetch(API_BASE + '/config/job-lists', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(arr)
+            });
+        } catch (e) {}
     },
     async getDepot() {
-        try {
-            const resp = await fetch(API_BASE + '/config/settings/depot');
-            return await resp.json();
-        } catch(e) { return [-0.1278, 51.5074]; }
+        return JSON.parse(localStorage.getItem('vroom_main_depot') || '[-0.1278, 51.5074]');
     },
     async saveDepot(lon, lat) {
-        await fetch(API_BASE + '/config/settings/depot', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify([lon, lat])
-        });
+        localStorage.setItem('vroom_main_depot', JSON.stringify([lon, lat]));
+        try {
+            await fetch(API_BASE + '/config/settings/depot', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify([lon, lat])
+            });
+        } catch (e) {}
     },
     async migrateFromLocalStorage() {
-        if (localStorage.getItem('vroom_engineers')) {
-            await this.saveEngineers(JSON.parse(localStorage.getItem('vroom_engineers')));
-            localStorage.removeItem('vroom_engineers');
-        }
-        if (localStorage.getItem('vroom_job_lists')) {
-            await this.saveJobLists(JSON.parse(localStorage.getItem('vroom_job_lists')));
-            localStorage.removeItem('vroom_job_lists');
-        }
-        if (localStorage.getItem('vroom_main_depot')) {
-            const depot = JSON.parse(localStorage.getItem('vroom_main_depot'));
-            await this.saveDepot(depot[0], depot[1]);
-            localStorage.removeItem('vroom_main_depot');
+        // If local storage is empty, try to restore from the backend
+        try {
+            if (!localStorage.getItem('vroom_engineers')) {
+                const resp = await fetch(API_BASE + '/config/engineers');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data.length > 0) {
+                        localStorage.setItem('vroom_engineers', JSON.stringify(data));
+                    }
+                }
+            }
+            if (!localStorage.getItem('vroom_job_lists')) {
+                const resp = await fetch(API_BASE + '/config/job-lists');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data.length > 0) {
+                        localStorage.setItem('vroom_job_lists', JSON.stringify(data));
+                    }
+                }
+            }
+
+            // Failsafe: Seed default engineers if everything is completely empty (or if using the previous generic defaults)
+            const currentEngineers = JSON.parse(localStorage.getItem('vroom_engineers') || '[]');
+            if (currentEngineers.length === 0 || (currentEngineers.length > 0 && currentEngineers[0].id === 'eng-1')) {
+                const defaultEngineers = [
+                    {
+                        id: 'eng-joe-watson', name: 'Joe Watson', location: { lat: 51.57967, lon: 0.087600 },
+                        skills: [1001, 1002, 1003, 1005, 1101, 1102, 1103, 1201, 1202, 1203, 1301, 1303, 1401, 1402, 1403, 1501, 1502, 1503, 1701, 1702, 1703, 2201, 2202, 2203],
+                        defaultShiftStart: '08:00', defaultShiftEnd: '17:00', capacity: 8, breakDuration: 30, breakStart: '12:00', breakEnd: '13:00'
+                    },
+                    {
+                        id: 'eng-lee-lynch', name: 'Lee Lynch', location: { lat: 51.64849, lon: -0.07224 },
+                        skills: [1001, 1003, 1005, 1101, 1102, 1103, 1201, 1202, 1203, 1501, 1502, 1503],
+                        defaultShiftStart: '07:30', defaultShiftEnd: '16:00', capacity: 6, breakDuration: 30, breakStart: '11:30', breakEnd: '12:30'
+                    },
+                    {
+                        id: 'eng-andy-mendl', name: 'Andy Mendl', location: { lat: 51.40013, lon: 0.05620 },
+                        skills: [1001, 1002, 1003, 1101, 1102, 1103, 1201, 1202, 1203, 1303, 1401, 1402, 1403, 1501, 1502, 1503, 1701, 1702, 1703, 2301, 2302, 2303],
+                        defaultShiftStart: '08:00', defaultShiftEnd: '16:30', capacity: 7, breakDuration: 45, breakStart: '12:00', breakEnd: '13:00'
+                    },
+                    {
+                        id: 'eng-gopal-patel', name: 'Gopal Patel', location: { lat: 51.43966, lon: 0.13806 },
+                        skills: [1001, 1002, 1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403, 1501, 1502, 1503],
+                        defaultShiftStart: '07:00', defaultShiftEnd: '15:30', capacity: 6, breakDuration: 30, breakStart: '11:00', breakEnd: '12:00'
+                    },
+                    {
+                        id: 'eng-jerry-ponzi', name: 'Jerry Ponzi', location: { lat: 51.43729, lon: -0.31579 },
+                        skills: [1001, 1002, 1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403, 1501, 1502],
+                        defaultShiftStart: '09:00', defaultShiftEnd: '17:00', capacity: 5, breakDuration: 30, breakStart: '13:00', breakEnd: '14:00'
+                    },
+                    {
+                        id: 'eng-vivek-arumugam', name: 'Vivek Arumugam', location: { lat: 51.51898, lon: -0.17466 },
+                        skills: [1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403, 1503],
+                        defaultShiftStart: '08:00', defaultShiftEnd: '17:00', capacity: 8, breakDuration: 45, breakStart: '12:30', breakEnd: '13:30'
+                    },
+                    {
+                        id: 'eng-mukesh-kerai', name: 'Mukesh Kerai', location: { lat: 51.53710, lon: -0.18336 },
+                        skills: [1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403],
+                        defaultShiftStart: '07:30', defaultShiftEnd: '15:30', capacity: 5, breakDuration: 30, breakStart: '11:30', breakEnd: '12:30'
+                    },
+                    {
+                        id: 'eng-garry-brown', name: 'Garry Brown', location: { lat: 51.51373, lon: -0.12698 },
+                        skills: [1101, 1102, 1103, 1201, 1202, 1203, 1501, 1502, 1503],
+                        defaultShiftStart: '08:30', defaultShiftEnd: '17:30', capacity: 6, breakDuration: 30, breakStart: '13:00', breakEnd: '14:00'
+                    },
+                    {
+                        id: 'eng-owen-leach', name: 'Owen Leach', location: { lat: 52.48196, lon: -1.86036 },
+                        skills: [1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403],
+                        defaultShiftStart: '07:00', defaultShiftEnd: '16:00', capacity: 7, breakDuration: 30, breakStart: '11:00', breakEnd: '12:00'
+                    },
+                    {
+                        id: 'eng-dave-gibson', name: 'Dave Gibson', location: { lat: 51.65575, lon: -0.02181 },
+                        skills: [1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403],
+                        defaultShiftStart: '08:00', defaultShiftEnd: '16:00', capacity: 4, breakDuration: 30, breakStart: '12:00', breakEnd: '13:00'
+                    }
+                ];
+                await this.saveEngineers(defaultEngineers);
+            }
+        } catch (e) {
+            console.warn('Backend sync failed, falling back to local storage.');
         }
     }
 };
@@ -99,246 +167,11 @@ function toggleChatPanel() {
     }
 }
 
-function openEngineerCardsModal() {
-    const modal = document.getElementById('engineers-cards-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        renderEngineerCardsModal();
-    }
-}
+function openEngineerCardsModal() { /* Removed — functionality in breakdown panel */ }
+function closeEngineerCardsModal() { /* Removed */ }
+function openActivityOverlay() { /* Removed — panel is always visible */ }
+function closeActivityOverlay() { /* Removed */ }
 
-function closeEngineerCardsModal() {
-    const modal = document.getElementById('engineers-cards-modal');
-    if (modal) {
-        modal.style.display = 'none';
-        currentEngineerModalGroup = null; // Reset on close
-    }
-}
-
-let currentEngineerModalGroup = null;
-
-function renderEngineerCardsModal() {
-    const sel = document.getElementById('day-filter-select');
-    const result = state.currentResult;
-    if (!result || !result.scenario_state) return;
-
-    const dayValue = sel ? sel.value : 'all';
-    
-    // Build routes
-    const routes = [];
-    const filterDayPattern = dayValue === 'all' ? null : `_Day${parseInt(dayValue)}`;
-
-    (result.scenario_state?.vehicles || []).forEach(v => {
-        if (!filterDayPattern || (v.name || '').endsWith(filterDayPattern)) {
-            const existingRoute = (result.routes_data || []).find(rd => rd.vehicle_id === v.id);
-            if (existingRoute) {
-                // Clone the route so we don't mutate the original result data when grouping
-                routes.push(JSON.parse(JSON.stringify(existingRoute)));
-            } else {
-                routes.push({
-                    vehicle_id: v.id,
-                    vehicle_name: v.name,
-                    vehicle_skills: v.skills || [],
-                    num_jobs_assigned: 0,
-                    legs: [],
-                    activity_log: [],
-                    idle: true
-                });
-            }
-        }
-    });
-
-    const grid = document.getElementById('engineers-cards-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    if (dayValue === 'all') {
-        // Hierarchical Grouping
-        const groupedMap = new Map();
-        routes.forEach(rd => {
-            const parsed = parseEngineerName(rd.vehicle_name, rd.vehicle_id);
-            const groupKey = `${parsed.name}_${parsed.id}`;
-            if (!groupedMap.has(groupKey)) {
-                groupedMap.set(groupKey, {
-                    baseName: parsed.name,
-                    origId: parsed.id,
-                    displayName: parsed.id ? `${parsed.name} (ID: ${parsed.id})` : parsed.name,
-                    routes: []
-                });
-            }
-            groupedMap.get(groupKey).routes.push({ ...rd, parsed });
-        });
-        
-        if (currentEngineerModalGroup && groupedMap.has(currentEngineerModalGroup)) {
-            // Screen 2: Engineer Days View
-            const backContainer = document.createElement('div');
-            backContainer.style.gridColumn = '1 / -1';
-            backContainer.style.marginBottom = '8px';
-            
-            const backBtn = document.createElement('button');
-            backBtn.className = 'yx-btn yx-btn-secondary yx-btn-sm';
-            backBtn.innerHTML = '← Back to All Engineers';
-            backBtn.onclick = () => {
-                currentEngineerModalGroup = null;
-                renderEngineerCardsModal();
-            };
-            backContainer.appendChild(backBtn);
-            grid.appendChild(backContainer);
-            
-            const group = groupedMap.get(currentEngineerModalGroup);
-            group.routes.sort((a,b) => a.parsed.day - b.parsed.day).forEach(rd => {
-                grid.appendChild(createDayCard(rd));
-            });
-            
-        } else {
-            // Screen 1: All Engineers View
-            groupedMap.forEach((group, key) => {
-                // Aggregate stats across all days
-                let totalJobs = 0, totalWorkTime = 0, totalTravelTime = 0;
-                group.routes.forEach(rd => {
-                    if (!rd.idle) {
-                        totalJobs += (rd.num_jobs_assigned || 0);
-                        const actService = rd.activity_log?.filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0) || 0;
-                        const legDuration = rd.legs?.reduce((s, l) => s + (l.duration_s || 0), 0) || 0;
-                        totalWorkTime += actService + legDuration;
-                        totalTravelTime += legDuration;
-                    }
-                });
-                const allIdle = group.routes.every(r => r.idle);
-
-                // Top Level Engineer Card
-                const card = document.createElement('div');
-                card.className = `engineer-stat-card ${allIdle ? 'idle' : ''}`;
-                card.style.cursor = 'pointer';
-                card.onclick = () => {
-                    currentEngineerModalGroup = key;
-                    renderEngineerCardsModal();
-                };
-
-                const ci = Array.from(groupedMap.keys()).indexOf(key) % ROUTE_COLORS.length;
-                const color = allIdle ? '#9e9e9e' : ROUTE_COLORS[ci];
-
-                card.innerHTML = `
-                    <div class="eng-card-header">
-                        <div class="eng-card-avatar" style="background-color: ${color}">${group.displayName.charAt(0)}</div>
-                        <div>
-                            <div class="eng-card-title">${group.displayName}</div>
-                            <div class="eng-card-subtitle" style="font-size:11px; margin-top:2px;">Weekly Summary: ${allIdle ? 'Idle' : 'Active'}</div>
-                        </div>
-                    </div>
-                    <div class="eng-card-body">
-                        <div class="eng-stat-row">
-                            <span class="eng-stat-label">Total Jobs</span>
-                            <span class="eng-stat-val highlight">${totalJobs}</span>
-                        </div>
-                        <div class="eng-stat-row">
-                            <span class="eng-stat-label">Total Work</span>
-                            <span class="eng-stat-val">${formatDuration(totalWorkTime)}</span>
-                        </div>
-                        <div class="eng-stat-row">
-                            <span class="eng-stat-label">Total Travel</span>
-                            <span class="eng-stat-val">${formatDuration(totalTravelTime)}</span>
-                        </div>
-                        <div class="eng-stat-row" style="margin-top:10px; justify-content:center;">
-                            <span style="color:var(--primary-color); font-size:12px; font-weight:600;">View Daily Breakdown →</span>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-    } else {
-        // Just show cards for the specific day
-        routes.forEach(rd => {
-            const rdClone = {...rd, parsed: parseEngineerName(rd.vehicle_name, rd.vehicle_id)};
-            grid.appendChild(createDayCard(rdClone));
-        });
-    }
-}
-
-function createDayCard(rd) {
-    const eid = rd.vehicle_id;
-    const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
-    const color = rd.idle ? '#9e9e9e' : ROUTE_COLORS[ci];
-    
-    const jobs = rd.num_jobs_assigned || 0;
-    
-    let originText = "N/A";
-    let destText = "N/A";
-    let workTime = "0h 0m";
-    let travelTime = "0h 0m";
-
-    if (!rd.idle) {
-        const activities = rd.activity_log || [];
-        const starts = activities.filter(a => a.action === 'start');
-        const ends = activities.filter(a => a.action === 'end');
-        
-        if (starts.length) originText = formatTime(starts[0].time);
-        if (ends.length) destText = formatTime(ends[ends.length-1].time);
-        
-        const totalDuration = (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0)
-            + activities.filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0);
-        
-        const totalTravel = (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0);
-        
-        workTime = formatDuration(totalDuration);
-        travelTime = formatDuration(totalTravel);
-    }
-
-    const card = document.createElement('div');
-    const isSelected = selectedEngineers.has(eid);
-    
-    card.className = `engineer-stat-card ${rd.idle ? 'idle' : ''} ${isSelected ? 'selected' : ''}`;
-    // Add styling for selected state (yunex blue tint)
-    if (isSelected) {
-        card.style.border = '2px solid var(--primary-color)';
-        card.style.backgroundColor = 'rgba(0, 153, 153, 0.05)';
-    }
-    
-    card.style.cursor = 'pointer';
-    card.onclick = () => {
-        toggleEngineer(eid);
-        // Refresh the modal to update selection styles immediately
-        renderEngineerCardsModal();
-    };
-
-    const displayTitle = rd.parsed ? `Day ${rd.parsed.day}` : (rd.vehicle_name || 'Engineer ' + eid);
-    const subtitleText = rd.parsed?.id ? `${rd.parsed.name} (ID: ${rd.parsed.id})` : '';
-
-    card.innerHTML = `
-        <div class="eng-card-header">
-            <div class="eng-card-avatar" style="background-color: ${color}">${displayTitle.charAt(0)}</div>
-            <div>
-                <div class="eng-card-title">${displayTitle}</div>
-                <div class="eng-card-subtitle">${subtitleText}</div>
-                <div class="eng-card-subtitle" style="font-size:11px; margin-top:2px;">${rd.idle ? 'Idle - No routes assigned' : 'Active Shift'}</div>
-            </div>
-        </div>
-        <div class="eng-card-body">
-            <div class="eng-stat-row">
-                <span class="eng-stat-label">Jobs Attended</span>
-                <span class="eng-stat-val highlight">${jobs}</span>
-            </div>
-            <div class="eng-stat-row">
-                <span class="eng-stat-label">Origin Departure</span>
-                <span class="eng-stat-val">${originText}</span>
-            </div>
-            <div class="eng-stat-row">
-                <span class="eng-stat-label">Dest. Arrival</span>
-                <span class="eng-stat-val">${destText}</span>
-            </div>
-            <div class="eng-stat-row">
-                <span class="eng-stat-label">Working Time</span>
-                <span class="eng-stat-val">${workTime}</span>
-            </div>
-            <div class="eng-stat-row">
-                <span class="eng-stat-label">Travel Time</span>
-                <span class="eng-stat-val">${travelTime}</span>
-            </div>
-        </div>
-    `;
-    return card;
-}
 
 function sendQuickPrompt(text) {
     const input = document.getElementById('chat-input');
@@ -426,79 +259,28 @@ const URGENCY_COLORS = {
     critical: '#F47738', high: '#FFE564', medium: '#9DBBFF', low: '#00E38C',
 };
 
-// ═══ State ═══════════════════════════════════════════════
-let selectedEngineers = new Set();
-
-function toggleEngineer(eids) {
-    if (!Array.isArray(eids)) eids = [eids];
-    
-    // Check if the first one is selected to determine toggle state
-    const isSelected = selectedEngineers.has(eids[0]);
-    if (isSelected) {
-        eids.forEach(id => selectedEngineers.delete(id));
-    } else {
-        eids.forEach(id => selectedEngineers.add(id));
-    }
-    updateSelections();
-}
-
-function updateSelections() {
-    const hasSelection = selectedEngineers.size > 0;
-    
-    // Update Map Routes
+// ═══ Highlight System (for hover-to-highlight) ═══════════════
+function highlightEngineerRoutes(engineerKey) {
+    // engineerKey is the base name (before _Day)
     if (routeLayerGroup) {
         routeLayerGroup.eachLayer(layer => {
-            if (!hasSelection || selectedEngineers.has(layer.engineerId)) {
-                layer.setStyle({ opacity: 0.8, weight: layer._baseWeight || 3 });
+            const rd = state.currentResult?.routes_data?.find(r => r.vehicle_id === layer.engineerId);
+            const baseName = rd ? (rd.vehicle_name || '').split('_Day')[0] : '';
+            if (baseName === engineerKey) {
+                layer.setStyle({ opacity: 1, weight: (layer._baseWeight || 3) + 2 });
             } else {
-                layer.setStyle({ opacity: 0.15, weight: 2 });
+                layer.setStyle({ opacity: 0.12, weight: 2 });
             }
         });
     }
+}
 
-    // Update Depot Markers
-    if (depotLayerGroup) {
-        depotLayerGroup.eachLayer(layer => {
-            const el = layer.getElement();
-            if (el) {
-                if (!hasSelection || selectedEngineers.has(layer.engineerId)) {
-                    el.style.opacity = '1';
-                } else {
-                    el.style.opacity = '0.3';
-                }
-            }
+function unhighlightEngineerRoutes() {
+    if (routeLayerGroup) {
+        routeLayerGroup.eachLayer(layer => {
+            layer.setStyle({ opacity: 0.8, weight: layer._baseWeight || 3 });
         });
     }
-
-    // Update Animation Markers
-    if (animState.markerLayer) {
-        animState.markerLayer.eachLayer(layer => {
-            const el = layer.getElement();
-            if (el) {
-                if (!hasSelection || selectedEngineers.has(layer.engineerId)) {
-                    el.style.opacity = '1';
-                    el.style.filter = 'none';
-                } else {
-                    el.style.opacity = '0.3';
-                    el.style.filter = 'grayscale(100%)';
-                }
-            }
-        });
-    }
-
-    // Update Engineer Cards
-    document.querySelectorAll('.engineer-card').forEach(card => {
-        const eid = Number(card.dataset.engineerId);
-        if (!hasSelection || selectedEngineers.has(eid)) {
-            card.style.opacity = '1';
-            card.style.borderLeft = selectedEngineers.has(eid) ? '4px solid #1E2ED9' : '4px solid transparent';
-            card.style.backgroundColor = selectedEngineers.has(eid) ? '#F7FAFB' : 'white';
-        } else {
-            card.style.opacity = '0.4';
-            card.style.borderLeft = '4px solid transparent';
-            card.style.backgroundColor = 'white';
-        }
-    });
 }
 
 let state = {
@@ -509,7 +291,9 @@ let state = {
     currentResult: null,
     history: [],
     remixHistory: [],
-    chatHistory: []
+    chatHistory: [],
+    selectedLegId: null,
+    selectedJobId: null
 };
 
 let map = null;
@@ -563,6 +347,13 @@ function initMap() {
     routeLayerGroup = L.layerGroup().addTo(map);
     jobLayerGroup = L.layerGroup().addTo(map);
     depotLayerGroup = L.layerGroup().addTo(map);
+    map.on('click', () => {
+        if (state.selectedLegId || state.selectedJobId) {
+            state.selectedLegId = null;
+            state.selectedJobId = null;
+            applyFilters();
+        }
+    });
 }
 
 // ═══ Sliders ═════════════════════════════════════════════
@@ -680,10 +471,10 @@ async function runSimulation(replayScenario = null) {
         state.currentResult = result;
         renderMap(result);
         populateDaySelector(result);
+        populateEngineerSelector(result);
         showResults(result);
         renderEngineerStats(result.routes_data || []);
-        populateLogDropdown(result.routes_data || []);
-        renderActivityLog();
+        applyFilters();
         $('#download-section').style.display = 'block';
         setupAnimation(result);
         await loadHistory();
@@ -704,9 +495,6 @@ function renderMap(result, filterVehicleIds = null) {
     depotLayerGroup.clearLayers();
     const bounds = L.latLngBounds();
 
-    selectedEngineers.clear();
-    updateSelections();
-
     // Draw routes
     if (result.routes_geojson?.features) {
         result.routes_geojson.features.forEach((f, idx) => {
@@ -714,28 +502,94 @@ function renderMap(result, filterVehicleIds = null) {
             const eid = f.properties.engineer_id;
             // Skip if day filter is active and this vehicle isn't in the filter set
             if (filterVehicleIds && !filterVehicleIds.has(eid)) return;
-            const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
+            
+            const routeData = result.routes_data?.find(r => r.vehicle_id === eid);
+            const baseId = getBaseEngineerId(eid, routeData?.vehicle_name);
+            const ci = ((baseId - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
             const color = ROUTE_COLORS[ci];
             const mult = f.properties.traffic_multiplier || 1.0;
+            const isSelected = state.selectedLegId === f.properties.leg_id;
+            
             let lineColor = color, weight = 3;
             if (mult > 2.0) { lineColor = '#ef4444'; weight = 4; }
             else if (mult > 1.3) { lineColor = '#f97316'; weight = 3.5; }
+            
+            let opacity = 0.8;
+            if (state.selectedLegId) {
+                if (isSelected) {
+                    opacity = 1.0;
+                    weight += 4;
+                    lineColor = '#FFEB3B';
+                } else {
+                    opacity = 0.3;
+                }
+            }
 
-            const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
-            const pl = L.polyline(coords, { color: lineColor, weight, opacity: 0.8, smoothFactor: 1 });
+            // Add a small deterministic jitter based on engineer ID so overlapping routes render side-by-side
+            const jitter = ((baseId * 137) % 9 - 4) * 0.00006; 
+            const coords = f.geometry.coordinates.map(c => [c[1] + jitter, c[0] + jitter]);
+            const pl = L.polyline(coords, { color: lineColor, weight, opacity, smoothFactor: 1 });
             pl.engineerId = eid;
             pl._baseWeight = weight;
-            pl.on('click', () => toggleEngineer(eid));
-            const routeData = result.routes_data?.find(r => r.vehicle_id === eid);
+            
+            pl.on('mouseover', (e) => {
+                if (state.selectedLegId !== f.properties.leg_id) {
+                    e.target.setStyle({ weight: weight + 2, opacity: 1.0 });
+                }
+                e.target.bringToFront();
+            });
+            
+            pl.on('mouseout', (e) => {
+                if (state.selectedLegId !== f.properties.leg_id) {
+                    e.target.setStyle({ weight: weight, opacity: state.selectedLegId ? 0.3 : 0.8 });
+                }
+            });
+            
+            pl.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                state.selectedLegId = f.properties.leg_id;
+                state.selectedJobId = null;
+                const rd = result.routes_data?.find(r => r.vehicle_id === eid);
+                const baseName = rd ? (rd.vehicle_name || '').split('_Day')[0] : '';
+                const engSel = document.getElementById('engineer-filter-select');
+                if (engSel) { engSel.value = baseName; applyFilters(); }
+            });
+
+            const legData = routeData?.legs?.find(l => l.leg_id === f.properties.leg_id);
+            let departTime = '--:--', arriveTime = '--:--', fromDesc = 'Unknown', toDesc = 'Unknown';
+            if (legData) {
+                const travelLog = routeData?.activity_log?.find(a => a.action === 'travel' && a.timestamp_unix === legData.depart_unix);
+                if (travelLog) {
+                    departTime = travelLog.time_of_day;
+                    const arriveUnix = legData.arrive_unix;
+                    const d = new Date(arriveUnix * 1000);
+                    arriveTime = d.getUTCHours().toString().padStart(2, '0') + ':' + d.getUTCMinutes().toString().padStart(2, '0');
+                    
+                    const descMatch = travelLog.description.match(/Drive (.*?) → (.*)/);
+                    if (descMatch) {
+                        fromDesc = descMatch[1];
+                        toDesc = descMatch[2];
+                    }
+                }
+            }
+
             const parsed = parseEngineerName(routeData?.vehicle_name, eid);
             pl.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px">
                 <strong>${parsed.displayName}</strong><br>
-                <span style="color:#888">Leg:</span> ${f.properties.leg_id}<br>
-                <span style="color:#888">Traffic:</span> ${mult}x<br>
+                <span style="color:#888">Journey:</span> ${fromDesc} &rarr; ${toDesc}<br>
+                <span style="color:#888">Departure:</span> ${departTime}<br>
+                <span style="color:#888">Arrival:</span> ${arriveTime}<br>
+                <span style="color:#888">Traffic Penalty:</span> ${mult}x<br>
                 <span style="color:#888">Duration:</span> ${formatDuration(f.properties.duration_s)}
             </div>`);
             routeLayerGroup.addLayer(pl);
-            coords.forEach(c => bounds.extend(c));
+            
+            if (isSelected) {
+                setTimeout(() => pl.openPopup(), 100);
+            }
+            coords.forEach(c => {
+                if (c[0] !== 0 || c[1] !== 0) bounds.extend(c);
+            });
         });
     }
 
@@ -744,7 +598,8 @@ function renderMap(result, filterVehicleIds = null) {
         result.routes_data.forEach(rd => {
             const eid = rd.vehicle_id;
             if (filterVehicleIds && !filterVehicleIds.has(eid)) return;
-            const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
+            const baseId = getBaseEngineerId(eid, rd.vehicle_name);
+            const ci = ((baseId - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
             const color = ROUTE_COLORS[ci];
 
             if (rd.vehicle_start) {
@@ -756,7 +611,11 @@ function renderMap(result, filterVehicleIds = null) {
                     }),
                 });
                 dm.engineerId = eid;
-                dm.on('click', () => toggleEngineer(eid));
+                dm.on('click', () => {
+                    const baseName = (rd.vehicle_name || '').split('_Day')[0];
+                    const engSel = document.getElementById('engineer-filter-select');
+                    if (engSel) { engSel.value = baseName; applyFilters(); }
+                });
                 const parsed = parseEngineerName(rd.vehicle_name, eid);
                 dm.bindPopup(`<div style="font-family:Inter,sans-serif;font-size:12px">
                     <strong>Depot -- ${parsed.displayName}</strong><br>
@@ -764,7 +623,9 @@ function renderMap(result, filterVehicleIds = null) {
                     <span style="color:#888">Skills:</span> ${(rd.vehicle_skills || []).join(', ') || 'None'}
                 </div>`);
                 depotLayerGroup.addLayer(dm);
-                bounds.extend([rd.vehicle_start[1], rd.vehicle_start[0]]);
+                if (rd.vehicle_start[1] !== 0 || rd.vehicle_start[0] !== 0) {
+                    bounds.extend([rd.vehicle_start[1], rd.vehicle_start[0]]);
+                }
             }
         });
     }
@@ -783,11 +644,27 @@ function renderMap(result, filterVehicleIds = null) {
             const color = URGENCY_COLORS[urgency] || URGENCY_COLORS.medium;
             const skills = p.required_skills || [];
 
+            const isSelected = state.selectedJobId === p.job_id;
             const m = L.circleMarker([lat, lon], {
-                radius: assigned ? 6 : 8,
-                fillColor: color,
-                color: assigned ? '#fff' : '#ff4444',
-                weight: assigned ? 1 : 2, opacity: 1, fillOpacity: 0.85,
+                radius: isSelected ? 12 : (assigned ? 6 : 8),
+                fillColor: isSelected ? '#FFEB3B' : color,
+                color: isSelected ? '#FF9800' : (assigned ? '#fff' : '#ff4444'),
+                weight: isSelected ? 3 : (assigned ? 1 : 2), 
+                opacity: 1, 
+                fillOpacity: isSelected ? 1 : 0.85,
+            });
+            
+            m.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                state.selectedJobId = p.job_id;
+                state.selectedLegId = null;
+                if (assigned) {
+                    const assignedRd = result.routes_data?.find(r => r.vehicle_id === p.assigned_engineer_id);
+                    const baseName = (assignedRd?.vehicle_name || '').split('_Day')[0];
+                    const engSel = document.getElementById('engineer-filter-select');
+                    if (engSel) { engSel.value = baseName; }
+                }
+                applyFilters();
             });
             let assignedStr = '';
             if (assigned) {
@@ -805,7 +682,13 @@ function renderMap(result, filterVehicleIds = null) {
                 ${p.description ? `<span style="color:#888">Desc:</span> ${p.description}` : ''}
             </div>`);
             jobLayerGroup.addLayer(m);
-            bounds.extend([lat, lon]);
+            if (isSelected) {
+                setTimeout(() => m.openPopup(), 100);
+                m.bringToFront();
+            }
+            if (lat !== 0 || lon !== 0) {
+                bounds.extend([lat, lon]);
+            }
         });
     }
 
@@ -814,10 +697,28 @@ function renderMap(result, filterVehicleIds = null) {
 
 // ═══ Results ═════════════════════════════════════════════
 function showResults(result) {
-    const s = result.vroom_summary || {};
+    const s = result.summary || result.vroom_summary || {};
+    
+    // Compute fallbacks from routes_data if missing in summary
+    let totalJobs = s.assigned || s.jobs_assigned;
+    let totalDuration = s.duration;
+    
+    if (!totalJobs || !totalDuration) {
+        const rds = result.routes_data || [];
+        if (!totalJobs) {
+            totalJobs = rds.reduce((sum, rd) => sum + (rd.num_jobs_assigned || 0), 0);
+        }
+        if (!totalDuration) {
+            totalDuration = rds.reduce((sum, rd) => {
+                return sum + (rd.legs || []).reduce((val, l) => val + (l.duration_s || 0), 0)
+                    + (rd.activity_log || []).filter(a => a.action === 'service').reduce((val, a) => val + (a.duration_s || 0), 0);
+            }, 0);
+        }
+    }
+
     $('#stat-test-num').textContent = result.test_number ? `#${result.test_number}` : '--';
-    $('#stat-routes').textContent = s.routes || '--';
-    $('#stat-duration').textContent = formatDuration(s.duration);
+    $('#stat-jobs').textContent = totalJobs || '0';
+    $('#stat-duration').textContent = formatDuration(totalDuration);
     $('#stat-unassigned').textContent = s.unassigned || '0';
     $('#stat-strategy').textContent = formatStrategy(result.strategy);
     $('#results-summary').classList.add('visible');
@@ -850,8 +751,8 @@ function populateDaySelector(result) {
         sel.parentElement.style.display = '';
     }
 
-    const engBtn = document.getElementById('all-engineers-btn-wrapper');
-    if (engBtn) engBtn.style.display = 'flex';
+    const engBtn = document.getElementById('engineer-selector-wrapper');
+    if (engBtn) engBtn.style.display = '';
 
     // Sort by day number and build options
     const sortedDays = Array.from(dayMap.keys()).sort((a, b) => a - b);
@@ -864,72 +765,359 @@ function populateDaySelector(result) {
     });
 }
 
-function filterByDay() {
-    const sel = document.getElementById('day-filter-select');
+// ═══ Unified Filter System ═══════════════════════════════
+function populateEngineerSelector(result) {
+    const sel = document.getElementById('engineer-filter-select');
+    if (!sel) return;
+    sel.innerHTML = '<option value="all">All Engineers</option>';
+
+    // Parse unique base engineer names
+    const engineerMap = new Map();
+    (result.scenario_state?.vehicles || []).forEach(v => {
+        const baseName = (v.name || '').split('_Day')[0];
+        if (!engineerMap.has(baseName)) {
+            const parsed = parseEngineerName(v.name, v.id);
+            engineerMap.set(baseName, parsed.id ? `${parsed.name} (ID: ${parsed.id})` : parsed.name);
+        }
+    });
+
+    engineerMap.forEach((displayName, key) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = displayName;
+        sel.appendChild(opt);
+    });
+
+    document.getElementById('engineer-selector-wrapper').style.display = '';
+}
+
+function applyFilters() {
     const result = state.currentResult;
-    if (!sel || !result) return;
+    if (!result) return;
 
-    const dayValue = sel.value;
+    const daySel = document.getElementById('day-filter-select');
+    const engSel = document.getElementById('engineer-filter-select');
+    const dayValue = daySel ? daySel.value : 'all';
+    const engValue = engSel ? engSel.value : 'all';
 
-    // Helper to build routes including idle ones
-    const buildRoutes = (filterDayPattern) => {
-        const routes = [];
-        const activeVehicleIds = new Set();
-        (result.scenario_state?.vehicles || []).forEach(v => {
-            if (!filterDayPattern || (v.name || '').endsWith(filterDayPattern)) {
-                activeVehicleIds.add(v.id);
-                const existingRoute = (result.routes_data || []).find(rd => rd.vehicle_id === v.id);
-                if (existingRoute) {
-                    routes.push(existingRoute);
-                } else {
-                    routes.push({
-                        vehicle_id: v.id,
-                        vehicle_name: v.name,
-                        vehicle_skills: v.skills || [],
-                        num_jobs_assigned: 0,
-                        legs: [],
-                        activity_log: [],
-                        idle: true
-                    });
+    // Clear selected leg/job when returning to all engineers
+    if (engValue === 'all' && (state.selectedLegId || state.selectedJobId)) {
+        state.selectedLegId = null;
+        state.selectedJobId = null;
+    }
+
+    // Build the set of vehicle_ids that match both filters
+    const matchingVehicleIds = new Set();
+    const matchingRoutes = [];
+
+    (result.scenario_state?.vehicles || []).forEach(v => {
+        const name = v.name || '';
+        const baseName = name.split('_Day')[0];
+        const dayMatch = name.match(/_Day(\d+)$/);
+        const dayNum = dayMatch ? parseInt(dayMatch[1]) : null;
+
+        // Day filter
+        if (dayValue !== 'all' && dayNum !== null && dayNum !== parseInt(dayValue)) return;
+        if (dayValue !== 'all' && dayNum === null) return; // skip if no day tag and day filter is active
+
+        // Engineer filter
+        if (engValue !== 'all' && baseName !== engValue) return;
+
+        matchingVehicleIds.add(v.id);
+
+        const existingRoute = (result.routes_data || []).find(rd => rd.vehicle_id === v.id);
+        if (existingRoute) {
+            matchingRoutes.push(existingRoute);
+        } else {
+            matchingRoutes.push({
+                vehicle_id: v.id,
+                vehicle_name: v.name,
+                vehicle_skills: v.skills || [],
+                num_jobs_assigned: 0,
+                legs: [],
+                activity_log: [],
+                idle: true
+            });
+        }
+    });
+
+    // Update map
+    const filterSet = (dayValue === 'all' && engValue === 'all') ? null : matchingVehicleIds;
+    renderMap(result, filterSet);
+
+    // Update top bar stats
+    if (dayValue === 'all' && engValue === 'all') {
+        showResults(result);
+    } else {
+        const totalDuration = matchingRoutes.reduce((sum, rd) => {
+            return sum + (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0)
+                + (rd.activity_log || []).filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0);
+        }, 0);
+        const totalJobs = matchingRoutes.reduce((sum, rd) => sum + (rd.num_jobs_assigned || 0), 0);
+        const activeRoutes = matchingRoutes.filter(r => !r.idle).length;
+
+        let label = '';
+        if (dayValue !== 'all') {
+            const dayNum = parseInt(dayValue);
+            label = DAY_NAMES[(dayNum - 1) % 7] || `Day ${dayNum}`;
+        }
+        if (engValue !== 'all') {
+            label = label ? `${label}` : engValue.split('|')[0];
+        }
+
+        $('#stat-test-num').textContent = label || '--';
+        $('#stat-jobs').textContent = totalJobs;
+        $('#stat-duration').textContent = formatDuration(totalDuration);
+        $('#results-summary').classList.add('visible');
+    }
+
+    // Update engineer stats sidebar
+    renderEngineerStats(matchingRoutes);
+
+    // Update breakdown panel
+    const isAllEngineers = (engValue === 'all');
+    renderBreakdownPanel(matchingRoutes, isAllEngineers);
+
+    // Show the breakdown panel
+    const overlay = document.getElementById('activity-overlay');
+    if (overlay) overlay.style.display = matchingRoutes.length > 0 ? 'flex' : 'none';
+}
+
+// ═══ Breakdown Panel (replaces old Activity Log) ═════════
+function renderBreakdownPanel(routes, isRosterMode) {
+    const c = document.getElementById('activity-log');
+    const e = document.getElementById('log-empty');
+    if (!c || !e) return;
+    c.innerHTML = '';
+    c.appendChild(e);
+
+    if (!routes.length) {
+        e.style.display = 'block';
+        return;
+    }
+    e.style.display = 'none';
+
+    if (isRosterMode) {
+        // ── Global Dashboard Mode ──
+        let totalTravelTime = 0;
+        let totalServiceTime = 0;
+        let totalJobs = 0;
+        let activeShifts = 0;
+        let idleShifts = 0;
+        let maxMultiplier = 1;
+        const engineerPenalties = new Map();
+        const engineerTotalJobs = new Map();
+        const engineerParsed = new Map();
+
+        routes.forEach(rd => {
+            const parsed = parseEngineerName(rd.vehicle_name, rd.vehicle_id);
+            const baseName = parsed.id ? `${parsed.name} (${parsed.id})` : parsed.name;
+
+            if (!engineerTotalJobs.has(baseName)) {
+                engineerTotalJobs.set(baseName, 0);
+                engineerParsed.set(baseName, parsed);
+            }
+            engineerTotalJobs.set(baseName, engineerTotalJobs.get(baseName) + (rd.num_jobs_assigned || 0));
+
+            if (rd.idle || !rd.num_jobs_assigned) {
+                idleShifts++;
+                return;
+            }
+            activeShifts++;
+            totalJobs += rd.num_jobs_assigned;
+            
+            let engMaxMult = 1;
+
+            (rd.legs || []).forEach(l => totalTravelTime += (l.duration_s || 0));
+            (rd.activity_log || []).forEach(a => {
+                if (a.action === 'service') totalServiceTime += (a.duration_s || 0);
+                if (a.action === 'travel' && a.traffic_multiplier > 1) {
+                    if (a.traffic_multiplier > engMaxMult) engMaxMult = a.traffic_multiplier;
+                    if (a.traffic_multiplier > maxMultiplier) maxMultiplier = a.traffic_multiplier;
+                }
+            });
+
+            if (engMaxMult > 1) {
+                if (!engineerPenalties.has(baseName) || engMaxMult > engineerPenalties.get(baseName)) {
+                    engineerPenalties.set(baseName, engMaxMult);
                 }
             }
         });
-        return { routes, activeVehicleIds };
-    };
 
-    if (dayValue === 'all') {
-        const { routes: allRoutes } = buildRoutes(null);
-        renderMap(result);
-        showResults(result);
-        renderEngineerStats(allRoutes);
-        populateLogDropdown(allRoutes);
-        renderActivityLog();
-        return;
+        const idleEngineers = [];
+        engineerTotalJobs.forEach((jobs, baseName) => {
+            if (jobs === 0) {
+                idleEngineers.push(engineerParsed.get(baseName));
+            }
+        });
+
+        // Top 3 penalized engineers
+        const topPenalties = Array.from(engineerPenalties.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+
+        const totalActiveTime = totalTravelTime + totalServiceTime;
+        const drivePct = totalActiveTime > 0 ? (totalTravelTime / totalActiveTime * 100).toFixed(1) : 0;
+        const servicePct = totalActiveTime > 0 ? (totalServiceTime / totalActiveTime * 100).toFixed(1) : 0;
+        const avgTravelPerJob = totalJobs > 0 ? totalTravelTime / totalJobs : 0;
+
+        const dash = document.createElement('div');
+        dash.style.padding = '12px';
+        
+        let penaltyHtml = '';
+        if (topPenalties.length > 0) {
+            penaltyHtml = `
+                <h4 style="font-size:12px; color:var(--app-fg-muted); margin-bottom:8px; text-transform:uppercase;">Highest Traffic Delays</h4>
+                <div class="dashboard-list">
+                    ${topPenalties.map(p => `
+                        <div class="dashboard-list-item">
+                            <span class="name">${p[0]}</span>
+                            <span class="meta">${p[1].toFixed(1)}x multiplier</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            penaltyHtml = `<p style="font-size:12px; color:var(--app-fg-muted); font-style:italic;">No traffic penalties detected.</p>`;
+        }
+        
+        let idleHtml = '';
+        if (idleEngineers.length > 0) {
+            idleHtml = `
+                <h4 style="font-size:12px; color:var(--app-fg-muted); margin-bottom:8px; margin-top:24px; text-transform:uppercase;">Unused Engineers</h4>
+                <div class="dashboard-list">
+                    ${idleEngineers.map(e => `
+                        <div class="dashboard-list-item" style="background: var(--app-bg-muted); border-style: dashed;">
+                            <span class="name" style="color: var(--app-fg-muted);">
+                                ${e.id ? `<span style="opacity: 0.5; color: #888;">#${e.id}</span> ` : ''}${e.name}
+                            </span>
+                            <span class="meta" style="color: var(--app-fg-muted); font-weight: normal; font-size: 11px;">Idle</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        dash.innerHTML = `
+            <div class="dashboard-stat-grid">
+                <div class="dashboard-stat-card">
+                    <h4>Avg Travel / Job</h4>
+                    <div class="val">${formatDuration(avgTravelPerJob)}</div>
+                </div>
+                <div class="dashboard-stat-card">
+                    <h4>Idle Shifts</h4>
+                    <div class="val" style="color:var(--color-danger)">${idleShifts}</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:24px;">
+                <h4 style="font-size:12px; color:var(--app-fg-muted); margin-bottom:4px; text-transform:uppercase;">Time Utilization</h4>
+                <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:4px;">
+                    <span style="color:var(--yx-royal-blue)">Driving (${drivePct}%)</span>
+                    <span style="color:var(--color-success)">On Jobs (${servicePct}%)</span>
+                </div>
+                <div class="dashboard-bar-chart">
+                    <div style="width:${drivePct}%; background:var(--yx-royal-blue);"></div>
+                    <div style="width:${servicePct}%; background:var(--color-success);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--app-fg-muted); margin-top:4px;">
+                    <span>${formatDuration(totalTravelTime)} total</span>
+                    <span>${formatDuration(totalServiceTime)} total</span>
+                </div>
+            </div>
+
+            ${penaltyHtml}
+            ${idleHtml}
+        `;
+
+        c.appendChild(dash);
+    } else {
+        // ── Detail Mode: full activity timeline for selected engineer ──
+        routes.forEach(route => {
+            const hdr = document.createElement('div');
+            hdr.style.cssText = 'padding:8px 12px; font-weight:600; font-size:13px; position:sticky; top:0; z-index:5; border-bottom:1px solid var(--app-border); background:rgba(222,236,255,0.9);';
+            const parsed = parseEngineerName(route.vehicle_name, route.vehicle_id);
+            hdr.innerHTML = `<span style="color:var(--yx-royal-blue)">■</span> ${parsed.displayName}`;
+            c.appendChild(hdr);
+
+            if (!route.activity_log || route.activity_log.length === 0) {
+                const noAct = document.createElement('div');
+                noAct.style.cssText = 'padding:12px; font-size:12px; color:var(--app-fg-muted);';
+                noAct.innerHTML = '<em>No activity — idle for this period.</em>';
+                c.appendChild(noAct);
+                return;
+            }
+
+            route.activity_log.forEach(entry => {
+                const icons = { shift_start: '⌚', service: '⌛', travel: '→', shift_end: '⌚' };
+                const icon = icons[entry.action] || '•';
+                const timeOfDay = entry.time_of_day || '';
+                let metaHtml = '';
+                if (entry.duration_s > 0) metaHtml += `${formatDuration(entry.duration_s)}`;
+                if (entry.traffic_multiplier !== null && entry.traffic_multiplier !== undefined) {
+                    const m = entry.traffic_multiplier;
+                    const cls = m > 2 ? 'traffic-red' : m > 1.3 ? 'traffic-amber' : 'traffic-green';
+                    metaHtml += ` <span class="traffic-badge ${cls}">${m}x</span>`;
+                }
+                const el = document.createElement('div');
+                el.className = 'log-entry';
+                el.dataset.action = entry.action;
+                el.dataset.timestamp = entry.timestamp_unix;
+                el.innerHTML = `
+                    <span class="log-time">${timeOfDay}</span>
+                    <span class="log-icon">${icon}</span>
+                    <div class="log-detail">
+                        <div class="log-desc">${entry.description}</div>
+                        ${metaHtml ? `<div class="log-meta">${metaHtml}</div>` : ''}
+                    </div>`;
+                if (entry.action === 'travel') {
+                    el.style.cursor = 'pointer';
+                    el.title = 'Click to view journey on map';
+                    el.addEventListener('click', () => {
+                        const matchingLeg = route.legs?.find(l => l.depart_unix === entry.timestamp_unix);
+                        if (matchingLeg) {
+                            state.selectedLegId = matchingLeg.leg_id;
+                            state.selectedJobId = null;
+                            applyFilters();
+                        }
+                    });
+                } else if (entry.action === 'service' && entry.job_id !== undefined) {
+                    const jobId = entry.job_id;
+                    el.style.cursor = 'pointer';
+                    el.title = 'Click to view job on map';
+                    el.addEventListener('click', () => {
+                        state.selectedJobId = jobId;
+                        state.selectedLegId = null;
+                        applyFilters();
+                    });
+                    if (state.selectedJobId === jobId) {
+                        el.classList.add('highlighted');
+                        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                    }
+                }
+                c.appendChild(el);
+            });
+        });
+
+        if (state.selectedLegId) {
+            const selectedLeg = state.currentResult?.routes_data?.flatMap(r => r.legs || []).find(l => l.leg_id === state.selectedLegId);
+            if (selectedLeg) {
+                const targetEl = c.querySelector(`.log-entry[data-action="travel"][data-timestamp="${selectedLeg.depart_unix}"]`);
+                if (targetEl) {
+                    targetEl.classList.add('highlighted');
+                    setTimeout(() => {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+            }
+        }
     }
-
-    const dayNum = parseInt(dayValue);
-    const dayPattern = `_Day${dayNum}`;
-    const { routes: filteredRoutes, activeVehicleIds: dayVehicleIds } = buildRoutes(dayPattern);
-
-    // Render filtered map
-    renderMap(result, dayVehicleIds);
-
-    // Update stats for filtered day
-    const totalDuration = filteredRoutes.reduce((sum, rd) => {
-        return sum + (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0)
-            + (rd.activity_log || []).filter(a => a.action === 'service').reduce((s, a) => s + (a.duration_s || 0), 0);
-    }, 0);
-    const totalJobs = filteredRoutes.reduce((sum, rd) => sum + (rd.num_jobs_assigned || 0), 0);
-    const dayName = DAY_NAMES[(dayNum - 1) % 7];
-    $('#stat-routes').textContent = filteredRoutes.length;
-    $('#stat-duration').textContent = formatDuration(totalDuration);
-    $('#stat-test-num').textContent = dayName;
-
-    // Update engineer stats and activity log for this day only
-    renderEngineerStats(filteredRoutes);
-    populateLogDropdown(filteredRoutes);
-    renderActivityLog();
 }
+
+// Legacy stubs for backward compat
+function filterByDay() { applyFilters(); }
+function populateLogDropdown() { /* no-op, replaced by applyFilters */ }
+function renderActivityLog() { /* no-op, replaced by renderBreakdownPanel */ }
 
 // ═══ Tabs ════════════════════════════════════════════════
 function switchTab(tab) {
@@ -1009,10 +1197,10 @@ async function viewHistoryRun(id) {
 
         renderMap(d);
         populateDaySelector(d);
+        populateEngineerSelector(d);
         showResults(d);
         renderEngineerStats(d.routes_data || []);
-        populateLogDropdown(d.routes_data || []);
-        renderActivityLog();
+        applyFilters();
         $('#download-section').style.display = 'block';
         setupAnimation(d);
     } catch (err) { console.error(err); }
@@ -1071,7 +1259,8 @@ function renderEngineerStats(routesData) {
 
     aggregatedRoutes.forEach(rd => {
         const eid = rd.vehicle_id;
-        const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
+        const baseId = getBaseEngineerId(eid, rd.vehicle_name);
+        const ci = ((baseId - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
         const color = ROUTE_COLORS[ci];
         const skills = (rd.vehicle_skills || []).map(s => String(s)).filter(s => !s.startsWith('_remix'));
         const totalTravel = (rd.legs || []).reduce((s, l) => s + (l.duration_s || 0), 0);
@@ -1082,13 +1271,16 @@ function renderEngineerStats(routesData) {
         const el = document.createElement('div');
         el.className = 'engineer-card';
         el.dataset.engineerId = eid;
-        el.onclick = () => toggleEngineer(rd.eids);
+        el.onclick = () => {
+            const engSel = document.getElementById('engineer-filter-select');
+            if (engSel) { engSel.value = rd.vehicle_name; applyFilters(); }
+        };
         el.style.cursor = 'pointer';
         el.style.transition = 'all 0.2s ease-in-out';
         el.innerHTML = `
             <div class="eng-header">
-                <span class="eng-name"><span class="eng-color-dot" style="background:${color}"></span>${rd.vehicle_name || `Engineer #${eid}`}</span>
-                <span class="eng-id">#${eid}</span>
+                <span class="eng-name"><span class="eng-color-dot" style="background:${color}"></span>${rd.vehicle_name || `Engineer #${baseId}`}</span>
+                <span class="eng-id">#${baseId}</span>
             </div>
             <div class="eng-meta">
                 <span>Available: ${availStart} — ${availEnd}</span>
@@ -1101,123 +1293,7 @@ function renderEngineerStats(routesData) {
     });
 }
 
-// ═══ Activity Log ════════════════════════════════════════
-function populateLogDropdown(routesData) {
-    const sel = $('#log-engineer-select');
-    if (!sel) return;
-    sel.innerHTML = '';
-    if (!routesData.length) { 
-        if ($('#activity-overlay')) $('#activity-overlay').style.display = 'none'; 
-        if ($('#breakdown-btn-wrapper')) $('#breakdown-btn-wrapper').style.display = 'none';
-        return; 
-    }
-    if ($('#activity-overlay')) $('#activity-overlay').style.display = 'flex';
-    if ($('#breakdown-btn-wrapper')) $('#breakdown-btn-wrapper').style.display = 'flex';
-    
-    // Add "All Engineers" option by default
-    const allOpt = document.createElement('option');
-    allOpt.value = 'all';
-    allOpt.textContent = 'All Engineers';
-    sel.appendChild(allOpt);
 
-    routesData.forEach(rd => {
-        const o = document.createElement('option');
-        o.value = rd.vehicle_id;
-        o.textContent = `${rd.vehicle_name || 'Engineer #' + rd.vehicle_id}`;
-        sel.appendChild(o);
-    });
-}
-
-function openActivityOverlay() {
-    if ($('#activity-overlay')) $('#activity-overlay').style.display = 'flex';
-}
-
-function closeActivityOverlay() {
-    if ($('#activity-overlay')) $('#activity-overlay').style.display = 'none';
-}
-
-function renderActivityLog() {
-    const c = $('#activity-log'), e = $('#log-empty');
-    if (!c || !e) return;
-    c.innerHTML = '';
-    c.appendChild(e); // Keep the empty state div around
-    const rd = state.currentResult?.routes_data;
-    if (!rd?.length) { e.style.display = 'block'; return; }
-    e.style.display = 'none';
-
-    const selectedId = $('#log-engineer-select').value;
-    
-    // Check if we need to filter by day as well
-    const daySel = $('#day-filter-select');
-    const selectedDay = daySel ? daySel.value : 'all';
-
-    const routesToRender = rd.filter(r => {
-        if (selectedId !== 'all' && r.vehicle_id !== +selectedId) return false;
-        
-        if (selectedDay !== 'all') {
-            // Only show routes that belong to this day
-            const dayNum = (r.vehicle_name && r.vehicle_name.includes('_Day')) 
-                ? parseInt(r.vehicle_name.split('_Day')[1]) 
-                : null;
-            if (dayNum !== null && dayNum !== parseInt(selectedDay)) return false;
-        }
-        return true;
-    });
-
-    if (routesToRender.length === 0) {
-        e.style.display = 'block';
-        return;
-    }
-
-    routesToRender.forEach(route => {
-        const hdr = document.createElement('div');
-        hdr.style.padding = '8px 12px';
-        hdr.style.backgroundColor = 'var(--bg-card)';
-        hdr.style.fontWeight = '600';
-        hdr.style.fontSize = '13px';
-        hdr.style.position = 'sticky';
-        hdr.style.top = '0';
-        hdr.style.zIndex = '5';
-        hdr.style.borderBottom = '1px solid var(--border-light)';
-        hdr.innerHTML = `<span style="color:var(--primary-color)">■</span> ${route.vehicle_name || 'Engineer #' + route.vehicle_id}`;
-        c.appendChild(hdr);
-
-        if (!route.activity_log || route.activity_log.length === 0) {
-            const noAct = document.createElement('div');
-            noAct.style.padding = '12px';
-            noAct.style.fontSize = '12px';
-            noAct.style.color = 'var(--text-muted)';
-            noAct.innerHTML = '<em>No activity.</em>';
-            c.appendChild(noAct);
-            return;
-        }
-
-        route.activity_log.forEach(entry => {
-            const icons = { shift_start: '⌚', service: '⌛', travel: '--', shift_end: '⌚' };
-            const icon = icons[entry.action] || '•';
-            const timeOfDay = entry.time_of_day || '';
-
-            let metaHtml = '';
-            if (entry.duration_s > 0) metaHtml += `${formatDuration(entry.duration_s)}`;
-            if (entry.traffic_multiplier !== null && entry.traffic_multiplier !== undefined) {
-                const m = entry.traffic_multiplier;
-                const cls = m > 2 ? 'traffic-red' : m > 1.3 ? 'traffic-amber' : 'traffic-green';
-                metaHtml += ` <span class="traffic-badge ${cls}">${m}x</span>`;
-            }
-
-            const el = document.createElement('div');
-            el.className = 'log-entry';
-            el.innerHTML = `
-                <span class="log-time">${timeOfDay}</span>
-                <span class="log-icon">${icon}</span>
-                <div class="log-detail">
-                    <div class="log-desc">${entry.description}</div>
-                    ${metaHtml ? `<div class="log-meta">${metaHtml}</div>` : ''}
-                </div>`;
-            c.appendChild(el);
-        });
-    });
-}
 
 // ═══ Remix ═══════════════════════════════════════════════
 function updateRemixDropdown() {
@@ -1468,6 +1544,18 @@ function parseEngineerName(vehicleName, vehicleId) {
     return { name: baseName, id: origId, day: day, displayName: displayName };
 }
 
+function getBaseEngineerId(vehicleId, vehicleName) {
+    const parsed = parseEngineerName(vehicleName, vehicleId);
+    if (parsed.id && !isNaN(parsed.id)) {
+        return parseInt(parsed.id, 10);
+    }
+    const day = parseInt(parsed.day) || 1;
+    if (day > 0 && vehicleId % day === 0) {
+        return vehicleId / day;
+    }
+    return vehicleId;
+}
+
 function formatDuration(s) {
     if (!s && s !== 0) return '--';
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
@@ -1556,7 +1644,8 @@ function setupAnimation(result) {
         if (path.length > 0) {
             path.sort((a,b) => a.unix - b.unix);
             const eid = rd.vehicle_id;
-            const ci = ((eid - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
+            const baseId = getBaseEngineerId(eid, rd.vehicle_name);
+            const ci = ((baseId - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
             const color = ROUTE_COLORS[ci];
             
             animState.trajectories.push({
@@ -1571,12 +1660,12 @@ function setupAnimation(result) {
             const marker = L.marker([path[0].lat, path[0].lon], {
                 icon: L.divIcon({
                     className: '',
-                    html: `<div style="width:24px;height:24px;background:${color};border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,0,0,0.3);font-size:11px;color:white;font-weight:bold;z-index:1000">${eid}</div>`,
+                    html: `<div style="width:24px;height:24px;background:${color};border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,0,0,0.3);font-size:11px;color:white;font-weight:bold;z-index:1000">${baseId}</div>`,
                     iconSize: [24, 24],
                     iconAnchor: [12, 12]
                 }),
                 zIndexOffset: 1000
-            }).bindTooltip(`<strong>Engineer #${eid}</strong><br>${rd.vehicle_name || ''}`, {className: 'anim-tooltip', direction: 'top', offset: [0, -10]});
+            }).bindTooltip(`<strong>Engineer #${baseId}</strong><br>${rd.vehicle_name || ''}`, {className: 'anim-tooltip', direction: 'top', offset: [0, -10]});
             
             animState.markers[eid] = marker;
             animState.markerLayer.addLayer(marker);
@@ -1604,7 +1693,8 @@ function toggleAnimation() {
             animState.currentUnix = animState.startUnix;
         }
         animState.isPlaying = true;
-        $('#anim-play-btn').innerHTML = '⏸';
+        const playBtn = $('#anim-play-btn');
+        if (playBtn) playBtn.innerHTML = '⏸';
         animState.lastFrameTime = performance.now();
         animState.animationId = requestAnimationFrame(animationTick);
     }
@@ -1612,7 +1702,8 @@ function toggleAnimation() {
 
 function stopAnimation() {
     animState.isPlaying = false;
-    $('#anim-play-btn').innerHTML = '▶';
+    const playBtn = $('#anim-play-btn');
+    if (playBtn) playBtn.innerHTML = '▶';
     if (animState.animationId) cancelAnimationFrame(animState.animationId);
 }
 
@@ -1706,7 +1797,7 @@ async function renderEngineerList() {
     list.innerHTML = engineers.map(e => `
         <div class="data-card" onclick="editEngineer('${e.id}')">
             <div class="data-card-header">
-                <span class="data-card-title">${e.name}</span>
+                <span class="data-card-title">${e.number ? '#' + e.number + ' - ' : ''}${e.name}</span>
                 <button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="event.stopPropagation(); deleteEngineer('${e.id}')" title="Delete">&#x2715;</button>
             </div>
             <div class="data-card-meta">
@@ -1725,6 +1816,7 @@ function showEngineerForm(eng) {
     modal.style.display = 'flex';
     document.getElementById('eng-form-id').value = eng ? eng.id : '';
     document.getElementById('eng-form-name').value = eng ? eng.name : '';
+    document.getElementById('eng-form-number').value = eng ? (eng.number || '') : '';
     document.getElementById('eng-form-skills').value = eng ? JSON.stringify(eng.skills) : '[1003]';
     document.getElementById('eng-form-lat').value = eng ? eng.location.lat : '51.5074';
     document.getElementById('eng-form-lon').value = eng ? eng.location.lon : '-0.1278';
@@ -1745,6 +1837,11 @@ function hideEngineerForm() {
 async function saveEngineer() {
     const name = document.getElementById('eng-form-name').value.trim();
     if (!name) { alert('Name is required.'); return; }
+    
+    const numberVal = document.getElementById('eng-form-number').value.trim();
+    if (!numberVal) { alert('Engineer Number is required.'); return; }
+    const number = parseInt(numberVal, 10);
+    
     let skills;
     try { skills = JSON.parse(document.getElementById('eng-form-skills').value); } 
     catch(e) { alert('Skills must be a valid JSON array e.g. [1103, 1203]'); return; }
@@ -1755,6 +1852,7 @@ async function saveEngineer() {
     const eng = {
         id: document.getElementById('eng-form-id').value || 'eng_' + Date.now(),
         name,
+        number,
         skills,
         location: {
             lat: parseFloat(document.getElementById('eng-form-lat').value) || 51.5074,
@@ -1786,7 +1884,7 @@ async function editEngineer(id) {
 
 async function deleteEngineer(id) {
     if (!confirm('Delete this engineer?')) return;
-    await StorageManager.saveEngineers((await StorageManager.getEngineers()).filter(e => e.id !== id));
+    await StorageManager.saveEngineers((await StorageManager.getEngineers()).filter(e => String(e.id) !== String(id)));
     renderEngineerList();
     renderOptimisePanel();
 }
@@ -1822,7 +1920,7 @@ function hideJobImport() { document.getElementById('job-import-modal').style.dis
 
 async function deleteJobList(id) {
     if (!confirm('Delete this job list?')) return;
-    await StorageManager.saveJobLists((await StorageManager.getJobLists()).filter(jl => jl.id !== id));
+    await StorageManager.saveJobLists((await StorageManager.getJobLists()).filter(jl => String(jl.id) !== String(id)));
     renderJobLists();
     renderOptimisePanel();
 }
@@ -1865,8 +1963,8 @@ async function renderOptimiseMatrix() {
     engineers.forEach(eng => {
         const ss = eng.defaultShiftStart || '08:00';
         const se = eng.defaultShiftEnd || '18:00';
-        html += `<tr data-eng-id="${eng.id}" data-skills='${JSON.stringify(eng.skills)}' data-lat="${eng.location.lat}" data-lon="${eng.location.lon}">`;
-        html += `<td><span class="rota-eng-name">${eng.name}</span></td>`;
+        html += `<tr data-eng-id="${eng.id}" data-eng-number="${eng.number || ''}" data-skills='${JSON.stringify(eng.skills)}' data-lat="${eng.location.lat}" data-lon="${eng.location.lon}">`;
+        html += `<td><span class="rota-eng-name">${eng.number ? '#' + eng.number + ' ' : ''}${eng.name}</span></td>`;
         html += '<td><select class="row-location-mode rota-route-select">';
         html += '<option value="home">H \u2192 H</option><option value="depot">D \u2192 D</option>';
         html += '<option value="home-depot">H \u2192 D</option><option value="depot-home">D \u2192 H</option>';
@@ -2206,7 +2304,7 @@ async function importAndSaveJobList() {
             else { dd = dParts[0]; mm = dParts[1]; yyyy = dParts[2]; }
             
             // Fix: ensure time string has exactly HH:MM:SS format
-            let tStr = parts[1];
+            let tStr = parts[1].trim();
             if (tStr.split(':').length === 2) tStr += ':00'; // Append seconds if missing
             
             const isoStr = `${yyyy.length === 2 ? '20'+yyyy : yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}T${tStr}Z`;
@@ -2398,9 +2496,10 @@ async function runOptimisation() {
                 const shiftEndS = Math.floor((dayBaseMs + cEh*3600000 + cEm*60000) / 1000);
 
                 const origId = tr.getAttribute('data-eng-id') || '';
+                const engNumber = tr.getAttribute('data-eng-number') || origId;
                 const vConfig = {
                     id: engIdCounter++,
-                    name: `${engName}|${origId}_Day${di+1}`,
+                    name: `${engName}|${engNumber}_Day${di+1}`,
                     start: startCoord,
                     end: endCoord,
                     skills,
@@ -2733,7 +2832,7 @@ async function runDataBridge() {
                 }
                 
                 // Fix: ensure time string has exactly HH:MM:SS format
-                let tStr = parts[1];
+                let tStr = parts[1].trim();
                 if (tStr.split(':').length === 2) tStr += ':00'; // Append seconds if missing
                 
                 const isoStr = `${yyyy.length === 2 ? '20'+yyyy : yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}T${tStr}Z`;

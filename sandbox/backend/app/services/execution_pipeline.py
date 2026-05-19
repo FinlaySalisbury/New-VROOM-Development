@@ -204,6 +204,44 @@ def run_simulation(
 
     # Step 3-4: Process each route
     routes_data = []
+    
+    # Inject empty routes for any vehicle that was not assigned a job by VROOM
+    if "routes" not in solution:
+        solution["routes"] = []
+        
+    assigned_vids = {route.get("vehicle") for route in solution["routes"]}
+    for v in vehicles:
+        if v["id"] not in assigned_vids:
+            # Create a dummy idle route for unassigned engineers
+            start_time = v["time_window"][0] if "time_window" in v else shift_start
+            end_time = v["time_window"][1] if "time_window" in v else shift_start + 3600
+            end_loc = v.get("end", v["start"])
+            solution["routes"].append({
+                "vehicle": v["id"],
+                "steps": [
+                    {
+                        "type": "start",
+                        "location": v["start"],
+                        "arrival": start_time,
+                        "duration": 0,
+                        "setup": 0,
+                        "service": 0,
+                        "waiting_time": 0,
+                        "distance": 0
+                    },
+                    {
+                        "type": "end",
+                        "location": end_loc,
+                        "arrival": end_time,
+                        "duration": 0,
+                        "setup": 0,
+                        "service": 0,
+                        "waiting_time": 0,
+                        "distance": 0
+                    }
+                ]
+            })
+
     if "routes" in solution:
         for route in solution["routes"]:
             vehicle_id = route.get("vehicle")
