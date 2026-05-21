@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sv http://localhost:80/)",
+      "Skill(update-config)",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__list_tables",
+      "Bash(gh api *)",
+      "Read(//c/temp/verify-rig/**)",
+      "Bash(node verify.js)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(curl -sL https://raw.githubusercontent.com/lackeyjb/playwright-skill/main/skills/playwright-skill/SKILL.md -o .agent/skills/playwright-skill/SKILL.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/lackeyjb/playwright-skill/main/skills/playwright-skill/API_REFERENCE.md -o .agent/skills/playwright-skill/API_REFERENCE.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/lackeyjb/playwright-skill/main/skills/playwright-skill/package.json -o .agent/skills/playwright-skill/package.json)",
+      "Bash(curl -sL https://raw.githubusercontent.com/lackeyjb/playwright-skill/main/skills/playwright-skill/run.js -o .agent/skills/playwright-skill/run.js)",
+      "Bash(curl -sL https://raw.githubusercontent.com/lackeyjb/playwright-skill/main/skills/playwright-skill/lib/helpers.js -o .agent/skills/playwright-skill/lib/helpers.js)",
+      "Bash(npm run *)",
+      "Bash(npx playwright *)",
+      "Bash(node -e \"console.log\\(require\\('playwright/package.json'\\).version\\)\")",
+      "Bash(python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --log-level info)",
+      "Bash(node run.js \"C:\\\\Users\\\\yu007637\\\\AppData\\\\Local\\\\Temp\\\\playwright-test-vroom-shell.js\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\yu007637\\AppData\\Local\\Temp"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase",
+    "gcp-compute"
+  ]
+}

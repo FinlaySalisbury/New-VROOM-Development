@@ -7,10 +7,11 @@ import uuid
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.models import SimulationRequest, SimulationResponse, CostEstimate, RemixRequest
 from app.config import get_settings
-from app.database import save_test_run, get_next_test_number, get_test_run_by_id
+from app.database import save_test_run, get_next_test_number, get_test_run_by_id, get_supabase_client
+from supabase import Client
 from app.services.data_generator import generate_scenario
 from app.services.execution_pipeline import run_simulation
 from app.services.foursquare_formatter import compile_all
@@ -20,13 +21,13 @@ router = APIRouter(prefix="/api", tags=["simulation"])
 
 
 @router.post("/simulate", response_model=SimulationResponse)
-async def run_test(request: SimulationRequest):
+async def run_test(request: SimulationRequest, supabase: Client = Depends(get_supabase_client)):
     """
     Execute a simulation test run.
     """
     settings = get_settings()
     run_id = str(uuid.uuid4())
-    test_number = await get_next_test_number()
+    test_number = await get_next_test_number(supabase, request.project_id)
 
     # Shift start: today at 07:00 UTC
     now = datetime.now(timezone.utc)
@@ -87,6 +88,8 @@ async def run_test(request: SimulationRequest):
 
         # Persist
         await save_test_run(
+            supabase=supabase,
+            project_id=request.project_id,
             run_id=run_id,
             test_number=test_number,
             name=request.name,
@@ -128,7 +131,7 @@ async def run_test(request: SimulationRequest):
 
 
 @router.post("/remix", response_model=SimulationResponse)
-async def remix_test(request: RemixRequest):
+async def remix_test(request: RemixRequest, supabase: Client = Depends(get_supabase_client)):
     """
     Remix a previous test run: keep the same job↔engineer assignments
     but re-run with a different routing strategy.
@@ -139,12 +142,12 @@ async def remix_test(request: RemixRequest):
     settings = get_settings()
     
     # Fetch the parent run
-    parent = await get_test_run_by_id(request.parent_run_id)
+    parent = await get_test_run_by_id(supabase, request.project_id, request.parent_run_id)
     if parent is None:
         raise HTTPException(status_code=404, detail="Parent test run not found")
 
     run_id = str(uuid.uuid4())
-    test_number = await get_next_test_number()
+    test_number = await get_next_test_number(supabase, request.project_id)
     
     scenario = parent["scenario_state"]
     vehicles = scenario["vehicles"]
@@ -232,6 +235,8 @@ async def remix_test(request: RemixRequest):
         summary = result.get("vroom_summary", {})
 
         await save_test_run(
+            supabase=supabase,
+            project_id=request.project_id,
             run_id=run_id,
             test_number=test_number,
             name=f"Remix of #{parent.get('test_number', '?')}",

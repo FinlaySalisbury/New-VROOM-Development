@@ -567,7 +567,7 @@
     inset: 0;
     background: rgba(239, 246, 255, 0.6); /* --color-background with opacity */
     backdrop-filter: blur(8px);
-    z-index: 2000;
+    z-index: var(--z-modal-base); /* stack depth applied via modal.js */
     display: flex;
     align-items: stretch;
     justify-content: flex-end; /* Align to right for drawer effect */
@@ -1710,4 +1710,317 @@ img.map-monochrome {
 .log-entry {
     transition: background 0.3s ease, border-left 0.3s ease, box-shadow 0.3s ease;
     border-left: 3px solid transparent;
+}
+
+/* ==========================================================================
+   Auth Overlay
+   ========================================================================== */
+
+body.auth-pending {
+    overflow: hidden;
+}
+
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: url('assets/bg-pattern.svg'), linear-gradient(135deg, #1A1A1A 0%, #000000 100%);
+    background-size: cover;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    padding: var(--space-6);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-xl);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    color: var(--yx-white);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: var(--space-5);
+}
+
+.login-logo {
+    height: 32px;
+    margin-bottom: var(--space-4);
+}
+
+.login-header h2 {
+    font-size: var(--fs-h3);
+    margin-bottom: var(--space-2);
+}
+
+.login-header p {
+    color: rgba(255,255,255,0.7);
+    font-size: var(--fs-small);
+}
+
+.login-card .form-label {
+    color: rgba(255,255,255,0.9);
+}
+
+.login-card .form-input {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: var(--yx-white);
+}
+
+.login-card .form-input:focus {
+    background: rgba(255,255,255,0.15);
+    border-color: var(--yx-royal-blue);
+}
+
+.login-card .form-input::placeholder {
+    color: rgba(255,255,255,0.4);
+}
+
+.login-card .btn-primary {
+    margin-top: var(--space-2);
+}
+
+/* ==========================================================================
+   Premium Project Dashboard UI
+   ========================================================================== */
+
+.project-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--app-bg-subtle);
+    z-index: 9998; /* Just below auth-overlay */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.project-dashboard {
+    width: 1000px;
+    max-width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    padding: 48px;
+    background: var(--app-card);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+}
+
+.project-dashboard::-webkit-scrollbar {
+    width: 6px;
+}
+.project-dashboard::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.1);
+    border-radius: 6px;
+}
+
+.project-header h2 {
+    font-family: var(--font-display);
+    font-size: var(--fs-h2);
+    font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+    color: var(--app-fg);
+}
+
+.project-card {
+    background: var(--app-card);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    cursor: pointer;
+    transition: all var(--dur-fast) var(--ease-out);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.project-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(37, 99, 235, 0.02);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+    z-index: 0;
+}
+
+.project-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--yx-royal-blue);
+    box-shadow: var(--shadow-md), var(--shadow-glow);
+}
+
+.project-card:hover::before {
+    opacity: 1;
+}
+
+.project-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.project-card-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-h4);
+    font-weight: 600;
+    color: var(--app-fg);
+    letter-spacing: var(--tracking-tight);
+}
+
+.project-card-desc {
+    font-size: var(--fs-small);
+    color: var(--app-fg-muted);
+    line-height: var(--lh-relaxed);
+}
+
+.project-card-role {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-caps);
+    color: var(--yx-royal-blue);
+    margin-top: 16px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    background: rgba(37, 99, 235, 0.1);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    width: fit-content;
+}
+
+.project-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+}
+
+.project-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    background: rgba(255, 255, 255, 1);
+    border-color: rgba(99, 102, 241, 0.5); /* Indigo accent */
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 20px rgba(99, 102, 241, 0.1);
+}
+
+.project-card:hover::before {
+    opacity: 1;
+}
+
+.project-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.project-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+}
+
+.project-card-desc {
+    font-size: 14px;
+    color: #475569;
+    line-height: 1.5;
+}
+
+.project-card-role {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #818cf8;
+    margin-top: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    background: rgba(99, 102, 241, 0.1);
+    padding: 4px 10px;
+    border-radius: 100px;
+    width: fit-content;
+}
+
+/* ==========================================================================
+   Navigation foundations (Sprint 1)
+   Token-only — every value below references colors_and_type.css.
+   ========================================================================== */
+
+:root {
+    --z-modal-base: 2000;
+    --z-toast:      9000;
+}
+
+/* ─── Toast region (aria-live polite) ─── */
+#toast-region {
+    position: fixed;
+    bottom: var(--space-5);
+    right: var(--space-5);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    pointer-events: none;
+    max-width: min(420px, calc(100vw - var(--space-7)));
+}
+
+.toast {
+    pointer-events: auto;
+    background: var(--yx-black);
+    color: var(--fg-on-dark);
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+    line-height: var(--lh-normal);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    border-left: 3px solid var(--status-info);
+    cursor: pointer;
+    transform: translateX(0);
+    opacity: 1;
+    animation: toast-enter var(--dur-base) var(--ease-out);
+    transition:
+        transform var(--dur-base) var(--ease-out),
+        opacity var(--dur-base) var(--ease-out);
+}
+
+.toast--info    { border-left-color: var(--status-info); }
+.toast--success { border-left-color: var(--status-success); }
+.toast--warning { border-left-color: var(--status-warning); }
+/* Yunex brand has no red — danger maps to Royal Blue per colors_and_type.css */
+.toast--error   { border-left-color: var(--status-danger); }
+
+.toast--leaving {
+    opacity: 0;
+    transform: translateX(var(--space-6));
+}
+
+@keyframes toast-enter {
+    from { opacity: 0; transform: translateX(var(--space-6)); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast {
+        animation: none;
+        transition: opacity var(--dur-fast) linear;
+    }
 }

@@ -19,6 +19,7 @@ services:
     environment:
       - TOMTOM_API_KEY=${TOMTOM_API_KEY:-MOCK_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
       - VROOM_ENDPOINT=http://vroom:3000/
       - DATABASE_PATH=/data/sandbox_history.db
     volumes:

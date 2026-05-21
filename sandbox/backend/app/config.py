@@ -15,11 +15,16 @@ class Settings(BaseSettings):
     # Gemini AI (Route Explainer)
     GEMINI_API_KEY: str = ""
 
+    # Claude AI (Skill Classification)
+    CLAUDE_API_KEY: str = ""
+
     # VROOM Engine
     VROOM_ENDPOINT: str = "http://localhost:3000/"
 
-    # Database
-    DATABASE_PATH: str = "sandbox_history.db"
+    # Supabase Settings
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+    SUPABASE_JWT_SECRET: str = ""
 
     # Server
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001"]

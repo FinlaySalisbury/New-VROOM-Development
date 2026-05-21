@@ -1,0 +1,38 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sandbox-compose",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "-f", "sandbox/docker-compose.yml", "up", "--build"],
+      "port": 80
+    },
+    {
+      "name": "sandbox-backend",
+      "runtimeExecutable": "uvicorn",
+      "runtimeArgs": [
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--app-dir",
+        "sandbox/backend"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "vroom-solver",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": [
+        "run",
+        "--rm",
+        "-p",
+        "3000:3000",
+        "ghcr.io/vroom-project/vroom-docker:latest"
+      ],
+      "port": 3000
+    }
+  ]
+}

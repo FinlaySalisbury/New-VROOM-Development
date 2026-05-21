@@ -13,8 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.config import get_settings
-from app.database import create_tables
-from app.routers import simulation, history, chat, config
+from app.database import get_supabase_client
+from app.routers import simulation, history, chat, classify
 
 # Frontend directory (relative to the sandbox root)
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
@@ -29,10 +29,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database on startup."""
+    """Lifespan events."""
     logger.info("Initializing Simulation Sandbox backend...")
-    await create_tables()
-    logger.info("Database ready")
     yield
     logger.info("Shutting down Simulation Sandbox backend")
 
@@ -58,7 +56,7 @@ app.add_middleware(
 app.include_router(simulation.router)
 app.include_router(history.router)
 app.include_router(chat.router)
-app.include_router(config.router)
+app.include_router(classify.router)
 
 
 @app.get("/api/health")

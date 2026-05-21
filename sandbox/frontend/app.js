@@ -13,134 +13,537 @@
 
 const API_BASE = window.location.origin + '/api';
 
+// Helper for authenticated backend API requests
+async function apiFetch(endpoint, options = {}) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+    
+    const headers = { ...options.headers };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    // Add project_id to query if GET, or to body if POST
+    if (!options.method || options.method === 'GET') {
+        const url = new URL(API_BASE + endpoint);
+        url.searchParams.append('project_id', currentProjectId);
+        endpoint = url.pathname.replace('/api', '') + url.search;
+    } else if (options.body) {
+        try {
+            const bodyObj = JSON.parse(options.body);
+            bodyObj.project_id = currentProjectId;
+            options.body = JSON.stringify(bodyObj);
+        } catch(e) {}
+    }
+    
+    return fetch(API_BASE + endpoint, { ...options, headers });
+}
+
+// ═══ Supabase Authentication ═════════════════════════════════
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function initAuth() {
+    // Check current session
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        handleAuthChange(session);
+    });
+
+    // Listen for changes
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+        handleAuthChange(session);
+    });
+}
+
+// ═══ Project Management ══════════════════════════════════════
+let currentProjectId = null;
+let currentProjectRole = null;
+
+async function loadProjectDashboard() {
+    // Overlay visibility is now owned by the router. This function is the
+    // data-load entrypoint for the picker route.
+    await fetchInvitations();
+    await fetchProjects();
+}
+
+async function fetchProjects() {
+    const { data: members, error: memberErr } = await supabaseClient
+        .from('project_members')
+        .select('project_id, role, projects(id, name, description)')
+        .order('created_at', { ascending: false });
+
+    const container = document.getElementById('projects-list');
+    if (memberErr || !members || members.length === 0) {
+        container.innerHTML = `<div class="status-text">You don't belong to any projects yet.</div>`;
+        AppState.set('projects', []);
+        return;
+    }
+
+    // Cache the membership list so the router can validate project IDs from
+    // deep links without re-querying Supabase.
+    AppState.set('projects', members
+        .filter(m => m.projects)
+        .map(m => ({ id: m.projects.id, name: m.projects.name, description: m.projects.description, role: m.role })));
+
+    container.innerHTML = '';
+    members.forEach(member => {
+        const p = member.projects;
+        if (!p) return;
+        const card = document.createElement('div');
+        card.className = 'project-card';
+        // Navigate via the router so the URL updates; the router will call
+        // selectProject() once the route is resolved.
+        card.onclick = () => router.navigate('/projects/' + encodeURIComponent(p.id) + '/map');
+        card.innerHTML = `
+            <div class="project-card-title">${p.name}</div>
+            ${p.description ? `<div class="project-card-desc">${p.description}</div>` : ''}
+            <div class="project-card-role">Role: ${member.role.toUpperCase()}</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+async function fetchInvitations() {
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (!userData.user) return;
+
+    const { data: invites, error } = await supabaseClient
+        .from('invitations')
+        .select('id, projects(name), role')
+        .eq('status', 'pending')
+        .eq('email', userData.user.email);
+        
+    const container = document.getElementById('invitations-container');
+    const list = document.getElementById('invitations-list');
+    
+    if (error || !invites || invites.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    list.innerHTML = '';
+    invites.forEach(inv => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.background = 'rgba(255,255,255,0.05)';
+        div.style.padding = '12px';
+        div.style.borderRadius = '6px';
+        div.innerHTML = `
+            <div>
+                <div style="color: white; font-weight: 500;">${inv.projects?.name || 'A Project'}</div>
+                <div style="font-size: 12px; color: var(--app-fg-soft)">Invited as: ${inv.role}</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-primary" style="padding: 4px 12px; font-size: 12px;" onclick="acceptInvite('${inv.id}')">Accept</button>
+                <button class="btn-secondary" style="padding: 4px 12px; font-size: 12px;" onclick="declineInvite('${inv.id}')">Decline</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+async function acceptInvite(id) {
+    const { error } = await supabaseClient.rpc('accept_invitation', { invite_id: id });
+    if (error) alert(error.message);
+    await loadProjectDashboard();
+}
+
+async function declineInvite(id) {
+    const { error } = await supabaseClient.from('invitations').update({ status: 'declined' }).eq('id', id);
+    if (error) alert(error.message);
+    await loadProjectDashboard();
+}
+
+function openCreateProjectModal() {
+    openModal('create-project-modal', { initialFocus: '#new-project-name' });
+}
+
+function closeCreateProjectModal() {
+    closeModal('create-project-modal');
+}
+
+async function createProject() {
+    const name = document.getElementById('new-project-name').value.trim();
+    const desc = document.getElementById('new-project-desc').value.trim();
+    if (!name) return alert("Project name required");
+    
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (!userData.user) return;
+
+    const { data, error } = await supabaseClient
+        .from('projects')
+        .insert({ name, description: desc, created_by: userData.user.id })
+        .select()
+        .single();
+        
+    if (error) {
+        alert(error.message);
+        return;
+    }
+    
+    closeCreateProjectModal();
+    toast('Project created.', { variant: 'success' });
+    // Re-load the dashboard so they see it and can click it
+    await loadProjectDashboard();
+}
+
+async function selectProject(id, role) {
+    // Idempotency: short-circuit if we're already on this project. Avoids
+    // re-running migration and re-fetching data on accidental double-click
+    // or re-routing to the same project.
+    if (currentProjectId === id) return;
+
+    currentProjectId = id;
+    currentProjectRole = role;
+    AppState.set('projectId', id);
+    AppState.set('projectRole', role);
+
+    // Overlay visibility is now owned by the router — see router.js. We only
+    // do the data load + map resize here.
+    if (typeof map !== 'undefined' && map) setTimeout(() => map.invalidateSize(), 100);
+
+    if (typeof loadInitialData === 'function') await loadInitialData();
+}
+
+async function loadInitialData() {
+    // 1. Migrate Local Storage Data to this specific project if any exists
+    await StorageManager.migrateFromLocalStorage();
+    
+    // 2. Load Depot Configuration
+    const depot = await StorageManager.getDepot();
+    const latInp = document.getElementById('opt-depot-lat');
+    const lonInp = document.getElementById('opt-depot-lon');
+    if (latInp && lonInp) {
+        latInp.value = depot[1];
+        lonInp.value = depot[0];
+    }
+    
+    // 3. Render UI components that pull from StorageManager
+    await renderEngineerList();
+    await renderJobLists();
+    await renderOptimisePanel();
+}
+
+// --- Project Settings Modal ---
+async function openProjectSettingsModal() {
+    if (!currentProjectId) return;
+
+    // Only Owners can invite and change roles. Disable UI if not owner —
+    // applied before opening so initial focus lands on the correct state.
+    const isOwner = currentProjectRole === 'owner';
+    const inviteEmail = document.getElementById('invite-email');
+    const inviteRole = document.getElementById('invite-role');
+    const inviteBtn = document.querySelector('#project-settings-modal .btn-primary');
+
+    if (inviteEmail) inviteEmail.disabled = !isOwner;
+    if (inviteRole) inviteRole.disabled = !isOwner;
+    if (inviteBtn) inviteBtn.disabled = !isOwner;
+
+    openModal('project-settings-modal', {
+        initialFocus: isOwner ? '#invite-email' : null,
+    });
+
+    await loadTeamMembers(isOwner);
+}
+
+function closeProjectSettingsModal() {
+    closeModal('project-settings-modal');
+}
+
+async function loadTeamMembers(isOwner) {
+    const list = document.getElementById('team-members-list');
+    list.innerHTML = '<div class="status-text">Loading members...</div>';
+    
+    const { data: members, error } = await supabaseClient
+        .from('project_members')
+        .select('user_id, role')
+        .eq('project_id', currentProjectId);
+        
+    if (error) {
+        list.innerHTML = `<div style="color:red;">Failed to load members: ${error.message}</div>`;
+        return;
+    }
+    
+    list.innerHTML = '';
+    members.forEach(m => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.padding = '8px';
+        div.style.background = 'rgba(255,255,255,0.05)';
+        div.style.borderRadius = '4px';
+        
+        let roleHtml = `<span style="color: var(--app-fg-soft)">Role: ${m.role}</span>`;
+        if (isOwner) {
+            roleHtml = `
+                <select class="form-input" style="padding:4px; height:auto; width:100px;" onchange="changeRole('${m.user_id}', this.value)" ${m.role === 'owner' ? 'disabled' : ''}>
+                    <option value="viewer" ${m.role === 'viewer' ? 'selected' : ''}>Viewer</option>
+                    <option value="user" ${m.role === 'user' ? 'selected' : ''}>User</option>
+                    <option value="admin" ${m.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    <option value="owner" ${m.role === 'owner' ? 'selected' : ''}>Owner</option>
+                </select>
+                <button class="btn-icon" style="color:#ef4444; margin-left:8px;" onclick="removeMember('${m.user_id}')" ${m.role === 'owner' ? 'disabled' : ''}>&times;</button>
+            `;
+        }
+        
+        div.innerHTML = `
+            <div style="font-family: monospace; font-size: 11px;">User ID: ${m.user_id.substring(0,8)}...</div>
+            <div style="display:flex; align-items:center;">${roleHtml}</div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+async function sendProjectInvite() {
+    const email = document.getElementById('invite-email').value.trim();
+    const role = document.getElementById('invite-role').value;
+    if (!email) return alert("Email required");
+    
+    const { data: userData } = await supabaseClient.auth.getUser();
+    
+    const { error } = await supabaseClient
+        .from('invitations')
+        .insert({
+            project_id: currentProjectId,
+            email: email,
+            role: role,
+            invited_by: userData.user.id
+        });
+        
+    if (error) {
+        alert(error.message);
+    } else {
+        toast('Invitation sent.', { variant: 'success' });
+        document.getElementById('invite-email').value = '';
+    }
+}
+
+async function removeMember(userId) {
+    if (!confirm("Remove this member?")) return;
+    await supabaseClient.from('project_members').delete().match({ project_id: currentProjectId, user_id: userId });
+    loadTeamMembers(true);
+}
+
+async function changeRole(userId, newRole) {
+    const { error } = await supabaseClient.from('project_members').update({ role: newRole }).match({ project_id: currentProjectId, user_id: userId });
+    if (error) {
+        alert(error.message);
+        return;
+    }
+    toast('Role updated.', { variant: 'success' });
+    loadTeamMembers(true);
+}
+
+function handleAuthChange(session) {
+    // Mirror session state into AppState. userId is the de-duping key —
+    // Supabase session objects are not ref-stable across getSession() and
+    // onAuthStateChange callbacks. Boot flips to 'ready' on the first call,
+    // which is what releases the router's boot gate.
+    AppState.set('session', session);
+    AppState.set('userId', session?.user?.id ?? null);
+    AppState.set('boot', 'ready');
+
+    if (!session) {
+        // Clear project-scoped state on sign-out. The router will route to
+        // #/login when it observes the cleared userId.
+        currentProjectId = null;
+        currentProjectRole = null;
+        AppState.set('projectId', null);
+        AppState.set('projectRole', null);
+        AppState.set('projects', null);
+    }
+}
+
+let isSignUpMode = false;
+
+function toggleAuthMode() {
+    isSignUpMode = !isSignUpMode;
+    document.getElementById('auth-title').textContent = isSignUpMode ? 'Create an Account' : 'VROOM Intelligence';
+    document.getElementById('auth-subtitle').textContent = isSignUpMode ? 'Sign up to get started.' : 'Sign in to access the dispatch platform.';
+    document.getElementById('login-btn').innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
+    document.getElementById('auth-toggle-btn').textContent = isSignUpMode ? 'Already have an account? Sign in' : 'Create an account';
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('login-success').style.display = 'none';
+}
+
+async function handleAuthSubmit(event) {
+    event.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+    const successEl = document.getElementById('login-success');
+    const btn = document.getElementById('login-btn');
+    
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = isSignUpMode ? 'Signing up...' : 'Signing in...';
+
+    let result;
+    if (isSignUpMode) {
+        result = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+        });
+    } else {
+        result = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
+    }
+
+    const { data, error } = result;
+
+    if (error) {
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
+    } else {
+        if (isSignUpMode && data.user && data.user.identities && data.user.identities.length === 0) {
+            // User already exists (Supabase security feature returns fake success if email exists)
+            errorEl.textContent = 'An account with this email already exists.';
+            errorEl.style.display = 'block';
+            btn.innerHTML = 'Sign up &rarr;';
+            btn.disabled = false;
+        } else if (isSignUpMode && !data.session) {
+            // Success but email confirmation required
+            successEl.textContent = 'Account created! Please check your email to verify.';
+            successEl.style.display = 'block';
+            btn.innerHTML = 'Sign up &rarr;';
+            btn.disabled = false;
+        } else {
+            // Successful login or direct sign up
+            btn.innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
+            btn.disabled = false;
+        }
+    }
+}
+
+async function handleLogout() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+        console.error('Error logging out:', error.message);
+        toast('Sign-out failed. Try again.', { variant: 'error' });
+        return;
+    }
+    // The router will redirect to #/login when it observes the cleared session.
+    toast('You have been signed out.', { variant: 'info' });
+}
+
 // ═══ Storage Manager ═════════════════════════════════════════
 const StorageManager = {
     async getEngineers() {
-        return JSON.parse(localStorage.getItem('vroom_engineers') || '[]');
+        if (!currentProjectId) return [];
+        const { data, error } = await supabaseClient.from('engineers').select('data').eq('project_id', currentProjectId);
+        if (error) { console.error("Error fetching engineers:", error); return []; }
+        return data ? data.map(r => r.data) : [];
     },
     async saveEngineers(arr) {
-        localStorage.setItem('vroom_engineers', JSON.stringify(arr));
-        try {
-            await fetch(API_BASE + '/config/engineers', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(arr)
-            });
-        } catch (e) {}
+        if (!currentProjectId) return;
+        const rows = arr.map(e => ({ id: e.id, project_id: currentProjectId, data: e }));
+        const currentIds = arr.map(e => e.id);
+        
+        if (currentIds.length > 0) {
+            await supabaseClient.from('engineers').delete().eq('project_id', currentProjectId).not('id', 'in', `(${currentIds.join(',')})`);
+        } else {
+            await supabaseClient.from('engineers').delete().eq('project_id', currentProjectId);
+        }
+        
+        if (rows.length > 0) {
+            await supabaseClient.from('engineers').upsert(rows);
+        }
     },
     async getJobLists() {
-        return JSON.parse(localStorage.getItem('vroom_job_lists') || '[]');
+        if (!currentProjectId) return [];
+        const { data, error } = await supabaseClient.from('job_lists').select('data').eq('project_id', currentProjectId);
+        if (error) { console.error("Error fetching job lists:", error); return []; }
+        return data ? data.map(r => r.data) : [];
     },
     async saveJobLists(arr) {
-        localStorage.setItem('vroom_job_lists', JSON.stringify(arr));
-        try {
-            await fetch(API_BASE + '/config/job-lists', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(arr)
-            });
-        } catch (e) {}
+        if (!currentProjectId) return;
+        const rows = arr.map(jl => ({ id: jl.id, project_id: currentProjectId, data: jl }));
+        const currentIds = arr.map(jl => jl.id);
+        
+        if (currentIds.length > 0) {
+            await supabaseClient.from('job_lists').delete().eq('project_id', currentProjectId).not('id', 'in', `(${currentIds.join(',')})`);
+        } else {
+            await supabaseClient.from('job_lists').delete().eq('project_id', currentProjectId);
+        }
+        
+        if (rows.length > 0) {
+            await supabaseClient.from('job_lists').upsert(rows);
+        }
     },
     async getDepot() {
-        return JSON.parse(localStorage.getItem('vroom_main_depot') || '[-0.1278, 51.5074]');
+        if (!currentProjectId) return [-0.1278, 51.5074];
+        const { data, error } = await supabaseClient.from('global_settings')
+            .select('value').eq('project_id', currentProjectId).eq('key', 'main_depot').maybeSingle();
+        if (data && data.value) {
+            try { return JSON.parse(data.value); } catch(e) {}
+        }
+        return [-0.1278, 51.5074];
     },
     async saveDepot(lon, lat) {
-        localStorage.setItem('vroom_main_depot', JSON.stringify([lon, lat]));
-        try {
-            await fetch(API_BASE + '/config/settings/depot', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify([lon, lat])
-            });
-        } catch (e) {}
+        if (!currentProjectId) return;
+        await supabaseClient.from('global_settings').upsert({
+            key: 'main_depot', project_id: currentProjectId, value: JSON.stringify([lon, lat])
+        });
     },
     async migrateFromLocalStorage() {
-        // If local storage is empty, try to restore from the backend
-        try {
-            if (!localStorage.getItem('vroom_engineers')) {
-                const resp = await fetch(API_BASE + '/config/engineers');
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data && data.length > 0) {
-                        localStorage.setItem('vroom_engineers', JSON.stringify(data));
-                    }
-                }
-            }
-            if (!localStorage.getItem('vroom_job_lists')) {
-                const resp = await fetch(API_BASE + '/config/job-lists');
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data && data.length > 0) {
-                        localStorage.setItem('vroom_job_lists', JSON.stringify(data));
-                    }
-                }
-            }
+        if (!currentProjectId) return;
+        
+        const rawEngineers = localStorage.getItem('vroom_engineers');
+        const rawJobLists = localStorage.getItem('vroom_job_lists');
+        const rawDepot = localStorage.getItem('vroom_main_depot');
+        let migratedAny = false;
 
-            // Failsafe: Seed default engineers if everything is completely empty (or if using the previous generic defaults)
-            const currentEngineers = JSON.parse(localStorage.getItem('vroom_engineers') || '[]');
-            if (currentEngineers.length === 0 || (currentEngineers.length > 0 && currentEngineers[0].id === 'eng-1')) {
-                const defaultEngineers = [
-                    {
-                        id: 'eng-joe-watson', name: 'Joe Watson', location: { lat: 51.57967, lon: 0.087600 },
-                        skills: [1001, 1002, 1003, 1005, 1101, 1102, 1103, 1201, 1202, 1203, 1301, 1303, 1401, 1402, 1403, 1501, 1502, 1503, 1701, 1702, 1703, 2201, 2202, 2203],
-                        defaultShiftStart: '08:00', defaultShiftEnd: '17:00', capacity: 8, breakDuration: 30, breakStart: '12:00', breakEnd: '13:00'
-                    },
-                    {
-                        id: 'eng-lee-lynch', name: 'Lee Lynch', location: { lat: 51.64849, lon: -0.07224 },
-                        skills: [1001, 1003, 1005, 1101, 1102, 1103, 1201, 1202, 1203, 1501, 1502, 1503],
-                        defaultShiftStart: '07:30', defaultShiftEnd: '16:00', capacity: 6, breakDuration: 30, breakStart: '11:30', breakEnd: '12:30'
-                    },
-                    {
-                        id: 'eng-andy-mendl', name: 'Andy Mendl', location: { lat: 51.40013, lon: 0.05620 },
-                        skills: [1001, 1002, 1003, 1101, 1102, 1103, 1201, 1202, 1203, 1303, 1401, 1402, 1403, 1501, 1502, 1503, 1701, 1702, 1703, 2301, 2302, 2303],
-                        defaultShiftStart: '08:00', defaultShiftEnd: '16:30', capacity: 7, breakDuration: 45, breakStart: '12:00', breakEnd: '13:00'
-                    },
-                    {
-                        id: 'eng-gopal-patel', name: 'Gopal Patel', location: { lat: 51.43966, lon: 0.13806 },
-                        skills: [1001, 1002, 1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403, 1501, 1502, 1503],
-                        defaultShiftStart: '07:00', defaultShiftEnd: '15:30', capacity: 6, breakDuration: 30, breakStart: '11:00', breakEnd: '12:00'
-                    },
-                    {
-                        id: 'eng-jerry-ponzi', name: 'Jerry Ponzi', location: { lat: 51.43729, lon: -0.31579 },
-                        skills: [1001, 1002, 1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403, 1501, 1502],
-                        defaultShiftStart: '09:00', defaultShiftEnd: '17:00', capacity: 5, breakDuration: 30, breakStart: '13:00', breakEnd: '14:00'
-                    },
-                    {
-                        id: 'eng-vivek-arumugam', name: 'Vivek Arumugam', location: { lat: 51.51898, lon: -0.17466 },
-                        skills: [1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403, 1503],
-                        defaultShiftStart: '08:00', defaultShiftEnd: '17:00', capacity: 8, breakDuration: 45, breakStart: '12:30', breakEnd: '13:30'
-                    },
-                    {
-                        id: 'eng-mukesh-kerai', name: 'Mukesh Kerai', location: { lat: 51.53710, lon: -0.18336 },
-                        skills: [1003, 1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403],
-                        defaultShiftStart: '07:30', defaultShiftEnd: '15:30', capacity: 5, breakDuration: 30, breakStart: '11:30', breakEnd: '12:30'
-                    },
-                    {
-                        id: 'eng-garry-brown', name: 'Garry Brown', location: { lat: 51.51373, lon: -0.12698 },
-                        skills: [1101, 1102, 1103, 1201, 1202, 1203, 1501, 1502, 1503],
-                        defaultShiftStart: '08:30', defaultShiftEnd: '17:30', capacity: 6, breakDuration: 30, breakStart: '13:00', breakEnd: '14:00'
-                    },
-                    {
-                        id: 'eng-owen-leach', name: 'Owen Leach', location: { lat: 52.48196, lon: -1.86036 },
-                        skills: [1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403],
-                        defaultShiftStart: '07:00', defaultShiftEnd: '16:00', capacity: 7, breakDuration: 30, breakStart: '11:00', breakEnd: '12:00'
-                    },
-                    {
-                        id: 'eng-dave-gibson', name: 'Dave Gibson', location: { lat: 51.65575, lon: -0.02181 },
-                        skills: [1101, 1102, 1103, 1201, 1202, 1203, 1401, 1402, 1403],
-                        defaultShiftStart: '08:00', defaultShiftEnd: '16:00', capacity: 4, breakDuration: 30, breakStart: '12:00', breakEnd: '13:00'
-                    }
-                ];
-                await this.saveEngineers(defaultEngineers);
-            }
-        } catch (e) {
-            console.warn('Backend sync failed, falling back to local storage.');
+        if (rawEngineers) {
+            try {
+                const arr = JSON.parse(rawEngineers);
+                if (arr && arr.length > 0) { await this.saveEngineers(arr); migratedAny = true; }
+            } catch(e) {}
+            localStorage.removeItem('vroom_engineers');
+        }
+        if (rawJobLists) {
+            try {
+                const arr = JSON.parse(rawJobLists);
+                if (arr && arr.length > 0) { await this.saveJobLists(arr); migratedAny = true; }
+            } catch(e) {}
+            localStorage.removeItem('vroom_job_lists');
+        }
+        if (rawDepot) {
+            try {
+                const arr = JSON.parse(rawDepot);
+                if (Array.isArray(arr) && arr.length === 2) { await this.saveDepot(arr[0], arr[1]); migratedAny = true; }
+            } catch(e) {}
+            localStorage.removeItem('vroom_main_depot');
+        }
+
+        if (migratedAny) {
+            alert("Local storage data has been successfully migrated to this project!");
         }
     }
 };
 
 // ═══ Navigation ═════════════════════════════════════
+// switchAppView is the public entry point for nav-rail buttons (called from
+// inline onclick attributes in index.html). It defers to the router so the
+// URL stays the source of truth. The router calls _renderSection directly to
+// avoid recursion.
 function switchAppView(viewName) {
+    const projectId = AppState.get('projectId');
+    if (!projectId) {
+        // No project selected — fall back to direct render so we don't crash
+        // before the router has a project context.
+        _renderSection(viewName);
+        return;
+    }
+    router.navigate('/projects/' + encodeURIComponent(projectId) + '/' + viewName);
+}
+
+function _renderSection(viewName) {
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
     const btn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
@@ -151,12 +554,12 @@ function switchAppView(viewName) {
 }
 
 // ═══ Modals ════════════════════════════════════════
-function showPreflightModal() { 
-    renderOptimisePanel(); 
-    document.getElementById('preflight-modal').style.display = 'flex'; 
+function showPreflightModal() {
+    renderOptimisePanel();
+    openModal('preflight-modal');
 }
-function hidePreflightModal() { 
-    document.getElementById('preflight-modal').style.display = 'none'; 
+function hidePreflightModal() {
+    closeModal('preflight-modal');
 }
 function toggleChatPanel() {
     const p = document.getElementById('chat-slide-panel');
@@ -292,9 +695,16 @@ let state = {
     history: [],
     remixHistory: [],
     chatHistory: [],
-    selectedLegId: null,
-    selectedJobId: null
+    selectedLegIds: new Set(),
+    selectedJobIds: new Set(),
+    lastSelectedLegId: null,
+    lastSelectedJobId: null
 };
+
+function isMultiSelectEvent(e) {
+    const ev = e?.originalEvent || e;
+    return !!(ev && (ev.ctrlKey || ev.metaKey));
+}
 
 let map = null;
 let routeLayerGroup = null;
@@ -306,7 +716,7 @@ const $$ = (s) => document.querySelectorAll(s);
 
 // ═══ Init ════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-    await StorageManager.migrateFromLocalStorage();
+    initAuth();
     initMap();
     initSliders();
     initStrategy();
@@ -314,6 +724,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadHistory();
     loadRemixHistory();
     initAnimation();
+    // Router last — boot gate (AppState.boot === 'pending') holds it until
+    // initAuth's handleAuthChange callback resolves with a session (or null).
+    router.init();
 });
 
 function initMap() {
@@ -348,9 +761,11 @@ function initMap() {
     jobLayerGroup = L.layerGroup().addTo(map);
     depotLayerGroup = L.layerGroup().addTo(map);
     map.on('click', () => {
-        if (state.selectedLegId || state.selectedJobId) {
-            state.selectedLegId = null;
-            state.selectedJobId = null;
+        if (state.selectedLegIds.size || state.selectedJobIds.size) {
+            state.selectedLegIds.clear();
+            state.selectedJobIds.clear();
+            state.lastSelectedLegId = null;
+            state.lastSelectedJobId = null;
             applyFilters();
         }
     });
@@ -462,7 +877,7 @@ async function runSimulation(replayScenario = null) {
         const payload = { num_engineers: state.numEngineers, num_jobs: state.numJobs, strategy: state.strategy };
         if (replayScenario) payload.replay_scenario = replayScenario;
 
-        const res = await fetch(`${API_BASE}/simulate`, {
+        const res = await apiFetch('/simulate', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
         });
         if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Failed'); }
@@ -508,14 +923,14 @@ function renderMap(result, filterVehicleIds = null) {
             const ci = ((baseId - 1) % ROUTE_COLORS.length + ROUTE_COLORS.length) % ROUTE_COLORS.length;
             const color = ROUTE_COLORS[ci];
             const mult = f.properties.traffic_multiplier || 1.0;
-            const isSelected = state.selectedLegId === f.properties.leg_id;
-            
+            const isSelected = state.selectedLegIds.has(f.properties.leg_id);
+
             let lineColor = color, weight = 3;
             if (mult > 2.0) { lineColor = '#ef4444'; weight = 4; }
             else if (mult > 1.3) { lineColor = '#f97316'; weight = 3.5; }
-            
+
             let opacity = 0.8;
-            if (state.selectedLegId) {
+            if (state.selectedLegIds.size > 0) {
                 if (isSelected) {
                     opacity = 1.0;
                     weight += 4;
@@ -533,26 +948,32 @@ function renderMap(result, filterVehicleIds = null) {
             pl._baseWeight = weight;
             
             pl.on('mouseover', (e) => {
-                if (state.selectedLegId !== f.properties.leg_id) {
+                if (!state.selectedLegIds.has(f.properties.leg_id)) {
                     e.target.setStyle({ weight: weight + 2, opacity: 1.0 });
                 }
                 e.target.bringToFront();
             });
-            
+
             pl.on('mouseout', (e) => {
-                if (state.selectedLegId !== f.properties.leg_id) {
-                    e.target.setStyle({ weight: weight, opacity: state.selectedLegId ? 0.3 : 0.8 });
+                if (!state.selectedLegIds.has(f.properties.leg_id)) {
+                    e.target.setStyle({ weight: weight, opacity: state.selectedLegIds.size > 0 ? 0.3 : 0.8 });
                 }
             });
-            
+
             pl.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                state.selectedLegId = f.properties.leg_id;
-                state.selectedJobId = null;
-                const rd = result.routes_data?.find(r => r.vehicle_id === eid);
-                const baseName = rd ? (rd.vehicle_name || '').split('_Day')[0] : '';
-                const engSel = document.getElementById('engineer-filter-select');
-                if (engSel) { engSel.value = baseName; applyFilters(); }
+                const legId = f.properties.leg_id;
+                if (isMultiSelectEvent(e)) {
+                    if (state.selectedLegIds.has(legId)) state.selectedLegIds.delete(legId);
+                    else state.selectedLegIds.add(legId);
+                } else {
+                    state.selectedLegIds.clear();
+                    state.selectedJobIds.clear();
+                    state.selectedLegIds.add(legId);
+                }
+                state.lastSelectedLegId = state.selectedLegIds.has(legId) ? legId : null;
+                state.lastSelectedJobId = null;
+                applyFilters();
             });
 
             const legData = routeData?.legs?.find(l => l.leg_id === f.properties.leg_id);
@@ -583,8 +1004,8 @@ function renderMap(result, filterVehicleIds = null) {
                 <span style="color:#888">Duration:</span> ${formatDuration(f.properties.duration_s)}
             </div>`);
             routeLayerGroup.addLayer(pl);
-            
-            if (isSelected) {
+
+            if (isSelected && state.lastSelectedLegId === f.properties.leg_id) {
                 setTimeout(() => pl.openPopup(), 100);
             }
             coords.forEach(c => {
@@ -644,26 +1065,29 @@ function renderMap(result, filterVehicleIds = null) {
             const color = URGENCY_COLORS[urgency] || URGENCY_COLORS.medium;
             const skills = p.required_skills || [];
 
-            const isSelected = state.selectedJobId === p.job_id;
+            const isSelected = state.selectedJobIds.has(p.job_id);
             const m = L.circleMarker([lat, lon], {
                 radius: isSelected ? 12 : (assigned ? 6 : 8),
                 fillColor: isSelected ? '#FFEB3B' : color,
                 color: isSelected ? '#FF9800' : (assigned ? '#fff' : '#ff4444'),
-                weight: isSelected ? 3 : (assigned ? 1 : 2), 
-                opacity: 1, 
+                weight: isSelected ? 3 : (assigned ? 1 : 2),
+                opacity: 1,
                 fillOpacity: isSelected ? 1 : 0.85,
             });
-            
+
             m.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                state.selectedJobId = p.job_id;
-                state.selectedLegId = null;
-                if (assigned) {
-                    const assignedRd = result.routes_data?.find(r => r.vehicle_id === p.assigned_engineer_id);
-                    const baseName = (assignedRd?.vehicle_name || '').split('_Day')[0];
-                    const engSel = document.getElementById('engineer-filter-select');
-                    if (engSel) { engSel.value = baseName; }
+                const jobId = p.job_id;
+                if (isMultiSelectEvent(e)) {
+                    if (state.selectedJobIds.has(jobId)) state.selectedJobIds.delete(jobId);
+                    else state.selectedJobIds.add(jobId);
+                } else {
+                    state.selectedLegIds.clear();
+                    state.selectedJobIds.clear();
+                    state.selectedJobIds.add(jobId);
                 }
+                state.lastSelectedJobId = state.selectedJobIds.has(jobId) ? jobId : null;
+                state.lastSelectedLegId = null;
                 applyFilters();
             });
             let assignedStr = '';
@@ -682,7 +1106,7 @@ function renderMap(result, filterVehicleIds = null) {
                 ${p.description ? `<span style="color:#888">Desc:</span> ${p.description}` : ''}
             </div>`);
             jobLayerGroup.addLayer(m);
-            if (isSelected) {
+            if (isSelected && state.lastSelectedJobId === p.job_id) {
                 setTimeout(() => m.openPopup(), 100);
                 m.bringToFront();
             }
@@ -799,12 +1223,6 @@ function applyFilters() {
     const engSel = document.getElementById('engineer-filter-select');
     const dayValue = daySel ? daySel.value : 'all';
     const engValue = engSel ? engSel.value : 'all';
-
-    // Clear selected leg/job when returning to all engineers
-    if (engValue === 'all' && (state.selectedLegId || state.selectedJobId)) {
-        state.selectedLegId = null;
-        state.selectedJobId = null;
-    }
 
     // Build the set of vehicle_ids that match both filters
     const matchingVehicleIds = new Set();
@@ -1072,44 +1490,64 @@ function renderBreakdownPanel(routes, isRosterMode) {
                     </div>`;
                 if (entry.action === 'travel') {
                     el.style.cursor = 'pointer';
-                    el.title = 'Click to view journey on map';
-                    el.addEventListener('click', () => {
-                        const matchingLeg = route.legs?.find(l => l.depart_unix === entry.timestamp_unix);
-                        if (matchingLeg) {
-                            state.selectedLegId = matchingLeg.leg_id;
-                            state.selectedJobId = null;
-                            applyFilters();
+                    el.title = 'Click to view journey on map (Ctrl+Click to multi-select)';
+                    const matchingLeg = route.legs?.find(l => l.depart_unix === entry.timestamp_unix);
+                    const legId = matchingLeg?.leg_id;
+                    if (legId !== undefined && state.selectedLegIds.has(legId)) {
+                        el.classList.add('highlighted');
+                    }
+                    el.addEventListener('click', (e) => {
+                        if (legId === undefined) return;
+                        if (isMultiSelectEvent(e)) {
+                            if (state.selectedLegIds.has(legId)) state.selectedLegIds.delete(legId);
+                            else state.selectedLegIds.add(legId);
+                        } else {
+                            state.selectedLegIds.clear();
+                            state.selectedJobIds.clear();
+                            state.selectedLegIds.add(legId);
                         }
+                        state.lastSelectedLegId = state.selectedLegIds.has(legId) ? legId : null;
+                        state.lastSelectedJobId = null;
+                        applyFilters();
                     });
                 } else if (entry.action === 'service' && entry.job_id !== undefined) {
                     const jobId = entry.job_id;
+                    el.dataset.jobId = jobId;
                     el.style.cursor = 'pointer';
-                    el.title = 'Click to view job on map';
-                    el.addEventListener('click', () => {
-                        state.selectedJobId = jobId;
-                        state.selectedLegId = null;
+                    el.title = 'Click to view job on map (Ctrl+Click to multi-select)';
+                    if (state.selectedJobIds.has(jobId)) {
+                        el.classList.add('highlighted');
+                    }
+                    el.addEventListener('click', (e) => {
+                        if (isMultiSelectEvent(e)) {
+                            if (state.selectedJobIds.has(jobId)) state.selectedJobIds.delete(jobId);
+                            else state.selectedJobIds.add(jobId);
+                        } else {
+                            state.selectedLegIds.clear();
+                            state.selectedJobIds.clear();
+                            state.selectedJobIds.add(jobId);
+                        }
+                        state.lastSelectedJobId = state.selectedJobIds.has(jobId) ? jobId : null;
+                        state.lastSelectedLegId = null;
                         applyFilters();
                     });
-                    if (state.selectedJobId === jobId) {
-                        el.classList.add('highlighted');
-                        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-                    }
                 }
                 c.appendChild(el);
             });
         });
 
-        if (state.selectedLegId) {
-            const selectedLeg = state.currentResult?.routes_data?.flatMap(r => r.legs || []).find(l => l.leg_id === state.selectedLegId);
-            if (selectedLeg) {
-                const targetEl = c.querySelector(`.log-entry[data-action="travel"][data-timestamp="${selectedLeg.depart_unix}"]`);
-                if (targetEl) {
-                    targetEl.classList.add('highlighted');
-                    setTimeout(() => {
-                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 100);
-                }
+        // Scroll the most-recently-clicked selection into view (one scroll per render)
+        let scrollTarget = null;
+        if (state.lastSelectedJobId !== null && state.selectedJobIds.has(state.lastSelectedJobId)) {
+            scrollTarget = c.querySelector(`.log-entry[data-action="service"][data-job-id="${state.lastSelectedJobId}"]`);
+        } else if (state.lastSelectedLegId !== null && state.selectedLegIds.has(state.lastSelectedLegId)) {
+            const leg = state.currentResult?.routes_data?.flatMap(r => r.legs || []).find(l => l.leg_id === state.lastSelectedLegId);
+            if (leg) {
+                scrollTarget = c.querySelector(`.log-entry[data-action="travel"][data-timestamp="${leg.depart_unix}"]`);
             }
+        }
+        if (scrollTarget) {
+            setTimeout(() => scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
         }
     }
 }
@@ -1128,7 +1566,7 @@ function switchTab(tab) {
 // ═══ History ═════════════════════════════════════════════
 async function loadHistory() {
     try {
-        const res = await fetch(`${API_BASE}/history`);
+        const res = await apiFetch('/history');
         if (!res.ok) return;
         state.history = await res.json();
         renderHistory();
@@ -1187,7 +1625,7 @@ function runHistorySelect() {
 
 async function viewHistoryRun(id) {
     try {
-        const res = await fetch(`${API_BASE}/history/${id}`);
+        const res = await apiFetch(`/history/${id}`);
         if (!res.ok) throw new Error('Not found');
         const d = await res.json();
         state.currentResult = d;
@@ -1208,7 +1646,7 @@ async function viewHistoryRun(id) {
 
 async function replayRun(id) {
     try {
-        const res = await fetch(`${API_BASE}/history/${id}`);
+        const res = await apiFetch(`/history/${id}`);
         if (!res.ok) throw new Error('Not found');
         const d = await res.json();
         state.numEngineers = d.num_engineers;
@@ -1346,7 +1784,7 @@ async function runRemix() {
 
 async function loadRemixHistory() {
     try {
-        const res = await fetch(`${API_BASE}/history?remix=true`);
+        const res = await apiFetch('/history?remix=true');
         if (!res.ok) return;
         state.remixHistory = await res.json();
         renderRemixHistory();
@@ -1582,7 +2020,10 @@ let animState = {
 };
 
 function initAnimation() {
-    $('#anim-play-btn').addEventListener('click', toggleAnimation);
+    const playBtn = $('#anim-play-btn');
+    if (!playBtn) return; // Fail gracefully if animation controls are missing from HTML
+    
+    playBtn.addEventListener('click', toggleAnimation);
     
     $$('.speed-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -1812,8 +2253,7 @@ async function renderEngineerList() {
 }
 
 function showEngineerForm(eng) {
-    const modal = document.getElementById('engineer-form-modal');
-    modal.style.display = 'flex';
+    // Populate fields first so initial focus lands on a meaningful input.
     document.getElementById('eng-form-id').value = eng ? eng.id : '';
     document.getElementById('eng-form-name').value = eng ? eng.name : '';
     document.getElementById('eng-form-number').value = eng ? (eng.number || '') : '';
@@ -1822,16 +2262,18 @@ function showEngineerForm(eng) {
     document.getElementById('eng-form-lon').value = eng ? eng.location.lon : '-0.1278';
     document.getElementById('eng-form-start').value = eng ? eng.defaultShiftStart : '08:00';
     document.getElementById('eng-form-end').value = eng ? eng.defaultShiftEnd : '18:00';
-    
+
     // Optional Fields
     document.getElementById('eng-form-capacity').value = (eng && eng.capacity) ? eng.capacity : '';
     document.getElementById('eng-form-break-duration').value = (eng && eng.breakDuration) ? eng.breakDuration : '';
     document.getElementById('eng-form-break-start').value = (eng && eng.breakStart) ? eng.breakStart : '12:00';
     document.getElementById('eng-form-break-end').value = (eng && eng.breakEnd) ? eng.breakEnd : '14:00';
+
+    openModal('engineer-form-modal', { initialFocus: '#eng-form-name' });
 }
 
 function hideEngineerForm() {
-    document.getElementById('engineer-form-modal').style.display = 'none';
+    closeModal('engineer-form-modal');
 }
 
 async function saveEngineer() {
@@ -1915,8 +2357,12 @@ async function renderJobLists() {
     `).join('');
 }
 
-function showJobImport() { document.getElementById('job-import-modal').style.display = 'flex'; }
-function hideJobImport() { document.getElementById('job-import-modal').style.display = 'none'; document.getElementById('job-import-status').textContent = ''; }
+function showJobImport() { openModal('job-import-modal'); }
+function hideJobImport() {
+    closeModal('job-import-modal');
+    const status = document.getElementById('job-import-status');
+    if (status) status.textContent = '';
+}
 
 async function deleteJobList(id) {
     if (!confirm('Delete this job list?')) return;
@@ -2019,44 +2465,9 @@ function setClassifyMode(mode) {
     classifyMode = mode;
     document.getElementById('ai-mode-ai').classList.toggle('active', mode === 'ai');
     document.getElementById('ai-mode-legacy').classList.toggle('active', mode === 'legacy');
-    const keyConfig = document.getElementById('ai-key-config');
-    if (keyConfig) keyConfig.style.display = mode === 'ai' ? '' : 'none';
 }
 
-function toggleKeyVisibility() {
-    const inp = document.getElementById('ai-claude-key');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
-function getClaudeKey() {
-    const inp = document.getElementById('ai-claude-key');
-    let key = inp ? inp.value.trim() : '';
-    if (!key) key = localStorage.getItem('vroom_claude_key') || '';
-    return key;
-}
-
-function saveClaudeKey(key) {
-    localStorage.setItem('vroom_claude_key', key);
-}
-
-// Restore saved key on load
-document.addEventListener('DOMContentLoaded', async () => {
-    await StorageManager.migrateFromLocalStorage();
-    const saved = localStorage.getItem('vroom_claude_key');
-    if (saved) {
-        const inp = document.getElementById('ai-claude-key');
-        if (inp) inp.value = saved;
-    }
-    
-    // Restore Main Depot
-    const depot = await StorageManager.getDepot();
-    const latInp = document.getElementById('opt-depot-lat');
-    const lonInp = document.getElementById('opt-depot-lon');
-    if (latInp && lonInp) {
-        latInp.value = depot[1];
-        lonInp.value = depot[0];
-    }
-});
+// Deprecated listener: configuration loading is now handled per-project in loadInitialData()
 
 const AI_SYSTEM_PROMPT = `You are an expert field service dispatcher for EV charger maintenance at Yunex Traffic / Believ.
 
@@ -2087,21 +2498,14 @@ RESPONSE FORMAT:
 [{"job_index":0,"skills":[1103],"manufacturer":"Alfen","site_type":"22kWAC","reasoning":"..."},...]`;
 
 async function classifyWithClaude(jobBatch) {
-    const key = getClaudeKey();
-    if (!key) throw new Error('No Claude API key configured. Enter your key in the import panel.');
-    saveClaudeKey(key);
-
     const jobLines = jobBatch.map((j, i) =>
         `[${i}] Site Ref: ${j.site_ref} | Site Desc: "${j.site_description}" | Type: ${j.job_type} | Name: "${j.job_site_name}"`
     ).join('\n');
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch(`${API_BASE}/classify`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true'
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             model: 'claude-sonnet-4-6',
@@ -2190,11 +2594,11 @@ function showAiReview(validJobs, classifications, unmatchedRefs, meta) {
     });
 
     body.innerHTML = html;
-    modal.style.display = 'flex';
+    openModal('ai-review-modal');
 }
 
 function closeAiReview() {
-    document.getElementById('ai-review-modal').style.display = 'none';
+    closeModal('ai-review-modal');
     pendingAiReview = null;
 }
 
@@ -2623,7 +3027,7 @@ async function runOptimisation() {
         btn.innerHTML = '<span class="spinner"></span> Optimising...';
 
         // POST to backend
-        const res = await fetch(`${API_BASE}/simulate`, {
+        const res = await apiFetch('/simulate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2649,10 +3053,10 @@ async function runOptimisation() {
         state.currentResult = result;
         renderMap(result);
         populateDaySelector(result);
+        populateEngineerSelector(result);
         showResults(result);
         renderEngineerStats(result.routes_data || []);
-        populateLogDropdown(result.routes_data || []);
-        renderActivityLog();
+        applyFilters();
         $('#download-section').style.display = 'block';
         setupAnimation(result);
         await loadHistory();
@@ -3015,10 +3419,6 @@ async function injectBridgeToSandbox() {
     await runSimulation(scenario);
 }
 
-// ═══ Initialise Sidebar on Page Load ═════════════════════════
-document.addEventListener('DOMContentLoaded', async () => {
-    await StorageManager.migrateFromLocalStorage();
-    renderEngineerList();
-    renderJobLists();
-    renderOptimisePanel();
-});
+// Initialisation now handled per-project in loadInitialData()
+
+

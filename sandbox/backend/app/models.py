@@ -14,6 +14,7 @@ class RoutingStrategy(str, Enum):
 
 class SimulationRequest(BaseModel):
     """Request body for POST /api/simulate."""
+    project_id: str
     num_engineers: int = Field(ge=1, le=500, default=5)
     num_jobs: int = Field(ge=1, le=5000, default=20)
     strategy: RoutingStrategy = RoutingStrategy.INHOUSE
@@ -24,6 +25,7 @@ class SimulationRequest(BaseModel):
 
 class RemixRequest(BaseModel):
     """Request body for POST /api/remix."""
+    project_id: str
     parent_run_id: str
     strategy: RoutingStrategy
 

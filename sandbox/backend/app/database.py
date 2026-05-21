@@ -1,106 +1,60 @@
 """
-Database — SQLite async connection manager and CRUD operations for test history.
+Database — Supabase connection manager and CRUD operations.
 """
-import aiosqlite
+import os
 import json
 import logging
 from typing import Optional, Any
-from pathlib import Path
+from fastapi import Request, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+from supabase import create_client, Client
+
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+security = HTTPBearer()
 
-import os
-DATABASE_PATH = os.getenv("DATABASE_PATH", "sandbox_history.db")
+def get_supabase_client(credentials: HTTPAuthorizationCredentials = Security(security)) -> Client:
+    """
+    FastAPI dependency that extracts the JWT, validates it,
+    and returns a Supabase client authenticated as that user.
+    """
+    settings = get_settings()
+    token = credentials.credentials
 
-CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS test_runs (
-    id              TEXT PRIMARY KEY,
-    test_number     INTEGER,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    name            TEXT,
-    strategy        TEXT NOT NULL,
-    num_engineers   INTEGER NOT NULL,
-    num_jobs        INTEGER NOT NULL,
-    scenario_state  TEXT NOT NULL,
-    vroom_solution  TEXT,
-    routes_data     TEXT,
-    trips_geojson   TEXT,
-    faults_geojson  TEXT,
-    routes_geojson  TEXT,
-    total_duration_s  INTEGER,
-    total_distance_m  INTEGER,
-    unassigned_jobs   INTEGER,
-    api_cost_estimate REAL,
-    is_remix        INTEGER DEFAULT 0,
-    parent_run_id   TEXT
-);
-
-CREATE TABLE IF NOT EXISTS engineers (
-    id TEXT PRIMARY KEY,
-    data TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS job_lists (
-    id TEXT PRIMARY KEY,
-    data TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS global_settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-"""
-
-MIGRATE_SQL = [
-    "ALTER TABLE test_runs ADD COLUMN test_number INTEGER",
-    "ALTER TABLE test_runs ADD COLUMN routes_data TEXT",
-    "ALTER TABLE test_runs ADD COLUMN is_remix INTEGER DEFAULT 0",
-    "ALTER TABLE test_runs ADD COLUMN parent_run_id TEXT",
-    "ALTER TABLE test_runs ADD COLUMN combined_geojson TEXT",
-    "CREATE TABLE IF NOT EXISTS engineers (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
-    "CREATE TABLE IF NOT EXISTS job_lists (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
-    "CREATE TABLE IF NOT EXISTS global_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-]
-
-
-async def get_db() -> aiosqlite.Connection:
-    """Get an async SQLite connection."""
-    db = await aiosqlite.connect(DATABASE_PATH)
-    db.row_factory = aiosqlite.Row
-    return db
-
-
-async def create_tables():
-    """Initialize the database schema."""
-    db = await get_db()
+    # We do a basic unverified decode to check expiration early.
+    # The actual signature verification is enforced by the Supabase backend.
     try:
-        await db.executescript(CREATE_TABLE_SQL)
-        # Attempt migrations for existing databases
-        for sql in MIGRATE_SQL:
-            try:
-                await db.execute(sql)
-            except Exception:
-                pass  # Column already exists
-        await db.commit()
-        logger.info("Database tables initialized")
-    finally:
-        await db.close()
-
-
-async def get_next_test_number() -> int:
-    """Get the next auto-incrementing test number."""
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT COALESCE(MAX(test_number), 0) + 1 FROM test_runs"
+        payload = jwt.decode(
+            token,
+            options={"verify_signature": False},
+            audience="authenticated"
         )
-        row = await cursor.fetchone()
-        return row[0] if row else 1
-    finally:
-        await db.close()
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
+    # Initialize Supabase client
+    supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+    
+    # Set the auth header so requests run under the user's RLS policies
+    supabase.options.headers["Authorization"] = f"Bearer {token}"
+    
+    return supabase
+
+async def get_next_test_number(supabase: Client, project_id: str) -> int:
+    """Get the next test number for a given project."""
+    # Supabase doesn't have a direct max() without RPC. We can order by test_number desc limit 1.
+    res = supabase.table("test_runs").select("test_number").eq("project_id", project_id).order("test_number", desc=True).limit(1).execute()
+    if res.data and len(res.data) > 0:
+        return (res.data[0].get("test_number") or 0) + 1
+    return 1
 
 async def save_test_run(
+    supabase: Client,
+    project_id: str,
     run_id: str,
     test_number: int,
     name: Optional[str],
@@ -121,78 +75,49 @@ async def save_test_run(
     is_remix: bool = False,
     parent_run_id: Optional[str] = None,
 ):
-    """Persist a completed test run to the database."""
-    db = await get_db()
-    try:
-        await db.execute(
-            """
-            INSERT INTO test_runs (
-                id, test_number, name, strategy, num_engineers, num_jobs,
-                scenario_state, vroom_solution, routes_data,
-                trips_geojson, faults_geojson, routes_geojson, combined_geojson,
-                total_duration_s, total_distance_m, unassigned_jobs, api_cost_estimate,
-                is_remix, parent_run_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                run_id, test_number, name, strategy, num_engineers, num_jobs,
-                json.dumps(scenario_state),
-                json.dumps(vroom_solution) if vroom_solution else None,
-                json.dumps(routes_data) if routes_data else None,
-                None,
-                None,
-                None,
-                None,
-                total_duration_s, total_distance_m, unassigned_jobs, api_cost_estimate,
-                1 if is_remix else 0,
-                parent_run_id,
-            ),
-        )
-        await db.commit()
-        logger.info(f"Saved test run #{test_number} ({run_id})")
-    finally:
-        await db.close()
+    """Persist a completed test run to Supabase."""
+    data = {
+        "id": run_id,
+        "project_id": project_id,
+        "test_number": test_number,
+        "name": name,
+        "strategy": strategy,
+        "num_engineers": num_engineers,
+        "num_jobs": num_jobs,
+        "scenario_state": scenario_state,
+        "vroom_solution": vroom_solution,
+        "routes_data": routes_data,
+        "total_duration_s": total_duration_s,
+        "total_distance_m": total_distance_m,
+        "unassigned_jobs": unassigned_jobs,
+        "api_cost_estimate": api_cost_estimate,
+        "is_remix": is_remix,
+        "parent_run_id": parent_run_id,
+    }
+    res = supabase.table("test_runs").insert(data).execute()
+    logger.info(f"Saved test run #{test_number} ({run_id}) to Supabase")
 
-
-async def get_test_runs(limit: int = 50, remix_only: bool = False):
+async def get_test_runs(supabase: Client, project_id: str, limit: int = 50, remix_only: bool = False):
     """Retrieve recent test run summaries, newest first."""
-    db = await get_db()
-    try:
-        where = "WHERE is_remix = 1" if remix_only else "WHERE is_remix = 0 OR is_remix IS NULL"
-        cursor = await db.execute(
-            f"""
-            SELECT id, test_number, created_at, name, strategy, num_engineers, num_jobs,
-                   total_duration_s, total_distance_m, unassigned_jobs, api_cost_estimate,
-                   is_remix, parent_run_id
-            FROM test_runs
-            {where}
-            ORDER BY created_at DESC
-            LIMIT ?
-            """,
-            (limit,),
-        )
-        rows = await cursor.fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        await db.close()
+    query = supabase.table("test_runs").select(
+        "id, test_number, created_at, name, strategy, num_engineers, num_jobs, total_duration_s, total_distance_m, unassigned_jobs, api_cost_estimate, is_remix, parent_run_id"
+    ).eq("project_id", project_id)
+    
+    if remix_only:
+        query = query.eq("is_remix", True)
+    else:
+        query = query.eq("is_remix", False)
 
+    res = query.order("created_at", desc=True).limit(limit).execute()
+    return res.data
 
-async def get_test_run_by_id(run_id: str):
+async def get_test_run_by_id(supabase: Client, project_id: str, run_id: str):
     """Retrieve a single test run with full scenario state for replay."""
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT * FROM test_runs WHERE id = ?", (run_id,)
-        )
-        row = await cursor.fetchone()
-        if row is None:
-            return None
-        result = dict(row)
-        # Parse JSON fields
-        for field in ("scenario_state", "vroom_solution", "routes_data",
-                      "trips_geojson", "faults_geojson", "routes_geojson", "combined_geojson"):
-            if result.get(field):
-                result[field] = json.loads(result[field])
-        return result
-    finally:
-        await db.close()
+    res = supabase.table("test_runs").select("*").eq("project_id", project_id).eq("id", run_id).execute()
+    if res.data and len(res.data) > 0:
+        return res.data[0]
+    return None
+
+async def delete_test_run_by_id(supabase: Client, project_id: str, run_id: str):
+    """Delete a specific test run."""
+    supabase.table("test_runs").delete().eq("project_id", project_id).eq("id", run_id).execute()
