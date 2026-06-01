@@ -9,3 +9,4 @@ python-dotenv>=1.0.0
 google-genai>=1.0.0
 supabase>=2.4.0
 pyjwt>=2.8.0
+google-cloud-secret-manager>=2.18.0
