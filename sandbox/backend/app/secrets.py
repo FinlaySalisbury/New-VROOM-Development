@@ -23,6 +23,8 @@ SECRET_MAP = {
     "CLAUDE_API_KEY": "CLAUDE_API_KEY",
     "HERE_API_KEY": "HERE_API_KEY",
     "SUPABASE_JWT_SECRET": "SUPABASE_JWT_SECRET",
+    "RESEND_API_KEY": "RESEND_API_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY": "SUPABASE_SERVICE_ROLE_KEY",
 }
 # SUPABASE_URL and SUPABASE_KEY are public (anon key) — stay as regular env vars
 # TAVILY_API_KEY excluded (local MCP use only)
