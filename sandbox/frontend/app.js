@@ -56,18 +56,102 @@ function initAuth() {
 let currentProjectId = null;
 let currentProjectRole = null;
 
+// ── Role-based access control ────────────────────────────────
+const ROLE_HIERARCHY = { viewer: 0, user: 1, admin: 2, owner: 3 };
+
+function canPerform(action) {
+    const level = ROLE_HIERARCHY[currentProjectRole] ?? -1;
+    switch (action) {
+        case 'view':            return level >= 0; // viewer+
+        case 'run_dispatch':    return level >= 1; // user+
+        case 'edit_engineers':  return level >= 2; // admin+ (matches RLS: owner/admin)
+        case 'edit_jobs':       return level >= 1; // user+ (matches RLS: owner/admin/user)
+        case 'edit_settings':   return level >= 2; // admin+ (matches RLS: owner/admin)
+        case 'delete_history':  return level >= 2; // admin+
+        case 'invite':          return level >= 3; // owner only (matches RLS: owner)
+        case 'manage_members':  return level >= 3; // owner only (matches RLS: owner)
+        case 'edit_project':    return level >= 3; // owner only
+        case 'delete_project':  return level >= 3;
+        default:                return false;
+    }
+}
+
+function applyRoleRestrictions() {
+    // Dispatch / optimise button
+    const runBtn = document.getElementById('run-opt-btn');
+    if (runBtn) {
+        runBtn.disabled = !canPerform('run_dispatch');
+        runBtn.title = canPerform('run_dispatch') ? 'Run Optimisation' : 'Viewers cannot run dispatches';
+    }
+
+    // Floating "New dispatch run" FAB
+    const fabBtn = document.querySelector('.fab-primary');
+    if (fabBtn) {
+        fabBtn.style.display = canPerform('run_dispatch') ? '' : 'none';
+    }
+
+    // Engineer add button (admin+ can manage engineers)
+    const addEngBtn = document.querySelector('#view-engineers .btn-primary');
+    if (addEngBtn) {
+        addEngBtn.style.display = canPerform('edit_engineers') ? '' : 'none';
+    }
+
+    // Job import button (user+ can manage jobs)
+    const addJobBtn = document.querySelector('#view-jobs .btn-primary');
+    if (addJobBtn) {
+        addJobBtn.style.display = canPerform('edit_jobs') ? '' : 'none';
+    }
+
+    // Project settings gear button (only show if user has at least viewer role)
+    // The settings modal itself gates individual tabs/actions
+}
+
+// ── UI identity helpers ──────────────────────────────────────
+function updateNavIdentity() {
+    const session = AppState.get('session');
+    const email = session?.user?.email ?? '';
+    const initials = email ? email.substring(0, 2).toUpperCase() : '?';
+
+    // Nav rail user info
+    const avatarEl = document.getElementById('nav-user-avatar');
+    const emailEl = document.getElementById('nav-user-email');
+    if (avatarEl) avatarEl.textContent = initials;
+    if (emailEl) { emailEl.textContent = email; emailEl.title = email; }
+
+    // Dashboard user bar
+    const dashEmail = document.getElementById('dashboard-user-email');
+    if (dashEmail) dashEmail.textContent = email;
+
+    // Project name + role in nav
+    const projects = AppState.get('projects') || [];
+    const current = projects.find(p => p.id === currentProjectId);
+    const nameEl = document.getElementById('nav-project-name');
+    const roleEl = document.getElementById('nav-role-badge');
+    if (nameEl && current) { nameEl.textContent = current.name; nameEl.title = current.name; }
+    if (roleEl && currentProjectRole) { roleEl.textContent = currentProjectRole; }
+}
+
 async function loadProjectDashboard() {
     // Overlay visibility is now owned by the router. This function is the
     // data-load entrypoint for the picker route.
+    updateNavIdentity();
     await fetchInvitations();
     await fetchProjects();
 }
 
 async function fetchProjects() {
-    const { data: members, error: memberErr } = await supabaseClient
+    // IMPORTANT: Filter by current user's ID so we only get THIS user's
+    // membership rows. Without this filter, RLS returns all members of all
+    // projects the user belongs to, causing wrong role display and duplicate
+    // project cards.
+    const userId = AppState.get('userId');
+    let query = supabaseClient
         .from('project_members')
         .select('project_id, role, projects(id, name, description)')
         .order('created_at', { ascending: false });
+    if (userId) query = query.eq('user_id', userId);
+
+    const { data: members, error: memberErr } = await query;
 
     const container = document.getElementById('projects-list');
     if (memberErr || !members || members.length === 0) {
@@ -198,6 +282,9 @@ async function selectProject(id, role) {
     AppState.set('projectId', id);
     AppState.set('projectRole', role);
 
+    updateNavIdentity();
+    applyRoleRestrictions();
+
     // Overlay visibility is now owned by the router — see router.js. We only
     // do the data load + map resize here.
     if (typeof map !== 'undefined' && map) setTimeout(() => map.invalidateSize(), 100);
@@ -225,114 +312,256 @@ async function loadInitialData() {
 }
 
 // --- Project Settings Modal ---
+function switchSettingsTab(tabName) {
+    document.querySelectorAll('.settings-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-settings-tab') === tabName));
+    document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById('settings-panel-' + tabName);
+    if (panel) panel.style.display = 'block';
+}
+
 async function openProjectSettingsModal() {
     if (!currentProjectId) return;
 
-    // Only Owners can invite and change roles. Disable UI if not owner —
-    // applied before opening so initial focus lands on the correct state.
-    const isOwner = currentProjectRole === 'owner';
-    const inviteEmail = document.getElementById('invite-email');
-    const inviteRole = document.getElementById('invite-role');
-    const inviteBtn = document.querySelector('#project-settings-modal .btn-primary');
+    const canInvite = canPerform('invite');
+    const canManage = canPerform('manage_members');
+    const canEdit = canPerform('edit_project');
 
-    if (inviteEmail) inviteEmail.disabled = !isOwner;
-    if (inviteRole) inviteRole.disabled = !isOwner;
-    if (inviteBtn) inviteBtn.disabled = !isOwner;
+    // Invite section
+    const inviteSection = document.getElementById('invite-section');
+    if (inviteSection) inviteSection.style.display = canInvite ? '' : 'none';
+
+    // General tab — project editing
+    const saveBtn = document.getElementById('save-project-details-btn');
+    const editName = document.getElementById('edit-project-name');
+    const editDesc = document.getElementById('edit-project-desc');
+    if (editName) editName.disabled = !canEdit;
+    if (editDesc) editDesc.disabled = !canEdit;
+    if (saveBtn) saveBtn.style.display = canEdit ? '' : 'none';
+
+    // Danger zone
+    const leaveBtn = document.getElementById('leave-project-btn');
+    const deleteBtn = document.getElementById('delete-project-btn');
+    if (leaveBtn) leaveBtn.style.display = currentProjectRole !== 'owner' ? '' : 'none';
+    if (deleteBtn) deleteBtn.style.display = canEdit ? '' : 'none';
+
+    // Load current project details into General tab
+    const projects = AppState.get('projects') || [];
+    const current = projects.find(p => p.id === currentProjectId);
+    if (editName && current) editName.value = current.name || '';
+    if (editDesc && current) editDesc.value = current.description || '';
+
+    // Reset to Team tab
+    switchSettingsTab('team');
 
     openModal('project-settings-modal', {
-        initialFocus: isOwner ? '#invite-email' : null,
+        initialFocus: canInvite ? '#invite-email' : null,
     });
 
-    await loadTeamMembers(isOwner);
+    await loadTeamMembers(canManage);
+    await loadPendingInvites(canManage);
 }
 
 function closeProjectSettingsModal() {
     closeModal('project-settings-modal');
 }
 
-async function loadTeamMembers(isOwner) {
+async function loadTeamMembers(canManage) {
     const list = document.getElementById('team-members-list');
     list.innerHTML = '<div class="status-text">Loading members...</div>';
     
+    // Join with profiles to get emails
     const { data: members, error } = await supabaseClient
         .from('project_members')
-        .select('user_id, role')
+        .select('user_id, role, profiles(email, display_name)')
         .eq('project_id', currentProjectId);
         
     if (error) {
         list.innerHTML = `<div style="color:red;">Failed to load members: ${error.message}</div>`;
         return;
     }
+
+    const currentUserId = AppState.get('userId');
     
     list.innerHTML = '';
     members.forEach(m => {
+        const email = m.profiles?.email || `${m.user_id.substring(0,8)}...`;
+        const displayName = m.profiles?.display_name || '';
+        const isMe = m.user_id === currentUserId;
+        const initials = email.substring(0, 2).toUpperCase();
+
         const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.justifyContent = 'space-between';
-        div.style.alignItems = 'center';
-        div.style.padding = '8px';
-        div.style.background = 'rgba(255,255,255,0.05)';
-        div.style.borderRadius = '4px';
+        div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.04); border-radius:6px;';
         
-        let roleHtml = `<span style="color: var(--app-fg-soft)">Role: ${m.role}</span>`;
-        if (isOwner) {
+        let roleHtml = `<span style="padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; background: rgba(255,255,255,0.06); color: var(--app-fg-soft);">${m.role}</span>`;
+        if (canManage && !isMe && m.role !== 'owner') {
             roleHtml = `
-                <select class="form-input" style="padding:4px; height:auto; width:100px;" onchange="changeRole('${m.user_id}', this.value)" ${m.role === 'owner' ? 'disabled' : ''}>
+                <select class="form-input" style="padding:3px 6px; height:auto; width:100px; font-size:12px;" onchange="changeRole('${m.user_id}', this.value)">
                     <option value="viewer" ${m.role === 'viewer' ? 'selected' : ''}>Viewer</option>
                     <option value="user" ${m.role === 'user' ? 'selected' : ''}>User</option>
                     <option value="admin" ${m.role === 'admin' ? 'selected' : ''}>Admin</option>
                     <option value="owner" ${m.role === 'owner' ? 'selected' : ''}>Owner</option>
                 </select>
-                <button class="btn-icon" style="color:#ef4444; margin-left:8px;" onclick="removeMember('${m.user_id}')" ${m.role === 'owner' ? 'disabled' : ''}>&times;</button>
+                <button class="btn-icon" style="color:#ef4444; margin-left:6px; font-size:16px;" onclick="removeMember('${m.user_id}')" title="Remove member">&times;</button>
             `;
         }
         
         div.innerHTML = `
-            <div style="font-family: monospace; font-size: 11px;">User ID: ${m.user_id.substring(0,8)}...</div>
-            <div style="display:flex; align-items:center;">${roleHtml}</div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:30px; height:30px; border-radius:50%; background:${isMe ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'rgba(255,255,255,0.08)'}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:white; flex-shrink:0;">${initials}</div>
+                <div>
+                    <div style="font-size:13px; font-weight:500; color:var(--app-fg);">${displayName || email.split('@')[0]}${isMe ? ' <span style="font-size:10px; color:var(--yx-amber); font-weight:600;">(you)</span>' : ''}</div>
+                    <div style="font-size:11px; color:var(--app-fg-soft);">${email}</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px;">${roleHtml}</div>
         `;
         list.appendChild(div);
     });
+}
+
+async function loadPendingInvites(canManage) {
+    const list = document.getElementById('pending-invites-list');
+    if (!list) return;
+    list.innerHTML = '<div class="status-text">Loading...</div>';
+
+    const { data: invites, error } = await supabaseClient
+        .from('invitations')
+        .select('id, email, role, created_at')
+        .eq('project_id', currentProjectId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+    if (error || !invites || invites.length === 0) {
+        list.innerHTML = '<div class="status-text" style="color: var(--app-fg-soft);">No pending invitations.</div>';
+        return;
+    }
+
+    list.innerHTML = '';
+    invites.forEach(inv => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.04); border-radius:6px;';
+        const ago = _timeAgo(inv.created_at);
+        div.innerHTML = `
+            <div>
+                <div style="font-size:13px; color:var(--app-fg);">${inv.email}</div>
+                <div style="font-size:11px; color:var(--app-fg-soft);">Invited as ${inv.role} · ${ago}</div>
+            </div>
+            ${canManage ? `<button class="btn-outline" style="padding:3px 10px; font-size:11px; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="revokeInvite('${inv.id}')">Revoke</button>` : ''}
+        `;
+        list.appendChild(div);
+    });
+}
+
+function _timeAgo(iso) {
+    const ms = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(ms / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    return Math.floor(hrs / 24) + 'd ago';
+}
+
+async function revokeInvite(id) {
+    if (!confirm('Revoke this invitation?')) return;
+    await supabaseClient.from('invitations').delete().eq('id', id);
+    toast('Invitation revoked.', { variant: 'info' });
+    await loadPendingInvites(canPerform('manage_members'));
 }
 
 async function sendProjectInvite() {
     const email = document.getElementById('invite-email').value.trim();
     const role = document.getElementById('invite-role').value;
     if (!email) return alert("Email required");
-    
-    const { data: userData } = await supabaseClient.auth.getUser();
-    
-    const { error } = await supabaseClient
-        .from('invitations')
-        .insert({
-            project_id: currentProjectId,
-            email: email,
-            role: role,
-            invited_by: userData.user.id
+
+    try {
+        const resp = await apiFetch('/invitations/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, role }),
         });
-        
-    if (error) {
-        alert(error.message);
-    } else {
-        toast('Invitation sent.', { variant: 'success' });
-        document.getElementById('invite-email').value = '';
+        const result = await resp.json();
+
+        if (!resp.ok) {
+            toast(result.detail || 'Failed to send invitation.', { variant: 'error' });
+        } else {
+            toast('Invitation sent — email notification delivered.', { variant: 'success' });
+            document.getElementById('invite-email').value = '';
+            await loadPendingInvites(canPerform('manage_members'));
+        }
+    } catch (err) {
+        console.error('Invitation error:', err);
+        toast('Failed to send invitation. Please try again.', { variant: 'error' });
     }
 }
 
 async function removeMember(userId) {
-    if (!confirm("Remove this member?")) return;
+    if (!confirm("Remove this member from the project?")) return;
     await supabaseClient.from('project_members').delete().match({ project_id: currentProjectId, user_id: userId });
-    loadTeamMembers(true);
+    toast('Member removed.', { variant: 'info' });
+    loadTeamMembers(canPerform('manage_members'));
 }
 
 async function changeRole(userId, newRole) {
+    if (newRole === 'owner' && !confirm('Transfer ownership? This will make them an Owner. Continue?')) {
+        loadTeamMembers(canPerform('manage_members'));
+        return;
+    }
     const { error } = await supabaseClient.from('project_members').update({ role: newRole }).match({ project_id: currentProjectId, user_id: userId });
     if (error) {
         alert(error.message);
         return;
     }
     toast('Role updated.', { variant: 'success' });
-    loadTeamMembers(true);
+    loadTeamMembers(canPerform('manage_members'));
+}
+
+async function saveProjectDetails() {
+    const name = document.getElementById('edit-project-name').value.trim();
+    const desc = document.getElementById('edit-project-desc').value.trim();
+    if (!name) return toast('Project name cannot be empty.', { variant: 'error' });
+
+    const { error } = await supabaseClient
+        .from('projects')
+        .update({ name, description: desc })
+        .eq('id', currentProjectId);
+
+    if (error) {
+        toast('Failed to update: ' + error.message, { variant: 'error' });
+        return;
+    }
+
+    toast('Project updated.', { variant: 'success' });
+    // Update cached project list
+    const projects = AppState.get('projects') || [];
+    const idx = projects.findIndex(p => p.id === currentProjectId);
+    if (idx >= 0) { projects[idx].name = name; projects[idx].description = desc; AppState.set('projects', projects); }
+    updateNavIdentity();
+}
+
+async function leaveProject() {
+    if (!confirm('Leave this project? You will lose access to all project data.')) return;
+    const userId = AppState.get('userId');
+    await supabaseClient.from('project_members').delete().match({ project_id: currentProjectId, user_id: userId });
+    toast('You have left the project.', { variant: 'info' });
+    closeProjectSettingsModal();
+    router.navigate('/projects');
+}
+
+async function deleteProject() {
+    const projects = AppState.get('projects') || [];
+    const current = projects.find(p => p.id === currentProjectId);
+    const name = current?.name || 'this project';
+    if (!confirm(`Permanently delete "${name}"? All data (engineers, jobs, history) will be lost. This cannot be undone.`)) return;
+
+    const { error } = await supabaseClient.from('projects').delete().eq('id', currentProjectId);
+    if (error) {
+        toast('Failed to delete: ' + error.message, { variant: 'error' });
+        return;
+    }
+    toast('Project deleted.', { variant: 'info' });
+    closeProjectSettingsModal();
+    router.navigate('/projects');
 }
 
 function handleAuthChange(session) {
@@ -352,6 +581,8 @@ function handleAuthChange(session) {
         AppState.set('projectId', null);
         AppState.set('projectRole', null);
         AppState.set('projects', null);
+    } else {
+        updateNavIdentity();
     }
 }
 
@@ -363,8 +594,48 @@ function toggleAuthMode() {
     document.getElementById('auth-subtitle').textContent = isSignUpMode ? 'Sign up to get started.' : 'Sign in to access the dispatch platform.';
     document.getElementById('login-btn').innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
     document.getElementById('auth-toggle-btn').textContent = isSignUpMode ? 'Already have an account? Sign in' : 'Create an account';
+    document.getElementById('forgot-password-btn').style.display = isSignUpMode ? 'none' : '';
     document.getElementById('login-error').style.display = 'none';
     document.getElementById('login-success').style.display = 'none';
+}
+
+async function handleForgotPassword() {
+    const email = document.getElementById('login-email').value.trim();
+    if (!email) {
+        toast('Enter your email address first.', { variant: 'warning' });
+        return;
+    }
+    const btn = document.getElementById('forgot-password-btn');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+    try {
+        const resp = await fetch(API_BASE + '/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const result = await resp.json();
+        if (resp.ok) {
+            toast('If an account exists for that email, a reset link has been sent.', { variant: 'success' });
+        } else {
+            toast('Error: ' + (result.detail || 'Something went wrong.'), { variant: 'error' });
+        }
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        toast('Connection error. Please try again.', { variant: 'error' });
+    }
+    btn.textContent = 'Forgot password?';
+    btn.disabled = false;
+}
+
+
+// Fire-and-forget welcome email after sign-up
+function _sendWelcomeEmail(email) {
+    fetch(API_BASE + '/auth/send-welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    }).catch(err => console.warn('Welcome email failed (non-blocking):', err));
 }
 
 async function handleAuthSubmit(event) {
@@ -378,46 +649,48 @@ async function handleAuthSubmit(event) {
     errorEl.style.display = 'none';
     successEl.style.display = 'none';
     btn.disabled = true;
-    btn.textContent = isSignUpMode ? 'Signing up...' : 'Signing in...';
+    btn.innerHTML = isSignUpMode ? 'Creating account...' : 'Signing in...';
 
-    let result;
-    if (isSignUpMode) {
-        result = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-        });
-    } else {
-        result = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password,
-        });
-    }
-
-    const { data, error } = result;
-
-    if (error) {
-        errorEl.textContent = error.message;
+    try {
+        if (isSignUpMode) {
+            const { data, error } = await supabaseClient.auth.signUp({ email, password });
+            if (error) {
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+                btn.innerHTML = 'Sign up &rarr;';
+                btn.disabled = false;
+            } else if (data.user && !data.session) {
+                // Supabase requires email confirmation — send welcome email
+                _sendWelcomeEmail(email);
+                successEl.textContent = 'Account created! Check your email to confirm your account.';
+                successEl.style.display = 'block';
+                btn.innerHTML = 'Sign up &rarr;';
+                btn.disabled = false;
+            } else {
+                // Successful sign-up with auto-confirm — send welcome email
+                if (data.user) _sendWelcomeEmail(email);
+                btn.innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
+                btn.disabled = false;
+            }
+        } else {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) {
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+                btn.innerHTML = 'Sign in &rarr;';
+                btn.disabled = false;
+            } else {
+                // Successful login
+                btn.innerHTML = 'Sign in &rarr;';
+                btn.disabled = false;
+            }
+        }
+    } catch (err) {
+        console.error('Auth error:', err);
+        errorEl.textContent = `Connection error: ${err.message || 'Could not reach authentication server. Please try again.'}`;
         errorEl.style.display = 'block';
         btn.disabled = false;
         btn.innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
-    } else {
-        if (isSignUpMode && data.user && data.user.identities && data.user.identities.length === 0) {
-            // User already exists (Supabase security feature returns fake success if email exists)
-            errorEl.textContent = 'An account with this email already exists.';
-            errorEl.style.display = 'block';
-            btn.innerHTML = 'Sign up &rarr;';
-            btn.disabled = false;
-        } else if (isSignUpMode && !data.session) {
-            // Success but email confirmation required
-            successEl.textContent = 'Account created! Please check your email to verify.';
-            successEl.style.display = 'block';
-            btn.innerHTML = 'Sign up &rarr;';
-            btn.disabled = false;
-        } else {
-            // Successful login or direct sign up
-            btn.innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
-            btn.disabled = false;
-        }
     }
 }
 
@@ -431,6 +704,7 @@ async function handleLogout() {
     // The router will redirect to #/login when it observes the cleared session.
     toast('You have been signed out.', { variant: 'info' });
 }
+
 
 // ═══ Storage Manager ═════════════════════════════════════════
 const StorageManager = {
@@ -750,11 +1024,30 @@ function initMap() {
         className: 'map-monochrome'
     });
 
+    // HERE map tiles
+    const hereApiKey = 'xH844_16hN5RKa-_iFDdrfITg8eWFP1RUY9fw1lJiX4';
+    const hereTileOptions = {
+        attribution: '&copy; <a href="https://www.here.com">HERE</a>',
+        maxZoom: 20,
+        tileSize: 512,
+        zoomOffset: -1
+    };
+    const hereLight = L.tileLayer(
+        `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png?style=explore.day&size=512&apiKey=${hereApiKey}`,
+        hereTileOptions
+    );
+    const hereDark = L.tileLayer(
+        `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png?style=explore.night&size=512&apiKey=${hereApiKey}`,
+        hereTileOptions
+    );
+
     tomtomLight.addTo(map); // Set Light as default
     L.control.layers({ 
-        "Light": tomtomLight, 
-        "Dark": tomtomDark,
-        "Monochrome": tomtomMono 
+        "TomTom Light": tomtomLight, 
+        "TomTom Dark": tomtomDark,
+        "TomTom Mono": tomtomMono,
+        "HERE Light": hereLight,
+        "HERE Dark": hereDark,
     }, null, { position: 'topright' }).addTo(map);
 
     routeLayerGroup = L.layerGroup().addTo(map);
@@ -828,7 +1121,7 @@ async function updateCostGuide() {
     const strategyRadio = document.querySelector('#strategy-group input[name="strategy"]:checked');
     const currentStrategy = strategyRadio ? strategyRadio.value : state.strategy;
 
-    if (currentStrategy === 'tomtom_premium') {
+    if (currentStrategy === 'tomtom_premium' || currentStrategy === 'here_premium') {
         // Count vehicle-days from the rota matrix checkboxes (each checked day = 1 vehicle)
         const checkedDays = document.querySelectorAll('#opt-rota-matrix .rota-day-cb:checked');
         let numVehicleDays = checkedDays.length;
@@ -848,11 +1141,31 @@ async function updateCostGuide() {
         }
 
         const w = numVehicleDays + numJobs;
-        const txns = (w * w) + (3 * w);
-        $('#cost-waypoints').textContent = w;
-        const elEl = document.getElementById('cost-elements');
-        if (elEl) elEl.textContent = txns.toLocaleString();
-        $('#cost-gbp').textContent = `£${(txns * 0.0004).toFixed(2)}`;
+        const titleEl = document.getElementById('cost-guide-title');
+
+        if (currentStrategy === 'here_premium') {
+            // HERE: 5 × MAX(S,D) formula (S=D=w for square matrix)
+            const S = w, D = w;
+            const matrixTxns = (S >= 5 && D >= 5) ? 5 * Math.max(S, D) : S * D;
+            const routeTxns = 3 * w;  // convergence solver overhead
+            const totalTxns = matrixTxns + routeTxns;
+            const costUsd = (matrixTxns * 0.0035) + (routeTxns * 0.0015);
+            const costGbp = costUsd * 0.79;  // approx USD→GBP
+
+            if (titleEl) titleEl.textContent = 'HERE API estimate';
+            $('#cost-waypoints').textContent = w;
+            const elEl = document.getElementById('cost-elements');
+            if (elEl) elEl.textContent = totalTxns.toLocaleString() + ' txns';
+            $('#cost-gbp').textContent = `£${costGbp.toFixed(2)}`;
+        } else {
+            // TomTom: per-cell pricing
+            const txns = (w * w) + (3 * w);
+            if (titleEl) titleEl.textContent = 'TomTom API estimate';
+            $('#cost-waypoints').textContent = w;
+            const elEl = document.getElementById('cost-elements');
+            if (elEl) elEl.textContent = txns.toLocaleString();
+            $('#cost-gbp').textContent = `£${(txns * 0.0004).toFixed(2)}`;
+        }
         g.classList.add('visible');
     } else {
         g.classList.remove('visible');
@@ -1999,7 +2312,7 @@ function formatDuration(s) {
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
-function formatStrategy(s) { return { naive: 'Naive', inhouse: 'In-House', tomtom_premium: 'TomTom' }[s] || s; }
+function formatStrategy(s) { return { naive: 'Naive', inhouse: 'In-House', tomtom_premium: 'TomTom', here_premium: 'HERE' }[s] || s; }
 function formatTime(iso) {
     if (!iso) return '';
     try { return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); } catch { return iso; }
@@ -2235,11 +2548,12 @@ async function renderEngineerList() {
         list.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><p>No engineers saved yet.<br>Click "+ Add engineer" to create one.</p></div>';
         return;
     }
+    const editable = canPerform('edit_engineers');
     list.innerHTML = engineers.map(e => `
-        <div class="data-card" onclick="editEngineer('${e.id}')">
+        <div class="data-card"${editable ? ` onclick="editEngineer('${e.id}')"` : ''} style="${editable ? 'cursor:pointer;' : ''}">
             <div class="data-card-header">
                 <span class="data-card-title">${e.number ? '#' + e.number + ' - ' : ''}${e.name}</span>
-                <button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="event.stopPropagation(); deleteEngineer('${e.id}')" title="Delete">&#x2715;</button>
+                ${editable ? `<button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="event.stopPropagation(); deleteEngineer('${e.id}')" title="Delete">&#x2715;</button>` : ''}
             </div>
             <div class="data-card-meta">
                 <div>${(e.skills || []).map(s => `<span class="data-tag">${s}</span>`).join(' ')}</div>
@@ -2277,6 +2591,10 @@ function hideEngineerForm() {
 }
 
 async function saveEngineer() {
+    if (!canPerform('edit_engineers')) {
+        toast('You do not have permission to edit engineers.', { variant: 'error' });
+        return;
+    }
     const name = document.getElementById('eng-form-name').value.trim();
     if (!name) { alert('Name is required.'); return; }
     
@@ -2325,6 +2643,10 @@ async function editEngineer(id) {
 }
 
 async function deleteEngineer(id) {
+    if (!canPerform('edit_engineers')) {
+        toast('You do not have permission to delete engineers.', { variant: 'error' });
+        return;
+    }
     if (!confirm('Delete this engineer?')) return;
     await StorageManager.saveEngineers((await StorageManager.getEngineers()).filter(e => String(e.id) !== String(id)));
     renderEngineerList();
@@ -2339,11 +2661,12 @@ async function renderJobLists() {
         list.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><p>No job lists saved yet.<br>Click "+ Import batch" to add one.</p></div>';
         return;
     }
+    const jobEditable = canPerform('edit_jobs');
     list.innerHTML = jobLists.map(jl => `
         <div class="data-card">
             <div class="data-card-header">
                 <span class="data-card-title">${jl.name}</span>
-                <button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="deleteJobList('${jl.id}')" title="Delete">&#x2715;</button>
+                ${jobEditable ? `<button class="yx-btn yx-btn-secondary yx-btn-sm" onclick="deleteJobList('${jl.id}')" title="Delete">&#x2715;</button>` : ''}
             </div>
             <div class="data-card-meta">
                 <div>${jl.jobCount} jobs parsed</div>
@@ -2365,6 +2688,10 @@ function hideJobImport() {
 }
 
 async function deleteJobList(id) {
+    if (!canPerform('edit_jobs')) {
+        toast('You do not have permission to delete job lists.', { variant: 'error' });
+        return;
+    }
     if (!confirm('Delete this job list?')) return;
     await StorageManager.saveJobLists((await StorageManager.getJobLists()).filter(jl => String(jl.id) !== String(id)));
     renderJobLists();
@@ -2463,8 +2790,8 @@ let pendingAiReview = null; // holds { validJobs, classifications, name, notes }
 
 function setClassifyMode(mode) {
     classifyMode = mode;
-    document.getElementById('ai-mode-ai').classList.toggle('active', mode === 'ai');
-    document.getElementById('ai-mode-legacy').classList.toggle('active', mode === 'legacy');
+    document.getElementById('mode-ai-label').classList.toggle('active', mode === 'ai');
+    document.getElementById('mode-legacy-label').classList.toggle('active', mode === 'legacy');
 }
 
 // Deprecated listener: configuration loading is now handled per-project in loadInitialData()
@@ -2992,17 +3319,18 @@ async function runOptimisation() {
 
         // --- ENFORCE LOAD BALANCING ---
         // VROOM inherently minimizes the number of vehicles used. To ensure jobs are 
-        // distributed across all available engineers rather than assigned to just one,
-        // we calculate a 'fair share' max_tasks limit based on the unique engineers selected.
-        const uniqueEngineersCount = new Set(vehicles.map(v => v.name.split('_Day')[0])).size || 1;
-        const fairShare = Math.ceil(jobs.length / uniqueEngineersCount);
+        // distributed across all available vehicle-days rather than piled onto one,
+        // we calculate a 'fair share' max_tasks limit based on the total vehicle-days.
+        // e.g. 25 jobs across 5 vehicle-days → max 6 per day (ceil(25/5) + 1).
+        const totalVehicleDays = vehicles.length;
+        const fairShare = Math.ceil(jobs.length / totalVehicleDays);
         const balancedLimit = fairShare + 1; // +1 buffer for flexibility
 
         vehicles.forEach(v => {
             if (v.max_tasks !== undefined) {
                 // If user set a profile capacity, we respect it as the absolute maximum, 
                 // but we still enforce the balanced limit if it's smaller, 
-                // to prevent one engineer from hoarding all jobs.
+                // to prevent one vehicle-day from hoarding all jobs.
                 v.max_tasks = Math.min(v.max_tasks, balancedLimit);
             } else {
                 v.max_tasks = balancedLimit;
