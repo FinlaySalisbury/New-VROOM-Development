@@ -1,0 +1,237 @@
+/* Dispatch map view — full-bleed Leaflet canvas with floating glass panels. */
+
+.map-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  background: var(--app-bg-subtle);
+}
+
+/* Keep Leaflet popups on-brand */
+.leaflet-popup-content {
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--app-fg);
+}
+
+.map-panel {
+  position: absolute;
+  z-index: 500;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* Summary — top-left */
+.map-summary {
+  top: var(--space-4);
+  left: var(--space-4);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 260px;
+  max-width: calc(100vw - var(--space-7));
+}
+
+.map-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.map-stat {
+  display: flex;
+  flex-direction: column;
+}
+.map-stat-num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--app-fg);
+}
+.map-stat-label {
+  font-size: var(--fs-micro);
+  color: var(--app-fg-muted);
+  margin-top: 2px;
+}
+
+.map-field label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-fg-muted);
+  margin-bottom: var(--space-1);
+  font-weight: 500;
+}
+
+/* Breakdown — top-right */
+.map-breakdown {
+  top: var(--space-4);
+  right: var(--space-4);
+  padding: var(--space-4);
+  width: 240px;
+  max-height: calc(100vh - var(--space-9));
+  overflow-y: auto;
+}
+.map-breakdown-title {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  margin: 0 0 var(--space-3);
+}
+.map-breakdown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.map-breakdown-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.map-breakdown-row:hover {
+  background: var(--app-bg-subtle);
+}
+.map-breakdown-row.is-active {
+  background: rgba(30, 46, 217, 0.1);
+}
+.map-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.map-breakdown-name {
+  flex: 1;
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-breakdown-jobs {
+  font-weight: 600;
+  font-size: var(--fs-small);
+  color: var(--app-fg-muted);
+}
+
+/* New-dispatch FAB — bottom-center */
+.map-fab {
+  position: absolute;
+  z-index: 500;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--yx-black);
+  color: var(--yx-white);
+  border: 0;
+  padding: 14px 28px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--fs-small);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.map-fab:hover:not(:disabled) {
+  background: var(--yx-royal-blue);
+  transform: translateX(-50%) translateY(-2px);
+}
+.map-fab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Empty state */
+.map-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-6);
+  pointer-events: none;
+}
+.map-empty-title {
+  margin: 0 0 var(--space-2);
+}
+.map-empty-text {
+  max-width: 42ch;
+  color: var(--app-fg-muted);
+}
+
+/* Loading overlay */
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(2px);
+  color: var(--app-fg);
+  font-weight: 600;
+}
+.map-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--app-border);
+  border-top-color: var(--yx-royal-blue);
+  border-radius: 50%;
+  animation: map-spin 0.8s linear infinite;
+}
+@keyframes map-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* Mobile: stack panels full-width, move FAB clear of nav */
+@media (max-width: 768px) {
+  .map-summary,
+  .map-breakdown {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin: var(--space-3);
+  }
+  .map-view {
+    overflow-y: auto;
+  }
+}
