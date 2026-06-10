@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="DESIGN_LAYER" data-name="DESIGN LAYER" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32">
+  <defs>
+    
+    <clipPath id="clippath">
+      <path class="cls-2" d="M16.3,14.1c-.1-.02-.3-.03-.61-.03h-.41v1.19h.46c.33,0,.55-.02.67-.07s.2-.11.26-.21.1-.2.1-.32c0-.15-.04-.28-.13-.38-.09-.1-.2-.16-.34-.19Z"></path>
+    </clipPath>
+    <clipPath id="clippath-1">
+      <path class="cls-2" d="M16.05,11.26c-2.32,0-4.19,1.88-4.19,4.19s1.88,4.19,4.19,4.19,4.19-1.88,4.19-4.19-1.88-4.19-4.19-4.19ZM17.51,15.29c-.09.17-.21.31-.35.41-.14.1-.29.17-.44.2-.2.04-.49.06-.88.06h-.55v1.58h-.84v-4.18h1.35c.51,0,.85.02,1,.06.24.06.44.2.6.41.16.21.24.48.24.81,0,.26-.05.47-.14.65Z"></path>
+    </clipPath>
+  </defs>
+  <path class="cls-142" d="M9.48,23.95h-1v-1.13h1v1.13ZM9.48,21.68h-1v-1.13h1v1.13ZM9.48,19.42h-1v-1.13h1v1.13ZM9.48,17.15h-1v-1.13h1v1.13ZM9.48,14.88h-1v-1.13h1v1.13ZM9.48,12.62h-1v-1.13h1v1.13ZM9.48,10.35h-1v-1.13h1v1.13ZM9.48,8.09h-1v-1.13h1v1.13Z"></path>
+  <path class="cls-142" d="M23.62,23.95h-1v-1.13h1v1.13ZM23.62,21.68h-1v-1.13h1v1.13ZM23.62,19.42h-1v-1.13h1v1.13ZM23.62,17.15h-1v-1.13h1v1.13ZM23.62,14.88h-1v-1.13h1v1.13ZM23.62,12.62h-1v-1.13h1v1.13ZM23.62,10.35h-1v-1.13h1v1.13ZM23.62,8.09h-1v-1.13h1v1.13Z"></path>
+  <rect class="cls-142" x="5.89" y="4.43" width="20.32" height="1"></rect>
+  <rect class="cls-142" x="5.89" y="25.95" width="20.32" height="1"></rect>
+  <g>
+    <g class="cls-137">
+      <polygon class="cls-54" points="15.67 14.07 15.29 14.08 15.29 14.07 15.67 14.07"></polygon>
+      <polygon class="cls-64" points="16.78 14.1 15.29 14.13 15.29 14.08 15.67 14.07 16.78 14.07 16.78 14.1"></polygon>
+      <polygon class="cls-108" points="16.78 14.15 15.29 14.19 15.29 14.13 16.78 14.1 16.78 14.15"></polygon>
+      <polygon class="cls-100" points="16.78 14.21 15.29 14.25 15.29 14.19 16.78 14.15 16.78 14.21"></polygon>
+      <polygon class="cls-51" points="16.78 14.27 15.29 14.3 15.29 14.25 16.78 14.21 16.78 14.27"></polygon>
+      <polygon class="cls-31" points="16.78 14.32 15.29 14.36 15.29 14.3 16.78 14.27 16.78 14.32"></polygon>
+      <polygon class="cls-99" points="16.78 14.38 15.29 14.42 15.29 14.36 16.78 14.32 16.78 14.38"></polygon>
+      <polygon class="cls-53" points="16.78 14.44 15.29 14.47 15.29 14.42 16.78 14.38 16.78 14.44"></polygon>
+      <polygon class="cls-29" points="16.78 14.49 15.29 14.53 15.29 14.47 16.78 14.44 16.78 14.49"></polygon>
+      <polygon class="cls-5" points="16.78 14.55 15.29 14.59 15.29 14.53 16.78 14.49 16.78 14.55"></polygon>
+      <polygon class="cls-10" points="16.78 14.61 15.29 14.64 15.29 14.59 16.78 14.55 16.78 14.61"></polygon>
+      <polygon class="cls-50" points="16.78 14.66 15.29 14.7 15.29 14.64 16.78 14.61 16.78 14.66"></polygon>
+      <polygon class="cls-16" points="16.78 14.72 15.29 14.76 15.29 14.7 16.78 14.66 16.78 14.72"></polygon>
+      <polygon class="cls-114" points="16.78 14.78 15.29 14.82 15.29 14.76 16.78 14.72 16.78 14.78"></polygon>
+      <polygon class="cls-12" points="16.78 14.83 15.29 14.87 15.29 14.82 16.78 14.78 16.78 14.83"></polygon>
+      <polygon class="cls-24" points="16.78 14.89 15.29 14.93 15.29 14.87 16.78 14.83 16.78 14.89"></polygon>
+      <polygon class="cls-6" points="16.78 14.95 15.29 14.99 15.29 14.93 16.78 14.89 16.78 14.95"></polygon>
+      <polygon class="cls-106" points="16.78 15 15.29 15.04 15.29 14.99 16.78 14.95 16.78 15"></polygon>
+      <polygon class="cls-33" points="16.78 15.06 15.29 15.1 15.29 15.04 16.78 15 16.78 15.06"></polygon>
+      <polygon class="cls-17" points="16.78 15.12 15.29 15.16 15.29 15.1 16.78 15.06 16.78 15.12"></polygon>
+      <polygon class="cls-28" points="16.78 15.17 15.29 15.21 15.29 15.16 16.78 15.12 16.78 15.17"></polygon>
+      <polygon class="cls-25" points="16.78 15.23 15.89 15.25 15.29 15.25 15.29 15.21 16.78 15.17 16.78 15.23"></polygon>
+      <polygon class="cls-74" points="15.89 15.25 16.78 15.23 16.78 15.25 15.89 15.25"></polygon>
+    </g>
+    <g class="cls-69">
+      <polygon class="cls-95" points="14.46 13.36 14.45 13.36 14.45 13.36 14.46 13.36"></polygon>
+      <polygon class="cls-117" points="16.69 13.36 14.45 13.42 14.45 13.36 14.46 13.36 16.69 13.36"></polygon>
+      <polygon class="cls-13" points="17.65 13.39 14.45 13.47 14.45 13.42 16.69 13.36 17.65 13.36 17.65 13.39"></polygon>
+      <polygon class="cls-81" points="17.65 13.45 14.45 13.53 14.45 13.47 17.65 13.39 17.65 13.45"></polygon>
+      <polygon class="cls-80" points="17.65 13.51 14.45 13.59 14.45 13.53 17.65 13.45 17.65 13.51"></polygon>
+      <polygon class="cls-83" points="17.65 13.56 14.45 13.64 14.45 13.59 17.65 13.51 17.65 13.56"></polygon>
+      <polygon class="cls-67" points="17.65 13.62 14.45 13.7 14.45 13.64 17.65 13.56 17.65 13.62"></polygon>
+      <polygon class="cls-135" points="17.65 13.68 14.45 13.76 14.45 13.7 17.65 13.62 17.65 13.68"></polygon>
+      <polygon class="cls-143" points="17.65 13.73 14.45 13.82 14.45 13.76 17.65 13.68 17.65 13.73"></polygon>
+      <polygon class="cls-119" points="17.65 13.79 14.45 13.87 14.45 13.82 17.65 13.73 17.65 13.79"></polygon>
+      <polygon class="cls-112" points="17.65 13.85 14.45 13.93 14.45 13.87 17.65 13.79 17.65 13.85"></polygon>
+      <polygon class="cls-125" points="17.65 13.9 14.45 13.99 14.45 13.93 17.65 13.85 17.65 13.9"></polygon>
+      <polygon class="cls-59" points="17.65 13.96 14.45 14.04 14.45 13.99 17.65 13.9 17.65 13.96"></polygon>
+      <polygon class="cls-54" points="17.65 14.02 14.45 14.1 14.45 14.04 17.65 13.96 17.65 14.02"></polygon>
+      <polygon class="cls-64" points="17.65 14.07 14.45 14.16 14.45 14.1 17.65 14.02 17.65 14.07"></polygon>
+      <polygon class="cls-108" points="17.65 14.13 14.45 14.21 14.45 14.16 17.65 14.07 17.65 14.13"></polygon>
+      <polygon class="cls-100" points="17.65 14.19 14.45 14.27 14.45 14.21 17.65 14.13 17.65 14.19"></polygon>
+      <polygon class="cls-51" points="17.65 14.24 14.45 14.33 14.45 14.27 17.65 14.19 17.65 14.24"></polygon>
+      <polygon class="cls-31" points="17.65 14.3 14.45 14.38 14.45 14.33 17.65 14.24 17.65 14.3"></polygon>
+      <polygon class="cls-99" points="17.65 14.36 14.45 14.44 14.45 14.38 17.65 14.3 17.65 14.36"></polygon>
+      <polygon class="cls-53" points="17.65 14.41 14.45 14.5 14.45 14.44 17.65 14.36 17.65 14.41"></polygon>
+      <polygon class="cls-29" points="17.65 14.47 14.45 14.55 14.45 14.5 17.65 14.41 17.65 14.47"></polygon>
+      <polygon class="cls-5" points="17.65 14.53 14.45 14.61 14.45 14.55 17.65 14.47 17.65 14.53"></polygon>
+      <polygon class="cls-10" points="17.65 14.58 14.45 14.67 14.45 14.61 17.65 14.53 17.65 14.58"></polygon>
+      <polygon class="cls-50" points="17.65 14.64 14.45 14.72 14.45 14.67 17.65 14.58 17.65 14.64"></polygon>
+      <polygon class="cls-16" points="17.65 14.7 14.45 14.78 14.45 14.72 17.65 14.64 17.65 14.7"></polygon>
+      <polygon class="cls-114" points="17.65 14.76 14.45 14.84 14.45 14.78 17.65 14.7 17.65 14.76"></polygon>
+      <polygon class="cls-12" points="17.65 14.81 14.45 14.89 14.45 14.84 17.65 14.76 17.65 14.81"></polygon>
+      <polygon class="cls-24" points="17.65 14.87 14.45 14.95 14.45 14.89 17.65 14.81 17.65 14.87"></polygon>
+      <polygon class="cls-6" points="17.65 14.93 14.45 15.01 14.45 14.95 17.65 14.87 17.65 14.93"></polygon>
+      <polygon class="cls-106" points="17.65 14.98 14.45 15.06 14.45 15.01 17.65 14.93 17.65 14.98"></polygon>
+      <polygon class="cls-33" points="17.65 15.04 14.45 15.12 14.45 15.06 17.65 14.98 17.65 15.04"></polygon>
+      <polygon class="cls-17" points="17.65 15.1 14.45 15.18 14.45 15.12 17.65 15.04 17.65 15.1"></polygon>
+      <polygon class="cls-28" points="17.65 15.15 14.45 15.23 14.45 15.18 17.65 15.1 17.65 15.15"></polygon>
+      <polygon class="cls-25" points="17.65 15.21 14.45 15.29 14.45 15.23 17.65 15.15 17.65 15.21"></polygon>
+      <polygon class="cls-74" points="17.65 15.27 14.45 15.35 14.45 15.29 17.65 15.21 17.65 15.27"></polygon>
+      <polygon class="cls-86" points="17.65 15.32 14.45 15.4 14.45 15.35 17.65 15.27 17.65 15.32"></polygon>
+      <polygon class="cls-84" points="17.65 15.38 14.45 15.46 14.45 15.4 17.65 15.32 17.65 15.38"></polygon>
+      <polygon class="cls-3" points="17.65 15.44 14.45 15.52 14.45 15.46 17.65 15.38 17.65 15.44"></polygon>
+      <polygon class="cls-38" points="17.65 15.49 14.45 15.57 14.45 15.52 17.65 15.44 17.65 15.49"></polygon>
+      <polygon class="cls-121" points="17.65 15.55 14.45 15.63 14.45 15.57 17.65 15.49 17.65 15.55"></polygon>
+      <polygon class="cls-107" points="17.65 15.61 14.45 15.69 14.45 15.63 17.65 15.55 17.65 15.61"></polygon>
+      <polygon class="cls-78" points="17.65 15.66 14.45 15.74 14.45 15.69 17.65 15.61 17.65 15.66"></polygon>
+      <polygon class="cls-122" points="17.65 15.72 14.45 15.8 14.45 15.74 17.65 15.66 17.65 15.72"></polygon>
+      <polygon class="cls-87" points="17.65 15.78 14.45 15.86 14.45 15.8 17.65 15.72 17.65 15.78"></polygon>
+      <polygon class="cls-41" points="17.65 15.83 14.45 15.91 14.45 15.86 17.65 15.78 17.65 15.83"></polygon>
+      <polygon class="cls-36" points="17.65 15.89 14.45 15.97 14.45 15.91 17.65 15.83 17.65 15.89"></polygon>
+      <polygon class="cls-96" points="17.65 15.95 14.45 16.03 14.45 15.97 17.65 15.89 17.65 15.95"></polygon>
+      <polygon class="cls-98" points="17.65 16 14.45 16.08 14.45 16.03 17.65 15.95 17.65 16"></polygon>
+      <polygon class="cls-72" points="17.65 16.06 14.45 16.14 14.45 16.08 17.65 16 17.65 16.06"></polygon>
+      <polygon class="cls-9" points="17.65 16.12 14.45 16.2 14.45 16.14 17.65 16.06 17.65 16.12"></polygon>
+      <polygon class="cls-7" points="17.65 16.17 14.45 16.25 14.45 16.2 17.65 16.12 17.65 16.17"></polygon>
+      <polygon class="cls-4" points="17.65 16.23 14.45 16.31 14.45 16.25 17.65 16.17 17.65 16.23"></polygon>
+      <polygon class="cls-75" points="17.65 16.29 14.45 16.37 14.45 16.31 17.65 16.23 17.65 16.29"></polygon>
+      <polygon class="cls-73" points="17.65 16.34 14.45 16.43 14.45 16.37 17.65 16.29 17.65 16.34"></polygon>
+      <polygon class="cls-141" points="17.65 16.4 14.45 16.48 14.45 16.43 17.65 16.34 17.65 16.4"></polygon>
+      <polygon class="cls-65" points="17.65 16.46 14.45 16.54 14.45 16.48 17.65 16.4 17.65 16.46"></polygon>
+      <polygon class="cls-128" points="17.65 16.51 14.45 16.6 14.45 16.54 17.65 16.46 17.65 16.51"></polygon>
+      <polygon class="cls-1" points="17.65 16.57 14.45 16.65 14.45 16.6 17.65 16.51 17.65 16.57"></polygon>
+      <polygon class="cls-71" points="17.65 16.63 14.45 16.71 14.45 16.65 17.65 16.57 17.65 16.63"></polygon>
+      <polygon class="cls-19" points="17.65 16.68 14.45 16.77 14.45 16.71 17.65 16.63 17.65 16.68"></polygon>
+      <polygon class="cls-126" points="17.65 16.74 14.45 16.82 14.45 16.77 17.65 16.68 17.65 16.74"></polygon>
+      <polygon class="cls-129" points="17.65 16.8 14.45 16.88 14.45 16.82 17.65 16.74 17.65 16.8"></polygon>
+      <polygon class="cls-131" points="17.65 16.85 14.45 16.94 14.45 16.88 17.65 16.8 17.65 16.85"></polygon>
+      <polygon class="cls-42" points="17.65 16.91 14.45 16.99 14.45 16.94 17.65 16.85 17.65 16.91"></polygon>
+      <polygon class="cls-30" points="17.65 16.97 14.45 17.05 14.45 16.99 17.65 16.91 17.65 16.97"></polygon>
+      <polygon class="cls-124" points="17.65 17.02 14.45 17.11 14.45 17.05 17.65 16.97 17.65 17.02"></polygon>
+      <polygon class="cls-118" points="17.65 17.08 14.45 17.16 14.45 17.11 17.65 17.02 17.65 17.08"></polygon>
+      <polygon class="cls-130" points="17.65 17.14 14.45 17.22 14.45 17.16 17.65 17.08 17.65 17.14"></polygon>
+      <polygon class="cls-68" points="17.65 17.19 14.45 17.28 14.45 17.22 17.65 17.14 17.65 17.19"></polygon>
+      <polygon class="cls-120" points="17.65 17.25 14.45 17.33 14.45 17.28 17.65 17.19 17.65 17.25"></polygon>
+      <polygon class="cls-91" points="17.65 17.31 14.45 17.39 14.45 17.33 17.65 17.25 17.65 17.31"></polygon>
+      <polygon class="cls-79" points="17.65 17.37 14.45 17.45 14.45 17.39 17.65 17.31 17.65 17.37"></polygon>
+      <polygon class="cls-88" points="17.65 17.42 14.45 17.5 14.45 17.45 17.65 17.37 17.65 17.42"></polygon>
+      <polygon class="cls-133" points="17.65 17.48 15.24 17.54 14.45 17.54 14.45 17.5 17.65 17.42 17.65 17.48"></polygon>
+      <polygon class="cls-8" points="17.65 17.54 17.47 17.54 15.24 17.54 17.65 17.48 17.65 17.54"></polygon>
+      <polygon class="cls-93" points="17.47 17.54 17.65 17.54 17.65 17.54 17.47 17.54"></polygon>
+      <polygon class="cls-142" points="20.24 11.63 11.85 11.84 11.85 11.26 20.24 11.26 20.24 11.63"></polygon>
+      <polygon class="cls-142" points="20.24 11.68 11.85 11.9 11.85 11.84 20.24 11.63 20.24 11.68"></polygon>
+      <polygon class="cls-92" points="20.24 11.74 11.85 11.95 11.85 11.9 20.24 11.68 20.24 11.74"></polygon>
+      <polygon class="cls-102" points="20.24 11.8 11.85 12.01 11.85 11.95 20.24 11.74 20.24 11.8"></polygon>
+      <polygon class="cls-76" points="20.24 11.85 11.85 12.07 11.85 12.01 20.24 11.8 20.24 11.85"></polygon>
+      <polygon class="cls-101" points="20.24 11.91 11.85 12.12 11.85 12.07 20.24 11.85 20.24 11.91"></polygon>
+      <polygon class="cls-32" points="20.24 11.97 11.85 12.18 11.85 12.12 20.24 11.91 20.24 11.97"></polygon>
+      <polygon class="cls-22" points="20.24 12.02 11.85 12.24 11.85 12.18 20.24 11.97 20.24 12.02"></polygon>
+      <polygon class="cls-97" points="20.24 12.08 11.85 12.29 11.85 12.24 20.24 12.02 20.24 12.08"></polygon>
+      <polygon class="cls-14" points="20.24 12.14 11.85 12.35 11.85 12.29 20.24 12.08 20.24 12.14"></polygon>
+      <polygon class="cls-61" points="20.24 12.19 11.85 12.41 11.85 12.35 20.24 12.14 20.24 12.19"></polygon>
+      <polygon class="cls-85" points="20.24 12.25 11.85 12.46 11.85 12.41 20.24 12.19 20.24 12.25"></polygon>
+      <polygon class="cls-15" points="20.24 12.31 11.85 12.52 11.85 12.46 20.24 12.25 20.24 12.31"></polygon>
+      <polygon class="cls-58" points="20.24 12.36 11.85 12.58 11.85 12.52 20.24 12.31 20.24 12.36"></polygon>
+      <polygon class="cls-34" points="20.24 12.42 11.85 12.63 11.85 12.58 20.24 12.36 20.24 12.42"></polygon>
+      <polygon class="cls-60" points="20.24 12.48 11.85 12.69 11.85 12.63 20.24 12.42 20.24 12.48"></polygon>
+      <polygon class="cls-127" points="20.24 12.53 11.85 12.75 11.85 12.69 20.24 12.48 20.24 12.53"></polygon>
+      <polygon class="cls-123" points="20.24 12.59 11.85 12.8 11.85 12.75 20.24 12.53 20.24 12.59"></polygon>
+      <polygon class="cls-37" points="20.24 12.65 11.85 12.86 11.85 12.8 20.24 12.59 20.24 12.65"></polygon>
+      <polygon class="cls-52" points="20.24 12.7 11.85 12.92 11.85 12.86 20.24 12.65 20.24 12.7"></polygon>
+      <polygon class="cls-116" points="20.24 12.76 11.85 12.97 11.85 12.92 20.24 12.7 20.24 12.76"></polygon>
+      <polygon class="cls-89" points="20.24 12.82 11.85 13.03 11.85 12.97 20.24 12.76 20.24 12.82"></polygon>
+      <polygon class="cls-39" points="20.24 12.87 11.85 13.09 11.85 13.03 20.24 12.82 20.24 12.87"></polygon>
+      <polygon class="cls-139" points="20.24 12.93 11.85 13.14 11.85 13.09 20.24 12.87 20.24 12.93"></polygon>
+      <polygon class="cls-105" points="20.24 12.99 11.85 13.2 11.85 13.14 20.24 12.93 20.24 12.99"></polygon>
+      <polygon class="cls-55" points="20.24 13.04 11.85 13.26 11.85 13.2 20.24 12.99 20.24 13.04"></polygon>
+      <polygon class="cls-109" points="20.24 13.1 11.85 13.31 11.85 13.26 20.24 13.04 20.24 13.1"></polygon>
+      <polygon class="cls-44" points="20.24 13.16 11.85 13.37 11.85 13.31 20.24 13.1 20.24 13.16"></polygon>
+      <polygon class="cls-95" points="20.24 13.21 11.85 13.43 11.85 13.37 20.24 13.16 20.24 13.21"></polygon>
+      <polygon class="cls-117" points="20.24 13.27 11.85 13.48 11.85 13.43 20.24 13.21 20.24 13.27"></polygon>
+      <polygon class="cls-13" points="20.24 13.33 11.85 13.54 11.85 13.48 20.24 13.27 20.24 13.33"></polygon>
+      <polygon class="cls-81" points="20.24 13.38 11.85 13.6 11.85 13.54 20.24 13.33 20.24 13.38"></polygon>
+      <polygon class="cls-80" points="20.24 13.44 11.85 13.65 11.85 13.6 20.24 13.38 20.24 13.44"></polygon>
+      <polygon class="cls-83" points="20.24 13.5 11.85 13.71 11.85 13.65 20.24 13.44 20.24 13.5"></polygon>
+      <polygon class="cls-67" points="20.24 13.55 11.85 13.77 11.85 13.71 20.24 13.5 20.24 13.55"></polygon>
+      <polygon class="cls-135" points="20.24 13.61 11.85 13.82 11.85 13.77 20.24 13.55 20.24 13.61"></polygon>
+      <polygon class="cls-143" points="20.24 13.67 11.85 13.88 11.85 13.82 20.24 13.61 20.24 13.67"></polygon>
+      <polygon class="cls-119" points="20.24 13.72 11.85 13.94 11.85 13.88 20.24 13.67 20.24 13.72"></polygon>
+      <polygon class="cls-112" points="20.24 13.78 11.85 13.99 11.85 13.94 20.24 13.72 20.24 13.78"></polygon>
+      <polygon class="cls-125" points="20.24 13.84 11.85 14.05 11.85 13.99 20.24 13.78 20.24 13.84"></polygon>
+      <polygon class="cls-59" points="20.24 13.89 11.85 14.11 11.85 14.05 20.24 13.84 20.24 13.89"></polygon>
+      <polygon class="cls-54" points="20.24 13.95 11.85 14.16 11.85 14.11 20.24 13.89 20.24 13.95"></polygon>
+      <polygon class="cls-64" points="20.24 14.01 11.85 14.22 11.85 14.16 20.24 13.95 20.24 14.01"></polygon>
+      <polygon class="cls-108" points="20.24 14.07 11.85 14.28 11.85 14.22 20.24 14.01 20.24 14.07"></polygon>
+      <polygon class="cls-100" points="20.24 14.12 11.85 14.33 11.85 14.28 20.24 14.07 20.24 14.12"></polygon>
+      <polygon class="cls-51" points="20.24 14.18 11.85 14.39 11.85 14.33 20.24 14.12 20.24 14.18"></polygon>
+      <polygon class="cls-31" points="20.24 14.24 11.85 14.45 11.85 14.39 20.24 14.18 20.24 14.24"></polygon>
+      <polygon class="cls-99" points="20.24 14.29 11.85 14.51 11.85 14.45 20.24 14.24 20.24 14.29"></polygon>
+      <polygon class="cls-53" points="20.24 14.35 11.85 14.56 11.85 14.51 20.24 14.29 20.24 14.35"></polygon>
+      <polygon class="cls-29" points="20.24 14.41 11.85 14.62 11.85 14.56 20.24 14.35 20.24 14.41"></polygon>
+      <polygon class="cls-5" points="20.24 14.46 11.85 14.68 11.85 14.62 20.24 14.41 20.24 14.46"></polygon>
+      <polygon class="cls-10" points="20.24 14.52 11.85 14.73 11.85 14.68 20.24 14.46 20.24 14.52"></polygon>
+      <polygon class="cls-50" points="20.24 14.58 11.85 14.79 11.85 14.73 20.24 14.52 20.24 14.58"></polygon>
+      <polygon class="cls-16" points="20.24 14.63 11.85 14.85 11.85 14.79 20.24 14.58 20.24 14.63"></polygon>
+      <polygon class="cls-114" points="20.24 14.69 11.85 14.9 11.85 14.85 20.24 14.63 20.24 14.69"></polygon>
+      <polygon class="cls-12" points="20.24 14.75 11.85 14.96 11.85 14.9 20.24 14.69 20.24 14.75"></polygon>
+      <polygon class="cls-24" points="20.24 14.8 11.85 15.02 11.85 14.96 20.24 14.75 20.24 14.8"></polygon>
+      <polygon class="cls-6" points="20.24 14.86 11.85 15.07 11.85 15.02 20.24 14.8 20.24 14.86"></polygon>
+      <polygon class="cls-106" points="20.24 14.92 11.85 15.13 11.85 15.07 20.24 14.86 20.24 14.92"></polygon>
+      <polygon class="cls-33" points="20.24 14.97 11.85 15.19 11.85 15.13 20.24 14.92 20.24 14.97"></polygon>
+      <polygon class="cls-17" points="20.24 15.03 11.85 15.24 11.85 15.19 20.24 14.97 20.24 15.03"></polygon>
+      <polygon class="cls-28" points="20.24 15.09 11.85 15.3 11.85 15.24 20.24 15.03 20.24 15.09"></polygon>
+      <polygon class="cls-25" points="20.24 15.14 11.85 15.36 11.85 15.3 20.24 15.09 20.24 15.14"></polygon>
+      <polygon class="cls-74" points="20.24 15.2 11.85 15.41 11.85 15.36 20.24 15.14 20.24 15.2"></polygon>
+      <polygon class="cls-86" points="20.24 15.26 11.85 15.47 11.85 15.41 20.24 15.2 20.24 15.26"></polygon>
+      <polygon class="cls-84" points="20.24 15.31 11.85 15.53 11.85 15.47 20.24 15.26 20.24 15.31"></polygon>
+      <polygon class="cls-3" points="20.24 15.37 11.85 15.58 11.85 15.53 20.24 15.31 20.24 15.37"></polygon>
+      <polygon class="cls-38" points="20.24 15.43 11.85 15.64 11.85 15.58 20.24 15.37 20.24 15.43"></polygon>
+      <polygon class="cls-121" points="20.24 15.48 11.85 15.7 11.85 15.64 20.24 15.43 20.24 15.48"></polygon>
+      <polygon class="cls-107" points="20.24 15.54 11.85 15.75 11.85 15.7 20.24 15.48 20.24 15.54"></polygon>
+      <polygon class="cls-78" points="20.24 15.6 11.85 15.81 11.85 15.75 20.24 15.54 20.24 15.6"></polygon>
+      <polygon class="cls-122" points="20.24 15.65 11.85 15.87 11.85 15.81 20.24 15.6 20.24 15.65"></polygon>
+      <polygon class="cls-87" points="20.24 15.71 11.85 15.92 11.85 15.87 20.24 15.65 20.24 15.71"></polygon>
+      <polygon class="cls-41" points="20.24 15.77 11.85 15.98 11.85 15.92 20.24 15.71 20.24 15.77"></polygon>
+      <polygon class="cls-36" points="20.24 15.82 11.85 16.04 11.85 15.98 20.24 15.77 20.24 15.82"></polygon>
+      <polygon class="cls-96" points="20.24 15.88 11.85 16.09 11.85 16.04 20.24 15.82 20.24 15.88"></polygon>
+      <polygon class="cls-98" points="20.24 15.94 11.85 16.15 11.85 16.09 20.24 15.88 20.24 15.94"></polygon>
+      <polygon class="cls-72" points="20.24 15.99 11.85 16.21 11.85 16.15 20.24 15.94 20.24 15.99"></polygon>
+      <polygon class="cls-9" points="20.24 16.05 11.85 16.26 11.85 16.21 20.24 15.99 20.24 16.05"></polygon>
+      <polygon class="cls-7" points="20.24 16.11 11.85 16.32 11.85 16.26 20.24 16.05 20.24 16.11"></polygon>
+      <polygon class="cls-4" points="20.24 16.16 11.85 16.38 11.85 16.32 20.24 16.11 20.24 16.16"></polygon>
+      <polygon class="cls-75" points="20.24 16.22 11.85 16.43 11.85 16.38 20.24 16.16 20.24 16.22"></polygon>
+      <polygon class="cls-73" points="20.24 16.28 11.85 16.49 11.85 16.43 20.24 16.22 20.24 16.28"></polygon>
+      <polygon class="cls-141" points="20.24 16.33 11.85 16.55 11.85 16.49 20.24 16.28 20.24 16.33"></polygon>
+      <polygon class="cls-65" points="20.24 16.39 11.85 16.6 11.85 16.55 20.24 16.33 20.24 16.39"></polygon>
+      <polygon class="cls-128" points="20.24 16.45 11.85 16.66 11.85 16.6 20.24 16.39 20.24 16.45"></polygon>
+      <polygon class="cls-1" points="20.24 16.5 11.85 16.72 11.85 16.66 20.24 16.45 20.24 16.5"></polygon>
+      <polygon class="cls-71" points="20.24 16.56 11.85 16.77 11.85 16.72 20.24 16.5 20.24 16.56"></polygon>
+      <polygon class="cls-19" points="20.24 16.62 11.85 16.83 11.85 16.77 20.24 16.56 20.24 16.62"></polygon>
+      <polygon class="cls-126" points="20.24 16.68 11.85 16.89 11.85 16.83 20.24 16.62 20.24 16.68"></polygon>
+      <polygon class="cls-129" points="20.24 16.73 11.85 16.94 11.85 16.89 20.24 16.68 20.24 16.73"></polygon>
+      <polygon class="cls-131" points="20.24 16.79 11.85 17 11.85 16.94 20.24 16.73 20.24 16.79"></polygon>
+      <polygon class="cls-42" points="20.24 16.85 11.85 17.06 11.85 17 20.24 16.79 20.24 16.85"></polygon>
+      <polygon class="cls-30" points="20.24 16.9 11.85 17.12 11.85 17.06 20.24 16.85 20.24 16.9"></polygon>
+      <polygon class="cls-124" points="20.24 16.96 11.85 17.17 11.85 17.12 20.24 16.9 20.24 16.96"></polygon>
+      <polygon class="cls-118" points="20.24 17.02 11.85 17.23 11.85 17.17 20.24 16.96 20.24 17.02"></polygon>
+      <polygon class="cls-130" points="20.24 17.07 11.85 17.29 11.85 17.23 20.24 17.02 20.24 17.07"></polygon>
+      <polygon class="cls-68" points="20.24 17.13 11.85 17.34 11.85 17.29 20.24 17.07 20.24 17.13"></polygon>
+      <polygon class="cls-120" points="20.24 17.19 11.85 17.4 11.85 17.34 20.24 17.13 20.24 17.19"></polygon>
+      <polygon class="cls-91" points="20.24 17.24 11.85 17.46 11.85 17.4 20.24 17.19 20.24 17.24"></polygon>
+      <polygon class="cls-79" points="20.24 17.3 11.85 17.51 11.85 17.46 20.24 17.24 20.24 17.3"></polygon>
+      <polygon class="cls-88" points="20.24 17.36 11.85 17.57 11.85 17.51 20.24 17.3 20.24 17.36"></polygon>
+      <polygon class="cls-133" points="20.24 17.41 11.85 17.63 11.85 17.57 20.24 17.36 20.24 17.41"></polygon>
+      <polygon class="cls-8" points="20.24 17.47 11.85 17.68 11.85 17.63 20.24 17.41 20.24 17.47"></polygon>
+      <polygon class="cls-93" points="20.24 17.53 11.85 17.74 11.85 17.68 20.24 17.47 20.24 17.53"></polygon>
+      <polygon class="cls-46" points="20.24 17.58 11.85 17.8 11.85 17.74 20.24 17.53 20.24 17.58"></polygon>
+      <polygon class="cls-94" points="20.24 17.64 11.85 17.85 11.85 17.8 20.24 17.58 20.24 17.64"></polygon>
+      <polygon class="cls-63" points="20.24 17.7 11.85 17.91 11.85 17.85 20.24 17.64 20.24 17.7"></polygon>
+      <polygon class="cls-49" points="20.24 17.75 11.85 17.97 11.85 17.91 20.24 17.7 20.24 17.75"></polygon>
+      <polygon class="cls-11" points="20.24 17.81 11.85 18.02 11.85 17.97 20.24 17.75 20.24 17.81"></polygon>
+      <polygon class="cls-18" points="20.24 17.87 11.85 18.08 11.85 18.02 20.24 17.81 20.24 17.87"></polygon>
+      <polygon class="cls-134" points="20.24 17.92 11.85 18.14 11.85 18.08 20.24 17.87 20.24 17.92"></polygon>
+      <polygon class="cls-77" points="20.24 17.98 11.85 18.19 11.85 18.14 20.24 17.92 20.24 17.98"></polygon>
+      <polygon class="cls-20" points="20.24 18.04 11.85 18.25 11.85 18.19 20.24 17.98 20.24 18.04"></polygon>
+      <polygon class="cls-43" points="20.24 18.09 11.85 18.31 11.85 18.25 20.24 18.04 20.24 18.09"></polygon>
+      <polygon class="cls-110" points="20.24 18.15 11.85 18.36 11.85 18.31 20.24 18.09 20.24 18.15"></polygon>
+      <polygon class="cls-56" points="20.24 18.21 11.85 18.42 11.85 18.36 20.24 18.15 20.24 18.21"></polygon>
+      <polygon class="cls-23" points="20.24 18.26 11.85 18.48 11.85 18.42 20.24 18.21 20.24 18.26"></polygon>
+      <polygon class="cls-82" points="20.24 18.32 11.85 18.53 11.85 18.48 20.24 18.26 20.24 18.32"></polygon>
+      <polygon class="cls-45" points="20.24 18.38 11.85 18.59 11.85 18.53 20.24 18.32 20.24 18.38"></polygon>
+      <polygon class="cls-90" points="20.24 18.43 11.85 18.65 11.85 18.59 20.24 18.38 20.24 18.43"></polygon>
+      <polygon class="cls-140" points="20.24 18.49 11.85 18.7 11.85 18.65 20.24 18.43 20.24 18.49"></polygon>
+      <polygon class="cls-26" points="20.24 18.55 11.85 18.76 11.85 18.7 20.24 18.49 20.24 18.55"></polygon>
+      <polygon class="cls-70" points="20.24 18.6 11.85 18.82 11.85 18.76 20.24 18.55 20.24 18.6"></polygon>
+      <polygon class="cls-57" points="20.24 18.66 11.85 18.87 11.85 18.82 20.24 18.6 20.24 18.66"></polygon>
+      <polygon class="cls-66" points="20.24 18.72 11.85 18.93 11.85 18.87 20.24 18.66 20.24 18.72"></polygon>
+      <polygon class="cls-62" points="20.24 18.77 11.85 18.99 11.85 18.93 20.24 18.72 20.24 18.77"></polygon>
+      <polygon class="cls-136" points="20.24 18.83 11.85 19.04 11.85 18.99 20.24 18.77 20.24 18.83"></polygon>
+      <polygon class="cls-136" points="20.24 18.89 11.85 19.1 11.85 19.04 20.24 18.83 20.24 18.89"></polygon>
+      <polygon class="cls-21" points="20.24 18.94 11.85 19.16 11.85 19.1 20.24 18.89 20.24 18.94"></polygon>
+      <polygon class="cls-48" points="20.24 19 11.85 19.21 11.85 19.16 20.24 18.94 20.24 19"></polygon>
+      <polygon class="cls-47" points="20.24 19.06 11.85 19.27 11.85 19.21 20.24 19 20.24 19.06"></polygon>
+      <polygon class="cls-138" points="20.24 19.11 11.85 19.33 11.85 19.27 20.24 19.06 20.24 19.11"></polygon>
+      <polygon class="cls-27" points="20.24 19.17 11.85 19.38 11.85 19.33 20.24 19.11 20.24 19.17"></polygon>
+      <polygon class="cls-111" points="20.24 19.23 11.85 19.44 11.85 19.38 20.24 19.17 20.24 19.23"></polygon>
+      <polygon class="cls-113" points="20.24 19.29 11.85 19.5 11.85 19.44 20.24 19.23 20.24 19.29"></polygon>
+      <polygon class="cls-132" points="20.24 19.34 11.85 19.56 11.85 19.5 20.24 19.29 20.24 19.34"></polygon>
+      <polygon class="cls-104" points="20.24 19.4 11.85 19.61 11.85 19.56 20.24 19.34 20.24 19.4"></polygon>
+      <polygon class="cls-115" points="20.24 19.46 12.89 19.64 11.85 19.64 11.85 19.61 20.24 19.4 20.24 19.46"></polygon>
+      <polygon class="cls-40" points="20.24 19.51 15.12 19.64 12.89 19.64 20.24 19.46 20.24 19.51"></polygon>
+      <polygon class="cls-103" points="20.24 19.57 17.35 19.64 15.12 19.64 20.24 19.51 20.24 19.57"></polygon>
+      <polygon class="cls-35" points="20.24 19.63 19.59 19.64 17.35 19.64 20.24 19.57 20.24 19.63"></polygon>
+      <polygon class="cls-35" points="19.59 19.64 20.24 19.63 20.24 19.64 19.59 19.64"></polygon>
+    </g>
+  </g>
+</svg>
