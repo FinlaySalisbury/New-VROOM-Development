@@ -2,7 +2,7 @@
 Route Explainer — Context assembly and Gemini API integration.
 
 Assembles VROOM scenario data into structured XML context blocks
-and sends them to Gemini 2.5 Pro for natural-language explanations.
+and sends them to Gemini 3 Flash for natural-language explanations.
 """
 import json
 import logging
@@ -232,16 +232,18 @@ def ask_gemini(
     message: str,
     history: list[dict[str, str]],
     api_key: str,
+    model: str = "gemini-3-flash-preview",
 ) -> str:
     """
-    Call Gemini 2.5 Pro with the assembled context and conversation history.
-    
+    Call Gemini with the assembled context and conversation history.
+
     Args:
         context: The assembled XML context blocks.
         message: The user's current question.
         history: Previous conversation turns [{role, content}, ...].
         api_key: Gemini API key.
-    
+        model: Gemini model ID (default: gemini-3-flash-preview).
+
     Returns:
         The assistant's response text.
     """
@@ -279,15 +281,17 @@ def ask_gemini(
     )
 
     # Call Gemini
-    logger.info(f"Calling Gemini with {len(contents)} conversation turns, context={len(context)} chars")
-    
+    logger.info(f"Calling {model} with {len(contents)} conversation turns, context={len(context)} chars")
+
+    # Gemini 3 recommends leaving temperature at its 1.0 default; lower values can
+    # cause looping/degraded output. Reasoning depth is controlled via thinking_level
+    # ("low" keeps this explainer fast and cheap for structured-data Q&A).
     response = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model=model,
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=full_system,
-            temperature=0.3,
-            top_p=0.8,
+            thinking_config=types.ThinkingConfig(thinking_level="low"),
         ),
     )
 

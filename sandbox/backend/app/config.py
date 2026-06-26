@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     # Gemini AI (Route Explainer)
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3-flash-preview"
 
     # Claude AI (Skill Classification)
     CLAUDE_API_KEY: str = ""

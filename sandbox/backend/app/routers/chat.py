@@ -57,6 +57,7 @@ async def chat(request: ChatRequest):
             message=request.message,
             history=request.history,
             api_key=settings.GEMINI_API_KEY,
+            model=settings.GEMINI_MODEL,
         )
 
         # Build updated history
