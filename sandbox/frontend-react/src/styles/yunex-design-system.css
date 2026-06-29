@@ -1,0 +1,479 @@
+/* =====================================================================
+   YUNEX TRAFFIC — Design System
+   Canonical brand tokens from the official Yunex Traffic guidelines.
+   YuRoute is a Yunex application and inherits this system in full.
+   Source of truth: yunex-traffic-design-system/colors_and_type.css
+   ===================================================================== */
+
+/* -------- FONTS --------
+   Brand: Jeko (headlines) + Inter (body). Jeko is a commercial typeface
+   (Ellen Luff Type Foundry) and is not on Google Fonts — substituted with
+   Manrope until licensed Jeko .woff2 files are supplied. Inter loads as-is.
+   ----------------------- */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+:root {
+  /* ================================================================== */
+  /* PRIMARY PALETTE                                                    */
+  /* ================================================================== */
+  --yx-black:         #000000;
+  --yx-gray:          #E4EDED;
+  --yx-green:         #00E38C;
+  --yx-royal-blue:    #1E2ED9;   /* the workhorse highlight — links + runs */
+  --yx-lavender:      #9DBBFF;
+  --yx-white:         #FFFFFF;
+
+  /* ACCENT PALETTE — use only when the primary palette is not sufficient */
+  --yx-orange:        #F47738;
+  --yx-yellow:        #FFE564;
+  --yx-purple:        #A483FF;
+
+  /* GRADIENT-EXCLUSIVE COLORS (only ever inside gradients) */
+  --yx-steel:         #688ABA;
+  --yx-sky:           #DEECFF;
+  --yx-pistachio:     #AFFAD7;
+
+  /* Compatibility aliases (older app rules reference these names) */
+  --color-primary:    var(--yx-royal-blue);
+  --color-secondary:  var(--yx-lavender);
+  --color-cta:        var(--yx-black);   /* CTAs are black → royal-blue, never orange */
+  --color-background: var(--yx-white);
+  --color-text:       var(--yx-black);
+
+  /* ================================================================== */
+  /* SIGNATURE GRADIENTS — one per composition, never tiled, never mixed */
+  /* ================================================================== */
+  --yx-grad-silver:                          /* primary hero gradient */
+    linear-gradient(135deg, #688ABA 0%, #FFFFFF 38%, #DEECFF 70%, #AFFAD7 100%);
+  --yx-grad-frosted:
+    linear-gradient(135deg, #9DBBFF 0%, #DEECFF 55%, #FFFFFF 100%);
+  --yx-grad-spring:
+    linear-gradient(135deg, #DEECFF 0%, #E4EDED 50%, #AFFAD7 100%);
+  --yx-grad-deep-blue:
+    linear-gradient(135deg, #1E2ED9 0%, #9DBBFF 100%);
+  --yx-grad-lagoon:                          /* icons only */
+    linear-gradient(135deg, #1E2ED9 0%, #9DBBFF 50%, #AFFAD7 100%);
+
+  /* ================================================================== */
+  /* SEMANTIC SURFACES & FOREGROUND                                     */
+  /* ================================================================== */
+  --app-bg:           #FFFFFF;
+  --app-bg-subtle:    #E4EDED;     /* Yunex Gray */
+  --app-bg-muted:     #E4EDED;
+  --app-bg-inverse:   #000000;
+  --app-card:         #FFFFFF;
+  --app-card-hover:   #F7FAFB;
+
+  --app-fg:           #000000;     /* always prefer black type */
+  --app-fg-muted:     #4A4A4A;
+  --app-fg-soft:      #6B7280;
+  --app-fg-on-dark:   #FFFFFF;
+  --app-fg-link:      #1E2ED9;     /* Royal Blue — the only link colour */
+  --app-fg-highlight: #1E2ED9;     /* the only inline-run highlight colour */
+
+  --app-border:        #E4EDED;
+  --app-border-strong: #000000;
+
+  /* Status — mapped onto the brand palette (no red exists in the brand) */
+  --app-success:      #00E38C;     /* Green */
+  --app-warning:      #FFE564;     /* Yellow */
+  --app-danger:       #1E2ED9;     /* Royal Blue */
+  --app-info:         #9DBBFF;     /* Lavender */
+
+  /* ================================================================== */
+  /* TYPOGRAPHY — Manrope (Jeko substitute) display + Inter body         */
+  /* ================================================================== */
+  --font-display: "Manrope", "Jeko", system-ui, sans-serif;
+  --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-system:  "Arial", system-ui, sans-serif;   /* editable docs */
+  --font-mono:    ui-monospace, "SFMono-Regular", "Consolas", monospace;
+
+  /* Type scale — fluid where it helps, static base for readability */
+  --fs-display:   clamp(48px, 6vw, 72px);
+  --fs-h1:        clamp(36px, 5vw, 56px);
+  --fs-h2:        clamp(28px, 4vw, 40px);
+  --fs-h3:        clamp(22px, 3vw, 28px);
+  --fs-h4:        clamp(18px, 2vw, 22px);
+  --fs-lead:      clamp(16px, 1.5vw, 20px);
+  --fs-body:      16px;
+  --fs-small:     14px;
+  --fs-micro:     12px;
+  --fs-xs:        12px;   /* legacy alias */
+
+  /* Line heights */
+  --lh-tight:     1.05;
+  --lh-snug:      1.2;
+  --lh-normal:    1.5;
+  --lh-relaxed:   1.6;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.02em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.04em;
+  --tracking-caps:    0.08em;
+
+  /* ================================================================== */
+  /* SPACING                                                            */
+  /* ================================================================== */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   24px;
+  --space-6:   32px;
+  --space-7:   48px;
+  --space-8:   64px;
+  --space-9:   96px;
+  --space-10:  128px;
+
+  /* ================================================================== */
+  /* RADII — pill buttons/badges, 16px cards, 8px inputs                 */
+  /* ================================================================== */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-pill: 999px;
+
+  /* ================================================================== */
+  /* SHADOWS — subtle, cool-tinted, never warm grey                     */
+  /* ================================================================== */
+  --shadow-sm:   0 1px 2px rgba(15, 28, 64, 0.06);
+  --shadow-md:   0 6px 16px rgba(15, 28, 64, 0.08);
+  --shadow-lg:   0 18px 48px rgba(15, 28, 64, 0.12);
+  --shadow-xl:   0 18px 48px rgba(15, 28, 64, 0.12);   /* legacy alias */
+  --shadow-glow: 0 0 0 4px rgba(30, 46, 217, 0.15);    /* focus ring */
+
+  /* ================================================================== */
+  /* MOTION — confident, never bouncy                                   */
+  /* ================================================================== */
+  --ease-out:    cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast:    140ms;
+  --dur-base:    220ms;
+  --dur-slow:    360ms;
+}
+
+/* =====================================================================
+   ELEMENT DEFAULTS
+   ===================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-relaxed);
+  color: var(--app-fg);
+  background: var(--app-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, .display, .headline {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-tight);
+  color: var(--app-fg);
+  margin: 0 0 var(--space-4);
+  text-wrap: balance;
+}
+
+.display { font-size: var(--fs-display); }
+h1       { font-size: var(--fs-h1); }
+h2       { font-size: var(--fs-h2); }
+h3       { font-size: var(--fs-h3); line-height: var(--lh-snug); }
+h4       { font-size: var(--fs-h4); line-height: var(--lh-snug); }
+
+.lead {
+  font-family: var(--font-body);
+  font-size: var(--fs-lead);
+  line-height: var(--lh-normal);
+  color: var(--app-fg);
+}
+
+p {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-relaxed);
+  margin: 0 0 var(--space-4);
+  text-wrap: pretty;
+}
+
+.callout {
+  font-family: var(--font-display);   /* Jeko Regular — callouts/quotes */
+  font-weight: 400;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-snug);
+}
+
+small, .small { font-size: var(--fs-small); }
+
+/* Inline highlight — Royal Blue only */
+.hl, mark.hl {
+  color: var(--app-fg-highlight);
+  background: transparent;
+  font-weight: 500;
+}
+
+a {
+  color: var(--app-fg-link);
+  text-decoration: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+a:hover { opacity: 0.7; }
+
+/* =====================================================================
+   COMPONENT PRIMITIVES — Buttons
+   ===================================================================== */
+
+/* Primary: black bg, white text, Royal Blue on hover */
+.yx-btn {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--fs-small);
+  padding: 11px 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  cursor: pointer;
+  letter-spacing: 0;
+  transition: all var(--dur-fast) var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+}
+
+.yx-btn-primary {
+  background: var(--yx-black);
+  color: var(--yx-white);
+}
+.yx-btn-primary:hover {
+  background: var(--yx-royal-blue);
+}
+
+.yx-btn-secondary {
+  background: var(--yx-white);
+  color: var(--yx-black);
+  border-color: var(--yx-black);
+}
+.yx-btn-secondary:hover {
+  background: var(--yx-black);
+  color: var(--yx-white);
+}
+
+.yx-btn-ghost {
+  background: transparent;
+  color: var(--app-fg-muted);
+  border-color: var(--app-border);
+}
+.yx-btn-ghost:hover {
+  background: var(--app-bg-subtle);
+  color: var(--app-fg);
+  border-color: var(--app-border-strong);
+}
+
+.yx-btn-link {
+  background: transparent;
+  color: var(--yx-royal-blue);
+  padding: 11px 0;
+  border: 0;
+  border-bottom: 1px solid var(--yx-royal-blue);
+  border-radius: 0;
+}
+
+.yx-btn-grad {
+  background: var(--yx-grad-deep-blue);
+  color: var(--yx-white);
+}
+
+.yx-btn-sm { font-size: 13px; padding: 8px 14px; }
+.yx-btn-lg { font-size: 15px; padding: 14px 26px; }
+
+.yx-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Arrow helper for CTAs */
+.yx-arrow {
+  display: inline-block;
+  width: 16px;
+  height: 1.5px;
+  background: currentColor;
+  position: relative;
+}
+.yx-arrow::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+
+/* =====================================================================
+   COMPONENT PRIMITIVES — Badges & Tags
+   ===================================================================== */
+
+.yx-badge {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--fs-micro);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.yx-badge-dark    { background: var(--yx-black);     color: var(--yx-white); }
+.yx-badge-light   { background: var(--yx-gray);      color: var(--yx-black); }
+.yx-badge-outline { background: var(--yx-white);     color: var(--yx-black); border: 1px solid var(--yx-black); }
+.yx-badge-blue    { background: var(--yx-royal-blue); color: var(--yx-white); }
+.yx-badge-success { background: var(--yx-green);     color: var(--yx-black); }
+.yx-badge-warn    { background: var(--yx-yellow);    color: var(--yx-black); }
+.yx-badge-danger  { background: var(--yx-orange);    color: var(--yx-black); }
+
+.yx-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.yx-tag {
+  font-size: 11px;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--yx-royal-blue);
+  font-weight: 600;
+}
+
+/* =====================================================================
+   COMPONENT PRIMITIVES — Cards
+   ===================================================================== */
+
+.yx-card {
+  background: var(--app-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+.yx-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.yx-card-dark {
+  background: var(--yx-black);
+  color: var(--yx-white);
+  border: 0;
+}
+
+/* =====================================================================
+   COMPONENT PRIMITIVES — Inputs
+   ===================================================================== */
+
+.yx-field label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-fg-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.yx-field input,
+.yx-field select,
+.yx-field textarea {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 12px 14px;
+  border: 1px solid var(--yx-black);
+  border-radius: var(--radius-md);
+  background: var(--yx-white);
+  color: var(--yx-black);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.yx-field input:focus,
+.yx-field select:focus,
+.yx-field textarea:focus {
+  border-color: var(--yx-royal-blue);
+  box-shadow: var(--shadow-glow);
+}
+
+.yx-field input::placeholder {
+  color: #9aa3a8;
+}
+
+/* =====================================================================
+   COMPONENT PRIMITIVES — Stats
+   ===================================================================== */
+
+.yx-stat .num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 54px;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.yx-stat .num .plus {
+  color: var(--yx-royal-blue);
+}
+
+.yx-stat .label {
+  font-size: 13px;
+  color: var(--app-fg-muted);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* =====================================================================
+   GRADIENT TEXT HELPERS
+   ===================================================================== */
+
+.text-grad-silver {
+  background: var(--yx-grad-silver);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-grad-deep-blue {
+  background: var(--yx-grad-deep-blue);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* =====================================================================
+   UTILITY CLASSES
+   ===================================================================== */
+
+.yx-text-muted  { color: var(--app-fg-muted); }
+.yx-text-soft   { color: var(--app-fg-soft); }
+.yx-text-link   { color: var(--app-fg-link); }
+.yx-text-on-dark { color: var(--app-fg-on-dark); }
+
+.yx-bg-silver   { background: var(--yx-grad-silver); }
+.yx-bg-frosted  { background: var(--yx-grad-frosted); }
+.yx-bg-spring   { background: var(--yx-grad-spring); }
+.yx-bg-deep-blue { background: var(--yx-grad-deep-blue); }

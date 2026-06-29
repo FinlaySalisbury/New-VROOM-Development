@@ -1,0 +1,29 @@
+/* Foundational accessibility rules for the React app (from the ux-a11y-audit
+   skill). These apply app-wide so every ported view inherits them. */
+
+/* Visible keyboard focus on every interactive element. */
+:focus-visible {
+  outline: 2px solid var(--yx-royal-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+/* Only suppress the ring for pointer users who already have a custom focus style. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Respect reduced-motion: collapse animations/transitions to near-instant. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+#root {
+  min-height: 100dvh;
+}

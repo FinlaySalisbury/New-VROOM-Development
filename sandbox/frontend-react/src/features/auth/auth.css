@@ -1,0 +1,43 @@
+/* Auth view — small additions on top of the legacy design-system classes.
+   On-brand tokens (no off-palette #4ade80); accessible focus + link buttons. */
+
+/* Keep the auth title a semantic <h1> but at the card-appropriate size
+   the legacy design used for the header (it targeted <h2>). */
+.login-header h1 {
+  font-size: var(--fs-h3);
+  line-height: var(--lh-snug);
+  margin-bottom: var(--space-2);
+}
+
+.auth-success-text {
+  color: var(--yx-green);
+  margin-bottom: var(--space-4);
+}
+
+.auth-link-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.auth-link-btn {
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--fs-micro);
+  border-radius: var(--radius-sm);
+}
+.auth-link-btn:hover {
+  color: #fff;
+  opacity: 1;
+}
+.auth-link-btn.is-muted {
+  color: rgba(255, 255, 255, 0.5);
+}
+.auth-link-btn.is-underline {
+  text-decoration: underline;
+}

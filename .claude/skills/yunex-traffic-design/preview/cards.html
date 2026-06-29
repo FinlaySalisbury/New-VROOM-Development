@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Cards" subtitle="Light + dark + gradient surfaces" viewport="700x260" --><html><head>
+<meta charset="utf-8"><title>Cards</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body{margin:0;padding:24px;background:#F7FAFB;font-family:var(--font-body);color:#000;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .card{background:#fff;border-radius:18px;overflow:hidden;border:1px solid #E4EDED;}
+  .card-img{height:140px;background:linear-gradient(135deg,#688ABA,#FFFFFF 38%,#DEECFF 70%,#AFFAD7);}
+  .card-body{padding:16px 18px 18px;}
+  .tag{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#1E2ED9;font-weight:600;margin-bottom:8px;}
+  .title{font-family:var(--font-display);font-weight:700;font-size:20px;letter-spacing:-0.01em;line-height:1.15;margin:0 0 6px;}
+  .desc{font-size:13px;color:var(--fg-muted);line-height:1.45;margin:0;}
+  .arrow{display:inline-block;margin-top:12px;font-weight:600;font-size:13px;border-bottom:1px solid #000;}
+  .card-dark{background:#000;color:#fff;border:0;}
+  .card-dark .desc{color:#cfd6da;}
+  .card-dark .arrow{border-color:#fff;}
+  .card-grad-bg{background:linear-gradient(135deg,#1E2ED9,#9DBBFF);color:#fff;border:0;}
+  .card-grad-bg .desc{color:#e0e6ff;}
+</style></head><body>
+<div class="grid">
+  <div class="card"><div class="card-img"></div><div class="card-body"><div class="tag">Case study</div><h3 class="title">Birmingham unifies 1,200 junctions</h3><p class="desc">Adaptive control reduced average delay 18% across the city centre.</p><span class="arrow">Read story →</span></div></div>
+  <div class="card card-dark"><div class="card-body" style="padding:24px"><div class="tag" style="color:#9DBBFF">Solution</div><h3 class="title">Stratos cloud platform</h3><p class="desc">Connect every controller, camera and sensor on a single map.</p><span class="arrow">Explore →</span></div></div>
+</div>
+</body></html>
