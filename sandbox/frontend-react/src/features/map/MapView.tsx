@@ -20,6 +20,9 @@ import { AnimationLayer } from './AnimationLayer';
 import { AnimationControls } from './AnimationControls';
 import { buildAnimationModel } from './routeAnimation';
 import { ChatPanel } from './ChatPanel';
+import { listTestRuns, getTestRun } from '@/services/history';
+import { historyRunToResult } from '@/features/history/replay';
+import type { TestRun } from '@/types';
 
 const LONDON: [number, number] = [51.505, -0.09];
 
@@ -175,6 +178,35 @@ export function MapView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [engineerFilter, setEngineerFilter] = useState<number | 'all'>('all');
+  const [pastRuns, setPastRuns] = useState<TestRun[]>([]);
+
+  const refreshHistory = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      setPastRuns(await listTestRuns(projectId, { limit: 50 }));
+    } catch {
+      /* non-fatal — the history picker just stays empty */
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    void refreshHistory();
+  }, [refreshHistory]);
+
+  const loadPastRun = useCallback(
+    async (runId: string) => {
+      if (!projectId || !runId) return;
+      try {
+        const detail = await getTestRun(projectId, runId);
+        setResult(historyRunToResult(detail));
+        setStaged('replay');
+        setEngineerFilter('all');
+      } catch (err) {
+        toast(friendlyError(err, 'Could not load that dispatch.'), { variant: 'error' });
+      }
+    },
+    [projectId, toast],
+  );
 
   // Consume a run staged from the History view (replay/remix) — one-shot.
   useEffect(() => {
@@ -260,6 +292,7 @@ export function MapView() {
         setStaged(null);
         setEngineerFilter('all');
         setModalOpen(false);
+        void refreshHistory();
         toast(`Dispatch #${res.test_number} solved — ${res.num_jobs} jobs.`, { variant: 'success' });
       } catch (err) {
         toast(friendlyError(err, 'The dispatch solve failed. Please try again.'), { variant: 'error' });
@@ -267,7 +300,7 @@ export function MapView() {
         setRunning(false);
       }
     },
-    [projectId, toast],
+    [projectId, toast, refreshHistory],
   );
 
   return (
@@ -291,9 +324,30 @@ export function MapView() {
         )}
       </MapContainer>
 
-      {/* Results summary */}
-      {result && (
+      {/* Results summary + history picker */}
+      {(result || pastRuns.length > 0) && (
         <section className="map-panel map-summary" aria-label="Dispatch summary">
+          {pastRuns.length > 0 && (
+            <div className="map-field">
+              <label htmlFor="map-history">Past dispatch</label>
+              <select
+                id="map-history"
+                className="form-input"
+                value={result?.id ?? ''}
+                onChange={(e) => void loadPastRun(e.target.value)}
+              >
+                <option value="">Load a past run…</option>
+                {pastRuns.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    #{r.test_number ?? '?'} · {r.name?.trim() || r.strategy.replace('_', ' ')} ({r.num_jobs} jobs)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {result && (
+          <>
           <div className="map-summary-grid">
             <div className="map-stat">
               <span className="map-stat-num">#{result.test_number}</span>
@@ -343,6 +397,8 @@ export function MapView() {
               </span>
             )}
           </div>
+          </>
+          )}
         </section>
       )}
 
