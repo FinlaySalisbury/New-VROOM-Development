@@ -10,6 +10,7 @@ class RoutingStrategy(str, Enum):
     NAIVE = "naive"
     INHOUSE = "inhouse"
     TOMTOM_PREMIUM = "tomtom_premium"
+    HERE_PREMIUM = "here_premium"
 
 
 class SimulationRequest(BaseModel):
@@ -31,11 +32,13 @@ class RemixRequest(BaseModel):
 
 
 class CostEstimate(BaseModel):
-    """Real-time cost estimate for TomTom Premium strategy."""
+    """Real-time cost estimate for premium routing strategies."""
     total_waypoints: int
     matrix_elements: int
     estimated_cost_eur: float
     cost_per_element: float = 0.00042
+    provider: str = "tomtom"
+    transactions: Optional[int] = None
 
 
 class TestRunSummary(BaseModel):

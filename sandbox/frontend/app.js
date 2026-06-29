@@ -110,17 +110,30 @@ function applyRoleRestrictions() {
 function updateNavIdentity() {
     const session = AppState.get('session');
     const email = session?.user?.email ?? '';
-    const initials = email ? email.substring(0, 2).toUpperCase() : '?';
+    const profile = AppState.get('userProfile');
+    
+    // Derive initials and display name from profile if available
+    let initials = email ? email.substring(0, 2).toUpperCase() : '?';
+    let displayName = email ? email.split('@')[0] : '';
+    
+    if (profile && profile.first_name) {
+        const fn = profile.first_name || '';
+        const ln = profile.last_name || '';
+        initials = (fn.charAt(0) + ln.charAt(0)).toUpperCase();
+        displayName = (fn + ' ' + ln).trim();
+    }
 
     // Nav rail user info
     const avatarEl = document.getElementById('nav-user-avatar');
+    const nameEl2 = document.getElementById('nav-user-name');
     const emailEl = document.getElementById('nav-user-email');
     if (avatarEl) avatarEl.textContent = initials;
+    if (nameEl2) { nameEl2.textContent = displayName; nameEl2.title = displayName; }
     if (emailEl) { emailEl.textContent = email; emailEl.title = email; }
 
     // Dashboard user bar
     const dashEmail = document.getElementById('dashboard-user-email');
-    if (dashEmail) dashEmail.textContent = email;
+    if (dashEmail) dashEmail.textContent = displayName || email;
 
     // Project name + role in nav
     const projects = AppState.get('projects') || [];
@@ -309,6 +322,10 @@ async function loadInitialData() {
     await renderEngineerList();
     await renderJobLists();
     await renderOptimisePanel();
+
+    // 4. Load dispatch history & remix history for this project
+    await loadHistory();
+    await loadRemixHistory();
 }
 
 // --- Project Settings Modal ---
@@ -326,9 +343,15 @@ async function openProjectSettingsModal() {
     const canManage = canPerform('manage_members');
     const canEdit = canPerform('edit_project');
 
-    // Invite section
+    // Toggle direct invite vs request invite form
     const inviteSection = document.getElementById('invite-section');
+    const requestSection = document.getElementById('invite-request-section');
     if (inviteSection) inviteSection.style.display = canInvite ? '' : 'none';
+    if (requestSection) requestSection.style.display = canInvite ? 'none' : '';
+
+    // Invite requests section in Invitations tab (admin/owner only)
+    const requestsSection = document.getElementById('invite-requests-section');
+    if (requestsSection) requestsSection.style.display = canManage ? '' : 'none';
 
     // General tab — project editing
     const saveBtn = document.getElementById('save-project-details-btn');
@@ -354,11 +377,12 @@ async function openProjectSettingsModal() {
     switchSettingsTab('team');
 
     openModal('project-settings-modal', {
-        initialFocus: canInvite ? '#invite-email' : null,
+        initialFocus: canInvite ? '#invite-email' : '#request-invite-email',
     });
 
     await loadTeamMembers(canManage);
     await loadPendingInvites(canManage);
+    if (canManage) await loadInviteRequests();
 }
 
 function closeProjectSettingsModal() {
@@ -369,10 +393,10 @@ async function loadTeamMembers(canManage) {
     const list = document.getElementById('team-members-list');
     list.innerHTML = '<div class="status-text">Loading members...</div>';
     
-    // Join with profiles to get emails
+    // Join with profiles to get emails and names
     const { data: members, error } = await supabaseClient
         .from('project_members')
-        .select('user_id, role, profiles(email, display_name)')
+        .select('user_id, role, profiles(email, display_name, first_name, last_name)')
         .eq('project_id', currentProjectId);
         
     if (error) {
@@ -385,9 +409,11 @@ async function loadTeamMembers(canManage) {
     list.innerHTML = '';
     members.forEach(m => {
         const email = m.profiles?.email || `${m.user_id.substring(0,8)}...`;
-        const displayName = m.profiles?.display_name || '';
+        const firstName = m.profiles?.first_name || '';
+        const lastName = m.profiles?.last_name || '';
+        const displayName = (firstName + ' ' + lastName).trim() || m.profiles?.display_name || '';
         const isMe = m.user_id === currentUserId;
-        const initials = email.substring(0, 2).toUpperCase();
+        const initials = firstName ? (firstName.charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase() : email.substring(0, 2).toUpperCase();
 
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,0.04); border-radius:6px;';
@@ -407,7 +433,7 @@ async function loadTeamMembers(canManage) {
         
         div.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:30px; height:30px; border-radius:50%; background:${isMe ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'rgba(255,255,255,0.08)'}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:white; flex-shrink:0;">${initials}</div>
+                <div style="width:30px; height:30px; border-radius:50%; background:${isMe ? 'var(--yx-grad-deep-blue)' : 'rgba(255,255,255,0.08)'}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:white; flex-shrink:0;">${initials}</div>
                 <div>
                     <div style="font-size:13px; font-weight:500; color:var(--app-fg);">${displayName || email.split('@')[0]}${isMe ? ' <span style="font-size:10px; color:var(--yx-amber); font-weight:600;">(you)</span>' : ''}</div>
                     <div style="font-size:11px; color:var(--app-fg-soft);">${email}</div>
@@ -487,6 +513,7 @@ async function sendProjectInvite() {
         } else {
             toast('Invitation sent — email notification delivered.', { variant: 'success' });
             document.getElementById('invite-email').value = '';
+            await logActivity('member.invited', 'team', { email, role });
             await loadPendingInvites(canPerform('manage_members'));
         }
     } catch (err) {
@@ -498,6 +525,7 @@ async function sendProjectInvite() {
 async function removeMember(userId) {
     if (!confirm("Remove this member from the project?")) return;
     await supabaseClient.from('project_members').delete().match({ project_id: currentProjectId, user_id: userId });
+    await logActivity('member.removed', 'team', { user_id: userId });
     toast('Member removed.', { variant: 'info' });
     loadTeamMembers(canPerform('manage_members'));
 }
@@ -512,6 +540,7 @@ async function changeRole(userId, newRole) {
         alert(error.message);
         return;
     }
+    await logActivity('member.role_changed', 'team', { user_id: userId, to: newRole });
     toast('Role updated.', { variant: 'success' });
     loadTeamMembers(canPerform('manage_members'));
 }
@@ -531,6 +560,7 @@ async function saveProjectDetails() {
         return;
     }
 
+    await logActivity('project.updated', 'project', { field: 'name/description' });
     toast('Project updated.', { variant: 'success' });
     // Update cached project list
     const projects = AppState.get('projects') || [];
@@ -542,6 +572,7 @@ async function saveProjectDetails() {
 async function leaveProject() {
     if (!confirm('Leave this project? You will lose access to all project data.')) return;
     const userId = AppState.get('userId');
+    await logActivity('member.left', 'team', {});
     await supabaseClient.from('project_members').delete().match({ project_id: currentProjectId, user_id: userId });
     toast('You have left the project.', { variant: 'info' });
     closeProjectSettingsModal();
@@ -554,6 +585,8 @@ async function deleteProject() {
     const name = current?.name || 'this project';
     if (!confirm(`Permanently delete "${name}"? All data (engineers, jobs, history) will be lost. This cannot be undone.`)) return;
 
+    await logActivity('project.deleted', 'project', { name });
+
     const { error } = await supabaseClient.from('projects').delete().eq('id', currentProjectId);
     if (error) {
         toast('Failed to delete: ' + error.message, { variant: 'error' });
@@ -564,6 +597,382 @@ async function deleteProject() {
     router.navigate('/projects');
 }
 
+// ═══ Invite Request System ═══════════════════════════════════
+
+function toggleRoleJustification() {
+    const role = document.getElementById('request-invite-role').value;
+    const group = document.getElementById('role-justification-group');
+    if (group) group.style.display = role !== 'viewer' ? '' : 'none';
+}
+
+async function submitInviteRequest() {
+    const email = document.getElementById('request-invite-email').value.trim();
+    const role = document.getElementById('request-invite-role').value;
+    const comment = document.getElementById('request-invite-comment').value.trim();
+    const roleReason = document.getElementById('request-invite-role-reason')?.value.trim() || '';
+
+    if (!email) return toast('Email address is required.', { variant: 'warning' });
+    if (!comment) return toast('Please explain why this person should join.', { variant: 'warning' });
+    if (role !== 'viewer' && !roleReason) return toast('Please justify the requested access level.', { variant: 'warning' });
+
+    const userId = AppState.get('userId');
+    const { error } = await supabaseClient.from('invite_requests').insert({
+        project_id: currentProjectId,
+        requested_by: userId,
+        email,
+        role,
+        comment,
+        role_justification: role !== 'viewer' ? roleReason : null,
+    });
+
+    if (error) {
+        toast('Failed to submit request: ' + error.message, { variant: 'error' });
+        return;
+    }
+
+    await logActivity('member.invite_requested', 'team', { email, role, comment });
+
+    // Notify admins via email (fire-and-forget)
+    const session = AppState.get('session');
+    const requesterEmail = session?.user?.email || '';
+    const requesterName = requesterEmail.split('@')[0];
+    apiFetch('/invitations/request-notify-admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            project_id: currentProjectId,
+            requester_email: requesterEmail,
+            requester_name: requesterName,
+            invitee_email: email,
+            role,
+            comment,
+            role_justification: role !== 'viewer' ? roleReason : null,
+        }),
+    }).catch(err => console.warn('Admin notification failed:', err));
+
+    toast('Invite request submitted for admin review.', { variant: 'success' });
+    document.getElementById('request-invite-email').value = '';
+    document.getElementById('request-invite-comment').value = '';
+    if (document.getElementById('request-invite-role-reason')) document.getElementById('request-invite-role-reason').value = '';
+    document.getElementById('request-invite-role').value = 'viewer';
+    toggleRoleJustification();
+}
+
+async function loadInviteRequests() {
+    const list = document.getElementById('invite-requests-list');
+    const badge = document.getElementById('request-count-badge');
+    if (!list) return;
+    list.innerHTML = '<div class="status-text">Loading...</div>';
+
+    const { data: requests, error } = await supabaseClient
+        .from('invite_requests')
+        .select('id, email, role, comment, role_justification, created_at, requested_by, profiles!invite_requests_requested_by_fkey(email, display_name)')
+        .eq('project_id', currentProjectId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+    if (error || !requests || requests.length === 0) {
+        list.innerHTML = '<div class="status-text" style="color: var(--app-fg-soft);">No pending requests.</div>';
+        if (badge) badge.textContent = '';
+        return;
+    }
+
+    if (badge) badge.textContent = requests.length;
+
+    list.innerHTML = '';
+    requests.forEach(req => {
+        const requesterName = req.profiles?.display_name || req.profiles?.email || 'Unknown';
+        const ago = _timeAgo(req.created_at);
+        const div = document.createElement('div');
+        div.style.cssText = 'padding:14px 16px; background:rgba(255,255,255,0.04); border-radius:8px; border-left:3px solid var(--yx-orange);';
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                <div>
+                    <div style="font-size:14px; font-weight:500; color:var(--app-fg);">${req.email} <span style="font-size:11px; padding:1px 8px; border-radius:10px; background:rgba(255,255,255,0.06); color:var(--app-fg-soft); margin-left:4px;">${req.role}</span></div>
+                    <div style="font-size:11px; color:var(--app-fg-soft); margin-top:2px;">Requested by ${requesterName} · ${ago}</div>
+                </div>
+            </div>
+            <div style="font-size:12px; color:var(--app-fg-soft); background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:4px; margin-bottom:6px;">
+                <strong style="color:var(--app-fg);">Reason:</strong> ${req.comment}
+            </div>
+            ${req.role_justification ? `<div style="font-size:12px; color:var(--app-fg-soft); background:rgba(255,255,255,0.03); padding:8px 10px; border-radius:4px; margin-bottom:10px;">
+                <strong style="color:var(--yx-amber);">Role justification:</strong> ${req.role_justification}
+            </div>` : ''}
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button class="btn-outline" style="padding:4px 14px; font-size:12px; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="rejectInviteRequest('${req.id}', '${req.email}')">Reject</button>
+                <button class="btn-primary" style="padding:4px 14px; font-size:12px;" onclick="approveInviteRequest('${req.id}', '${req.email}', '${req.role}')">Approve & Send Invite</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+async function approveInviteRequest(requestId, email, role) {
+    const userId = AppState.get('userId');
+
+    // Look up the request to get requester info
+    const { data: reqData } = await supabaseClient
+        .from('invite_requests')
+        .select('requested_by, profiles!invite_requests_requested_by_fkey(email)')
+        .eq('id', requestId)
+        .limit(1)
+        .single();
+    const requesterEmail = reqData?.profiles?.email || '';
+
+    // Update request status
+    const { error: updateErr } = await supabaseClient
+        .from('invite_requests')
+        .update({ status: 'approved', reviewed_by: userId, reviewed_at: new Date().toISOString() })
+        .eq('id', requestId);
+
+    if (updateErr) {
+        toast('Failed to approve: ' + updateErr.message, { variant: 'error' });
+        return;
+    }
+
+    // Create the actual invitation
+    const { error: inviteErr } = await supabaseClient
+        .from('invitations')
+        .insert({
+            project_id: currentProjectId,
+            email: email,
+            role: role,
+            invited_by: userId,
+        });
+
+    if (inviteErr) {
+        toast('Approved but failed to create invitation: ' + inviteErr.message, { variant: 'error' });
+        return;
+    }
+
+    await logActivity('member.request_approved', 'team', { email, role });
+
+    // Notify requester via email (fire-and-forget)
+    const session = AppState.get('session');
+    const reviewerName = session?.user?.email?.split('@')[0] || 'An admin';
+    if (requesterEmail) {
+        apiFetch('/invitations/request-decision-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: currentProjectId,
+                requester_email: requesterEmail,
+                invitee_email: email,
+                role,
+                status: 'approved',
+                reviewer_name: reviewerName,
+            }),
+        }).catch(err => console.warn('Requester notification failed:', err));
+    }
+
+    toast(`Request approved — invitation sent to ${email}.`, { variant: 'success' });
+    await loadInviteRequests();
+    await loadPendingInvites(canPerform('manage_members'));
+}
+
+async function rejectInviteRequest(requestId, email) {
+    const reason = prompt('Optional: provide a reason for rejection');
+    const userId = AppState.get('userId');
+
+    // Look up requester info
+    const { data: reqData } = await supabaseClient
+        .from('invite_requests')
+        .select('requested_by, role, profiles!invite_requests_requested_by_fkey(email)')
+        .eq('id', requestId)
+        .limit(1)
+        .single();
+    const requesterEmail = reqData?.profiles?.email || '';
+    const reqRole = reqData?.role || '';
+
+    const { error } = await supabaseClient
+        .from('invite_requests')
+        .update({ status: 'rejected', reviewed_by: userId, review_note: reason || null, reviewed_at: new Date().toISOString() })
+        .eq('id', requestId);
+
+    if (error) {
+        toast('Failed to reject: ' + error.message, { variant: 'error' });
+        return;
+    }
+
+    await logActivity('member.request_rejected', 'team', { email, reason: reason || '' });
+
+    // Notify requester via email (fire-and-forget)
+    const session = AppState.get('session');
+    const reviewerName = session?.user?.email?.split('@')[0] || 'An admin';
+    if (requesterEmail) {
+        apiFetch('/invitations/request-decision-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: currentProjectId,
+                requester_email: requesterEmail,
+                invitee_email: email,
+                role: reqRole,
+                status: 'rejected',
+                reviewer_name: reviewerName,
+                reason: reason || null,
+            }),
+        }).catch(err => console.warn('Requester notification failed:', err));
+    }
+
+    toast('Request rejected.', { variant: 'info' });
+    await loadInviteRequests();
+}
+
+// ═══ Activity Log ════════════════════════════════════════════
+
+const ACTION_DESCRIPTIONS = {
+    'member.invited':           d => `invited <strong>${d.email}</strong> as ${d.role}`,
+    'member.invite_requested':  d => `requested to invite <strong>${d.email}</strong> as ${d.role}`,
+    'member.request_approved':  d => `approved invite request for <strong>${d.email}</strong> as ${d.role}`,
+    'member.request_rejected':  d => `rejected invite request for <strong>${d.email}</strong>${d.reason ? ': "' + d.reason + '"' : ''}`,
+    'member.joined':            d => `joined the project as ${d.role}`,
+    'member.removed':           d => `removed a member from the project`,
+    'member.role_changed':      d => `changed a member's role from ${d.from} to <strong>${d.to}</strong>`,
+    'member.left':              d => `left the project`,
+    'project.updated':          d => `updated project ${d.field || 'settings'}`,
+    'project.deleted':          d => `deleted the project`,
+    'dispatch.run':             d => `ran dispatch #${d.test_number || '?'} — ${d.num_engineers} engineers, ${d.num_jobs} jobs (${d.strategy})`,
+    'dispatch.remixed':         d => `remixed dispatch #${d.parent_number || '?'}`,
+    'data.engineer_added':      d => `added engineer <strong>${d.name || ''}</strong>`,
+    'data.engineer_removed':    d => `removed engineer <strong>${d.name || ''}</strong>`,
+    'data.jobs_uploaded':       d => `uploaded ${d.count || '?'} jobs`,
+    'data.depot_changed':       d => `changed depot location`,
+};
+
+async function logActivity(action, category, details = {}) {
+    if (!currentProjectId) return;
+    const userId = AppState.get('userId');
+    if (!userId) return;
+    try {
+        await supabaseClient.from('activity_log').insert({
+            project_id: currentProjectId,
+            user_id: userId,
+            action,
+            category,
+            details,
+        });
+    } catch (e) {
+        console.warn('Activity log write failed:', e);
+    }
+}
+
+let _activityOffset = 0;
+const _activityPageSize = 30;
+let _activityCategory = 'all';
+
+function filterActivity(category) {
+    _activityCategory = category;
+    _activityOffset = 0;
+    document.querySelectorAll('.activity-chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-category') === category));
+    loadActivityLog();
+}
+
+async function loadActivityLog(append = false) {
+    if (!currentProjectId) return;
+    const timeline = document.getElementById('activity-timeline');
+    const loadMoreBtn = document.getElementById('activity-load-more');
+    if (!timeline) return;
+
+    if (!append) {
+        _activityOffset = 0;
+        timeline.innerHTML = '<div class="status-text">Loading activity...</div>';
+    }
+
+    let query = supabaseClient
+        .from('activity_log')
+        .select('id, user_id, action, category, details, created_at, profiles!activity_log_user_id_fkey(email, display_name)')
+        .eq('project_id', currentProjectId)
+        .order('created_at', { ascending: false })
+        .range(_activityOffset, _activityOffset + _activityPageSize - 1);
+
+    // Category filter
+    if (_activityCategory !== 'all') {
+        query = query.eq('category', _activityCategory);
+    }
+
+    // User filter
+    const userFilter = document.getElementById('activity-user-filter')?.value;
+    if (userFilter) {
+        query = query.eq('user_id', userFilter);
+    }
+
+    // Date filter
+    const dayFilter = document.getElementById('activity-date-filter')?.value;
+    if (dayFilter) {
+        const since = new Date(Date.now() - parseInt(dayFilter) * 86400000).toISOString();
+        query = query.gte('created_at', since);
+    }
+
+    const { data: entries, error } = await query;
+
+    if (error) {
+        timeline.innerHTML = `<div class="status-text" style="color:red;">Failed to load: ${error.message}</div>`;
+        return;
+    }
+
+    if (!append) timeline.innerHTML = '';
+
+    if ((!entries || entries.length === 0) && !append) {
+        timeline.innerHTML = '<div class="status-text" style="color:var(--app-fg-soft);">No activity yet.</div>';
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        return;
+    }
+
+    (entries || []).forEach(entry => {
+        const name = entry.profiles?.display_name || entry.profiles?.email?.split('@')[0] || 'Unknown';
+        const descFn = ACTION_DESCRIPTIONS[entry.action];
+        const desc = descFn ? descFn(entry.details || {}) : entry.action;
+        const ago = _timeAgo(entry.created_at);
+        const dateStr = new Date(entry.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+        const div = document.createElement('div');
+        div.className = 'activity-item';
+        div.innerHTML = `
+            <div class="activity-dot" data-category="${entry.category}"></div>
+            <div class="activity-body">
+                <div class="activity-text"><strong>${name}</strong> ${desc}</div>
+                <div class="activity-meta">${dateStr} · ${ago}</div>
+                ${entry.details?.comment ? `<div class="activity-detail">"${entry.details.comment}"</div>` : ''}
+            </div>
+        `;
+        timeline.appendChild(div);
+    });
+
+    _activityOffset += entries.length;
+    if (loadMoreBtn) loadMoreBtn.style.display = entries.length >= _activityPageSize ? '' : 'none';
+}
+
+function loadMoreActivity() {
+    loadActivityLog(true);
+}
+
+async function populateActivityUserFilter() {
+    const select = document.getElementById('activity-user-filter');
+    if (!select || !currentProjectId) return;
+
+    const { data: members } = await supabaseClient
+        .from('project_members')
+        .select('user_id, profiles!project_members_profile_fkey(email, display_name)')
+        .eq('project_id', currentProjectId);
+
+    // Keep current value
+    const current = select.value;
+    select.innerHTML = '<option value="">All members</option>';
+    (members || []).forEach(m => {
+        const name = m.profiles?.display_name || m.profiles?.email || m.user_id.substring(0, 8);
+        const opt = document.createElement('option');
+        opt.value = m.user_id;
+        opt.textContent = name;
+        select.appendChild(opt);
+    });
+    select.value = current;
+}
+
+// Flag: true when sign-up just succeeded and we're showing the onboarding card.
+// Prevents the router from navigating away from the auth overlay.
+let _signupOnboardingPending = false;
+
 function handleAuthChange(session) {
     // Mirror session state into AppState. userId is the de-duping key —
     // Supabase session objects are not ref-stable across getSession() and
@@ -571,7 +980,6 @@ function handleAuthChange(session) {
     // which is what releases the router's boot gate.
     AppState.set('session', session);
     AppState.set('userId', session?.user?.id ?? null);
-    AppState.set('boot', 'ready');
 
     if (!session) {
         // Clear project-scoped state on sign-out. The router will route to
@@ -581,8 +989,20 @@ function handleAuthChange(session) {
         AppState.set('projectId', null);
         AppState.set('projectRole', null);
         AppState.set('projects', null);
+        AppState.set('userProfile', null);
+        _signupOnboardingPending = false;
+        AppState.set('boot', 'ready');
+    } else if (_signupOnboardingPending) {
+        // Sign-up onboarding is in progress — don't set boot='ready' yet.
+        // The onboarding submit handler will do it after the profile is saved.
+        // Fetch profile silently in background (it won't have name yet).
+        fetchUserProfile();
     } else {
-        updateNavIdentity();
+        // Normal login — fetch profile for nav display, then boot.
+        fetchUserProfile().then(() => {
+            updateNavIdentity();
+        });
+        AppState.set('boot', 'ready');
     }
 }
 
@@ -638,6 +1058,15 @@ function _sendWelcomeEmail(email) {
     }).catch(err => console.warn('Welcome email failed (non-blocking):', err));
 }
 
+// Fire-and-forget verification email after sign-up (not blocking — user can use app immediately)
+function _sendVerificationEmail(email) {
+    fetch(API_BASE + '/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    }).catch(err => console.warn('Verification email failed (non-blocking):', err));
+}
+
 async function handleAuthSubmit(event) {
     event.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -660,16 +1089,38 @@ async function handleAuthSubmit(event) {
                 btn.innerHTML = 'Sign up &rarr;';
                 btn.disabled = false;
             } else if (data.user && !data.session) {
-                // Supabase requires email confirmation — send welcome email
+                // Supabase has email confirmation enabled but we don't want to block the user.
+                // Sign them in immediately and send verification email as a non-blocking courtesy.
                 _sendWelcomeEmail(email);
-                successEl.textContent = 'Account created! Check your email to confirm your account.';
-                successEl.style.display = 'block';
-                btn.innerHTML = 'Sign up &rarr;';
-                btn.disabled = false;
+                _sendVerificationEmail(email);
+                // Auto sign-in now that the account exists
+                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (signInError) {
+                    // If auto sign-in fails (e.g. email confirmation is enforced at Supabase level),
+                    // fall back to the confirmation message
+                    successEl.textContent = 'Account created! Check your email to confirm, then sign in.';
+                    successEl.style.display = 'block';
+                    btn.innerHTML = 'Sign up &rarr;';
+                    btn.disabled = false;
+                } else {
+                    // Sign-in succeeded — proceed to onboarding
+                    _signupOnboardingPending = true;
+                    document.getElementById('login-card').style.display = 'none';
+                    document.getElementById('onboarding-card').style.display = '';
+                    btn.innerHTML = 'Sign up &rarr;';
+                    btn.disabled = false;
+                }
             } else {
-                // Successful sign-up with auto-confirm — send welcome email
-                if (data.user) _sendWelcomeEmail(email);
-                btn.innerHTML = isSignUpMode ? 'Sign up &rarr;' : 'Sign in &rarr;';
+                // Successful sign-up with auto-confirm — show onboarding card
+                if (data.user) {
+                    _sendWelcomeEmail(email);
+                    _sendVerificationEmail(email);
+                }
+                _signupOnboardingPending = true;
+                // Swap login card for onboarding card inside auth overlay
+                document.getElementById('login-card').style.display = 'none';
+                document.getElementById('onboarding-card').style.display = '';
+                btn.innerHTML = 'Sign up &rarr;';
                 btn.disabled = false;
             }
         } else {
@@ -703,6 +1154,176 @@ async function handleLogout() {
     }
     // The router will redirect to #/login when it observes the cleared session.
     toast('You have been signed out.', { variant: 'info' });
+}
+
+
+// ═══ User Profile Management ═════════════════════════════════════
+
+async function fetchUserProfile() {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) return;
+        
+        const resp = await fetch(API_BASE + '/profile', {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        
+        if (resp.ok) {
+            const profile = await resp.json();
+            AppState.set('userProfile', profile);
+        } else {
+            AppState.set('userProfile', null);
+        }
+    } catch (err) {
+        console.error('Error fetching user profile:', err);
+    }
+}
+
+async function handleOnboardingSubmit(event) {
+    event.preventDefault();
+    const firstName = document.getElementById('onboard-first-name').value.trim();
+    const lastName = document.getElementById('onboard-last-name').value.trim();
+    const department = document.getElementById('onboard-department').value.trim();
+    const errorEl = document.getElementById('onboard-error');
+    const btn = document.getElementById('onboard-btn');
+    
+    errorEl.style.display = 'none';
+    
+    if (!firstName || !lastName) {
+        errorEl.textContent = 'First name and last name are required.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Setting up...';
+    
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('No active session');
+        
+        const body = { first_name: firstName, last_name: lastName };
+        if (department) body.department = department;
+        
+        const resp = await fetch(API_BASE + '/profile', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(body)
+        });
+        
+        if (!resp.ok) {
+            const result = await resp.json();
+            throw new Error(result.detail || 'Failed to save profile');
+        }
+        
+        const profile = await resp.json();
+        AppState.set('userProfile', profile);
+        updateNavIdentity();
+        toast('Profile created! Welcome to YuRoute.', { variant: 'success' });
+        
+        // Release the onboarding hold — let the router boot and navigate
+        _signupOnboardingPending = false;
+        document.getElementById('onboarding-card').style.display = 'none';
+        document.getElementById('login-card').style.display = '';
+        AppState.set('boot', 'ready');
+    } catch (err) {
+        console.error('Onboarding error:', err);
+        errorEl.textContent = err.message || 'Something went wrong. Please try again.';
+        errorEl.style.display = 'block';
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = 'Complete Setup &rarr;';
+}
+
+function loadProfilePage() {
+    const profile = AppState.get('userProfile');
+    const session = AppState.get('session');
+    const email = session?.user?.email ?? '';
+    
+    // Populate avatar
+    const avatarEl = document.getElementById('profile-avatar');
+    if (avatarEl && profile) {
+        const fn = profile.first_name || '';
+        const ln = profile.last_name || '';
+        avatarEl.textContent = (fn.charAt(0) + ln.charAt(0)).toUpperCase() || email.substring(0, 2).toUpperCase();
+    }
+    
+    // Populate display name
+    const nameEl = document.getElementById('profile-display-name');
+    if (nameEl && profile) {
+        nameEl.textContent = ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim() || 'Your Profile';
+    }
+    
+    // Populate email
+    const emailEl = document.getElementById('profile-email');
+    if (emailEl) emailEl.textContent = email;
+    
+    // Populate form fields
+    const fnInput = document.getElementById('profile-first-name');
+    const lnInput = document.getElementById('profile-last-name');
+    const deptInput = document.getElementById('profile-department');
+    const emailInput = document.getElementById('profile-email-field');
+    
+    if (fnInput) fnInput.value = profile?.first_name || '';
+    if (lnInput) lnInput.value = profile?.last_name || '';
+    if (deptInput) deptInput.value = profile?.department || '';
+    if (emailInput) emailInput.value = email;
+}
+
+async function saveProfileChanges() {
+    const firstName = document.getElementById('profile-first-name').value.trim();
+    const lastName = document.getElementById('profile-last-name').value.trim();
+    const department = document.getElementById('profile-department').value.trim();
+    const btn = document.getElementById('profile-save-btn');
+    
+    if (!firstName || !lastName) {
+        toast('First name and last name are required.', { variant: 'error' });
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('No active session');
+        
+        const body = { first_name: firstName, last_name: lastName };
+        if (department) body.department = department;
+        
+        const resp = await fetch(API_BASE + '/profile', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(body)
+        });
+        
+        if (!resp.ok) {
+            const result = await resp.json();
+            throw new Error(result.detail || 'Failed to save profile');
+        }
+        
+        const profile = await resp.json();
+        AppState.set('userProfile', profile);
+        updateNavIdentity();
+        
+        // Update display on the profile page
+        loadProfilePage();
+        
+        toast('Profile updated.', { variant: 'success' });
+    } catch (err) {
+        console.error('Profile save error:', err);
+        toast('Failed to save: ' + (err.message || 'Unknown error'), { variant: 'error' });
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = 'Save Changes &rarr;';
 }
 
 
@@ -825,6 +1446,10 @@ function _renderSection(viewName) {
     if (btn) btn.classList.add('active');
     if (view) view.classList.add('active');
     if (viewName === 'map' && map) setTimeout(() => map.invalidateSize(), 100);
+    if (viewName === 'activity') {
+        populateActivityUserFilter();
+        loadActivityLog();
+    }
 }
 
 // ═══ Modals ════════════════════════════════════════
@@ -995,11 +1620,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSliders();
     initStrategy();
     initRunButton();
-    loadHistory();
-    loadRemixHistory();
     initAnimation();
     // Router last — boot gate (AppState.boot === 'pending') holds it until
     // initAuth's handleAuthChange callback resolves with a session (or null).
+    // Note: loadHistory/loadRemixHistory are called inside loadInitialData()
+    // once a project is selected, since they require a valid project_id.
     router.init();
 });
 
@@ -2087,6 +2712,7 @@ async function runRemix() {
         setupAnimation(result);
         await loadRemixHistory();
         switchTab('remixes');
+        await logActivity('dispatch.remixed', 'dispatch', { test_number: result.test_number, strategy: result.strategy });
     } catch (err) {
         console.error(err);
         alert(`Remix failed: ${err.message}`);
@@ -2933,7 +3559,7 @@ async function aiReviewAcceptAll() {
     if (!pendingAiReview) return;
     const { validJobs, classifications } = pendingAiReview;
 
-    // Read overrides from inputs
+    // ── Sync work: read overrides and apply classifications ──
     const inputs = document.querySelectorAll('.ai-override-input');
     inputs.forEach(inp => {
         const idx = parseInt(inp.dataset.idx);
@@ -2945,7 +3571,6 @@ async function aiReviewAcceptAll() {
         } catch(e) { /* keep original */ }
     });
 
-    // Apply classifications to jobs that weren't overridden
     validJobs.forEach((job, i) => {
         if (!job.skills) {
             const cl = classifications[i];
@@ -2953,7 +3578,7 @@ async function aiReviewAcceptAll() {
         }
     });
 
-    // Save the job list
+    // Build the job list object (sync)
     const name = pendingAiReview.name || 'AI Import';
     const notes = pendingAiReview.notes || '';
     const jl = {
@@ -2966,15 +3591,22 @@ async function aiReviewAcceptAll() {
         classifiedBy: classifyMode === 'ai' ? 'claude-sonnet-4.6' : 'legacy'
     };
 
-    const all = await StorageManager.getJobLists();
-    all.push(jl);
-    await StorageManager.saveJobLists(all);
-
+    // ── Close BOTH modals FIRST so UI is never left frozen ──
     closeAiReview();
     hideJobImport();
-    renderJobLists();
-    renderOptimisePanel();
     document.getElementById('job-import-status').textContent = '';
+
+    // ── Async work: save to DB (modals already closed) ──
+    try {
+        const all = await StorageManager.getJobLists();
+        all.push(jl);
+        await StorageManager.saveJobLists(all);
+        renderJobLists();
+        renderOptimisePanel();
+    } catch (err) {
+        console.error('[aiReviewAcceptAll] Error saving job list:', err);
+        toast('Failed to save job list: ' + err.message, { variant: 'error' });
+    }
 }
 
 // ═══ Import & Save Job List ══════════════════════════════════
@@ -3389,6 +4021,13 @@ async function runOptimisation() {
         setupAnimation(result);
         await loadHistory();
         updateRemixDropdown();
+        // Log dispatch to activity
+        await logActivity('dispatch.run', 'dispatch', {
+            test_number: result.test_number,
+            strategy: result.strategy,
+            num_engineers: result.num_engineers || vehicles.length,
+            num_jobs: result.num_jobs || jobs.length,
+        });
 
     } catch (err) {
         console.error('Dispatch run failed:', err);

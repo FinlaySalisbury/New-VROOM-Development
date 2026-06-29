@@ -50,7 +50,8 @@
       "PowerShell(Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { 'still on 8765: PID ' + $_.OwningProcess }; 'restarting')",
       "PowerShell($base = 'http://127.0.0.1:8765'; Start-Sleep -Milliseconds 1500; foreach \\($path in '/api/health','/state.js','/toast.js','/modal.js','/router.js','/app.js?v=15','/styles.css'\\) { try { $r = Invoke-WebRequest -Uri \\($base + $path\\) -Method Head -UseBasicParsing -ErrorAction Stop; \"$path $\\($r.StatusCode\\) $\\($r.Headers['Content-Length']\\)\" } catch { \"$path FAIL $\\($_.Exception.Message\\)\" } })",
       "PowerShell($base = 'http://127.0.0.1:8765'; foreach \\($path in '/api/health','/state.js','/toast.js','/modal.js','/router.js','/app.js?v=15'\\) { try { $r = Invoke-WebRequest -Uri \\($base + $path\\) -UseBasicParsing -ErrorAction Stop; \"$path $\\($r.StatusCode\\) bytes=$\\($r.RawContentLength\\)\" } catch { \"$path FAIL $\\($_.Exception.Message\\)\" } })",
-      "Bash(node run.js \"C:\\\\Users\\\\yu007637\\\\AppData\\\\Local\\\\Temp\\\\playwright-test-sprint1-verify.js\")"
+      "Bash(node run.js \"C:\\\\Users\\\\yu007637\\\\AppData\\\\Local\\\\Temp\\\\playwright-test-sprint1-verify.js\")",
+      "PowerShell(gcloud compute instances start vroom-sandbox-server --zone=europe-west2-c --project=work-site-navigation-app)"
     ]
   }
 }

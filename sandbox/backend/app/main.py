@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 
 from app.config import get_settings
 from app.database import get_supabase_client
-from app.routers import simulation, history, chat, classify
+from app.routers import simulation, history, chat, classify, auth, invitations, profile
 
 # Frontend directory (relative to the sandbox root)
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
@@ -57,6 +57,9 @@ app.include_router(simulation.router)
 app.include_router(history.router)
 app.include_router(chat.router)
 app.include_router(classify.router)
+app.include_router(auth.router)
+app.include_router(invitations.router)
+app.include_router(profile.router)
 
 
 @app.get("/api/health")
@@ -92,6 +95,12 @@ if FRONTEND_DIR.exists():
         """Serve frontend files. Falls back to index.html for SPA routing."""
         file_path = FRONTEND_DIR / full_path
         if file_path.is_file():
-            return FileResponse(str(file_path))
-        return FileResponse(str(FRONTEND_DIR / "index.html"))
-
+            resp = FileResponse(str(file_path))
+            # Prevent caching of HTML files so deployments take effect immediately
+            if file_path.suffix == ".html":
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
+        # SPA fallback — always no-cache so new JS versions load on next visit
+        resp = FileResponse(str(FRONTEND_DIR / "index.html"))
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return resp

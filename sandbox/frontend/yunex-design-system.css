@@ -1,105 +1,104 @@
 /* =====================================================================
-   VROOM App Design System — Exaggerated Minimalism
+   YUNEX TRAFFIC — Design System
+   Canonical brand tokens from the official Yunex Traffic guidelines.
+   YuRoute is a Yunex application and inherits this system in full.
+   Source of truth: yunex-traffic-design-system/colors_and_type.css
    ===================================================================== */
 
-@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap");
+/* -------- FONTS --------
+   Brand: Jeko (headlines) + Inter (body). Jeko is a commercial typeface
+   (Ellen Luff Type Foundry) and is not on Google Fonts — substituted with
+   Manrope until licensed Jeko .woff2 files are supplied. Inter loads as-is.
+   ----------------------- */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
 
 :root {
   /* ================================================================== */
   /* PRIMARY PALETTE                                                    */
   /* ================================================================== */
   --yx-black:         #000000;
+  --yx-gray:          #E4EDED;
+  --yx-green:         #00E38C;
+  --yx-royal-blue:    #1E2ED9;   /* the workhorse highlight — links + runs */
+  --yx-lavender:      #9DBBFF;
   --yx-white:         #FFFFFF;
-  --color-primary:    #2563EB;
-  --color-secondary:  #3B82F6;
-  --color-cta:        #F97316;
-  --color-background: #EFF6FF;
-  --color-text:       #1E40AF;
 
-  /* Legacy overrides to ensure everything inherits correctly without breaking */
-  --yx-royal-blue:    var(--color-primary);
-  --yx-orange:        var(--color-cta);
-  --app-bg:           var(--color-background);
-  --app-bg-subtle:    #F7FAFB;
-  --app-bg-muted:     #E2E8F0;
+  /* ACCENT PALETTE — use only when the primary palette is not sufficient */
+  --yx-orange:        #F47738;
+  --yx-yellow:        #FFE564;
+  --yx-purple:        #A483FF;
+
+  /* GRADIENT-EXCLUSIVE COLORS (only ever inside gradients) */
+  --yx-steel:         #688ABA;
+  --yx-sky:           #DEECFF;
+  --yx-pistachio:     #AFFAD7;
+
+  /* Compatibility aliases (older app rules reference these names) */
+  --color-primary:    var(--yx-royal-blue);
+  --color-secondary:  var(--yx-lavender);
+  --color-cta:        var(--yx-black);   /* CTAs are black → royal-blue, never orange */
+  --color-background: var(--yx-white);
+  --color-text:       var(--yx-black);
+
+  /* ================================================================== */
+  /* SIGNATURE GRADIENTS — one per composition, never tiled, never mixed */
+  /* ================================================================== */
+  --yx-grad-silver:                          /* primary hero gradient */
+    linear-gradient(135deg, #688ABA 0%, #FFFFFF 38%, #DEECFF 70%, #AFFAD7 100%);
+  --yx-grad-frosted:
+    linear-gradient(135deg, #9DBBFF 0%, #DEECFF 55%, #FFFFFF 100%);
+  --yx-grad-spring:
+    linear-gradient(135deg, #DEECFF 0%, #E4EDED 50%, #AFFAD7 100%);
+  --yx-grad-deep-blue:
+    linear-gradient(135deg, #1E2ED9 0%, #9DBBFF 100%);
+  --yx-grad-lagoon:                          /* icons only */
+    linear-gradient(135deg, #1E2ED9 0%, #9DBBFF 50%, #AFFAD7 100%);
+
+  /* ================================================================== */
+  /* SEMANTIC SURFACES & FOREGROUND                                     */
+  /* ================================================================== */
+  --app-bg:           #FFFFFF;
+  --app-bg-subtle:    #E4EDED;     /* Yunex Gray */
+  --app-bg-muted:     #E4EDED;
+  --app-bg-inverse:   #000000;
   --app-card:         #FFFFFF;
-  --app-card-hover:   #F8FAFC;
-  
-  --app-fg:           var(--color-text);
-  --app-fg-muted:     #475569;
-  --app-fg-link:      var(--color-primary);
+  --app-card-hover:   #F7FAFB;
 
-  --app-border:       #E2E8F0;
+  --app-fg:           #000000;     /* always prefer black type */
+  --app-fg-muted:     #4A4A4A;
+  --app-fg-soft:      #6B7280;
+  --app-fg-on-dark:   #FFFFFF;
+  --app-fg-link:      #1E2ED9;     /* Royal Blue — the only link colour */
+  --app-fg-highlight: #1E2ED9;     /* the only inline-run highlight colour */
 
-  /* ================================================================== */
-  /* TYPOGRAPHY                                                         */
-  /* ================================================================== */
-  --font-display: 'Fira Code', monospace;
-  --font-body: 'Fira Sans', sans-serif;
+  --app-border:        #E4EDED;
+  --app-border-strong: #000000;
 
-  --fs-hero:     clamp(3rem, 10vw, 12rem);
-  --fs-h1:       56px;
-  --fs-h2:       40px;
-  --fs-h3:       24px;
-  --fs-h4:       20px;
-  --fs-body:     16px;
-  --fs-small:    14px;
-  --fs-xs:       12px;
-
-  --tracking-tight: -0.05em;
-  
-  /* ================================================================== */
-  /* SPACING & LAYOUT                                                   */
-  /* ================================================================== */
-  --space-1:     4px;
-  --space-2:     8px;
-  --space-3:     12px;
-  --space-4:     16px;
-  --space-5:     24px;
-  --space-6:     32px;
-  --space-7:     48px;
-  --space-8:     64px;
-
-  --radius-sm:   4px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
-  --radius-xl:   16px;
-  --radius-pill: 9999px;
+  /* Status — mapped onto the brand palette (no red exists in the brand) */
+  --app-success:      #00E38C;     /* Green */
+  --app-warning:      #FFE564;     /* Yellow */
+  --app-danger:       #1E2ED9;     /* Royal Blue */
+  --app-info:         #9DBBFF;     /* Lavender */
 
   /* ================================================================== */
-  /* SHADOWS & EFFECTS                                                  */
-  /* ================================================================== */
-  --shadow-sm:   0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md:   0 4px 6px rgba(0,0,0,0.1);
-  --shadow-lg:   0 10px 15px rgba(0,0,0,0.1);
-  --shadow-xl:   0 20px 25px rgba(0,0,0,0.15);
-
-  --dur-base:    200ms;
-  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* Status */
-  --app-success:         #00E38C;
-  --app-warning:         #FFE564;
-  --app-danger:          #F47738;
-  --app-info:            #9DBBFF;
-
-  /* ================================================================== */
-  /* TYPOGRAPHY                                                         */
+  /* TYPOGRAPHY — Manrope (Jeko substitute) display + Inter body         */
   /* ================================================================== */
   --font-display: "Manrope", "Jeko", system-ui, sans-serif;
   --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono:    "Inter", monospace;
+  --font-system:  "Arial", system-ui, sans-serif;   /* editable docs */
+  --font-mono:    ui-monospace, "SFMono-Regular", "Consolas", monospace;
 
-  /* Type scale - Fluid typography */
+  /* Type scale — fluid where it helps, static base for readability */
   --fs-display:   clamp(48px, 6vw, 72px);
   --fs-h1:        clamp(36px, 5vw, 56px);
   --fs-h2:        clamp(28px, 4vw, 40px);
   --fs-h3:        clamp(22px, 3vw, 28px);
   --fs-h4:        clamp(18px, 2vw, 22px);
   --fs-lead:      clamp(16px, 1.5vw, 20px);
-  --fs-body:      16px; /* Base remains static for readability */
+  --fs-body:      16px;
   --fs-small:     14px;
   --fs-micro:     12px;
+  --fs-xs:        12px;   /* legacy alias */
 
   /* Line heights */
   --lh-tight:     1.05;
@@ -128,7 +127,7 @@
   --space-10:  128px;
 
   /* ================================================================== */
-  /* RADII                                                              */
+  /* RADII — pill buttons/badges, 16px cards, 8px inputs                 */
   /* ================================================================== */
   --radius-sm:   4px;
   --radius-md:   8px;
@@ -137,12 +136,13 @@
   --radius-pill: 999px;
 
   /* ================================================================== */
-  /* SHADOWS — cool-tinted, never warm grey                             */
+  /* SHADOWS — subtle, cool-tinted, never warm grey                     */
   /* ================================================================== */
   --shadow-sm:   0 1px 2px rgba(15, 28, 64, 0.06);
   --shadow-md:   0 6px 16px rgba(15, 28, 64, 0.08);
   --shadow-lg:   0 18px 48px rgba(15, 28, 64, 0.12);
-  --shadow-glow: 0 0 0 4px rgba(30, 46, 217, 0.15);
+  --shadow-xl:   0 18px 48px rgba(15, 28, 64, 0.12);   /* legacy alias */
+  --shadow-glow: 0 0 0 4px rgba(30, 46, 217, 0.15);    /* focus ring */
 
   /* ================================================================== */
   /* MOTION — confident, never bouncy                                   */
@@ -190,12 +190,26 @@ h2       { font-size: var(--fs-h2); }
 h3       { font-size: var(--fs-h3); line-height: var(--lh-snug); }
 h4       { font-size: var(--fs-h4); line-height: var(--lh-snug); }
 
+.lead {
+  font-family: var(--font-body);
+  font-size: var(--fs-lead);
+  line-height: var(--lh-normal);
+  color: var(--app-fg);
+}
+
 p {
   font-family: var(--font-body);
   font-size: var(--fs-body);
   line-height: var(--lh-relaxed);
   margin: 0 0 var(--space-4);
   text-wrap: pretty;
+}
+
+.callout {
+  font-family: var(--font-display);   /* Jeko Regular — callouts/quotes */
+  font-weight: 400;
+  font-size: var(--fs-h3);
+  line-height: var(--lh-snug);
 }
 
 small, .small { font-size: var(--fs-small); }

@@ -35,6 +35,38 @@
     width: 48px;
     height: auto;
     display: block;
+    filter: brightness(0) invert(1);
+}
+
+/* "Powered by Yunex Traffic" secondary attribution */
+.nav-powered-by {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 8px 4px;
+    opacity: 0.45;
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.nav-powered-by:hover {
+    opacity: 0.7;
+}
+
+.nav-powered-by .powered-label {
+    font-family: var(--font-body);
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+}
+
+.nav-powered-by .powered-logo {
+    width: 44px;
+    height: auto;
+    display: block;
+    opacity: 0.9;
 }
 
 .nav-group {
@@ -316,8 +348,8 @@
 
 .fab-primary:hover {
     transform: translateX(-50%) translateY(-2px);
-    box-shadow: 0 15px 25px rgba(249, 115, 22, 0.3);
-    opacity: 0.95;
+    background: var(--yx-royal-blue);
+    box-shadow: var(--shadow-lg);
 }
 
 .fab-chat {
@@ -473,7 +505,8 @@
 }
 
 .btn-primary:hover {
-    opacity: 0.9;
+    background: var(--yx-royal-blue);
+    opacity: 1;
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
@@ -622,6 +655,72 @@
 
 @keyframes fadeIn { to { opacity: 1; } }
 @keyframes slideInRight { to { transform: translateX(0); } }
+
+/* Settings Tabs */
+.settings-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--app-fg-soft);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: color 0.2s, border-color 0.2s;
+}
+.settings-tab:hover { color: var(--app-fg); }
+.settings-tab.active {
+    color: var(--yx-amber);
+    border-bottom-color: var(--yx-amber);
+}
+
+/* Activity Log */
+.activity-chip {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--app-fg-soft);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.2s;
+}
+.activity-chip:hover { background: rgba(255,255,255,0.1); color: var(--app-fg); }
+.activity-chip.active { background: rgba(30,46,217,0.12); color: var(--yx-royal-blue); border-color: rgba(30,46,217,0.3); }
+
+.activity-item {
+    display: flex;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+.activity-item:hover { background: rgba(255,255,255,0.03); }
+
+.activity-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+.activity-dot[data-category="team"]     { background: var(--yx-royal-blue); }
+.activity-dot[data-category="dispatch"] { background: var(--yx-green); }
+.activity-dot[data-category="data"]     { background: var(--yx-orange); }
+.activity-dot[data-category="project"]  { background: var(--yx-purple); }
+
+.activity-body { flex: 1; min-width: 0; }
+.activity-text { font-size: 13px; color: var(--app-fg); line-height: 1.5; }
+.activity-text strong { font-weight: 600; }
+.activity-meta { font-size: 11px; color: var(--app-fg-soft); margin-top: 2px; }
+.activity-detail {
+    font-size: 12px; color: var(--app-fg-soft);
+    background: rgba(255,255,255,0.03);
+    padding: 6px 10px; border-radius: 4px; margin-top: 6px;
+    font-style: italic;
+}
 
 /* ==========================================================================
    7. Specialized Components
@@ -1673,6 +1772,10 @@ img.map-monochrome {
         width: 36px;
     }
     
+    .nav-powered-by .powered-logo {
+        width: 36px;
+    }
+    
     .nav-btn {
         height: 56px;
     }
@@ -1726,7 +1829,8 @@ body.auth-pending {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: url('assets/bg-pattern.svg'), linear-gradient(135deg, #1A1A1A 0%, #000000 100%);
+    /* Black-authority surface (brand: flat black for authority, no textures/patterns) */
+    background: linear-gradient(135deg, #14141A 0%, #000000 100%);
     background-size: cover;
     z-index: 9999;
     display: flex;
@@ -1752,8 +1856,9 @@ body.auth-pending {
 }
 
 .login-logo {
-    height: 32px;
+    height: 64px;
     margin-bottom: var(--space-4);
+    filter: brightness(0) invert(1);
 }
 
 .login-header h2 {
@@ -1790,6 +1895,88 @@ body.auth-pending {
 }
 
 /* ==========================================================================
+   Onboarding Card (inside auth overlay)
+   ========================================================================== */
+
+.onboarding-card {
+    max-width: 480px;
+    animation: onboard-fade-in 0.4s var(--ease-out);
+}
+
+.onboarding-card .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+@keyframes onboard-fade-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   Profile Management Overlay
+   ========================================================================== */
+
+.profile-dashboard {
+    max-width: 640px;
+}
+
+.profile-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--app-border);
+}
+
+.profile-avatar-lg {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--yx-grad-deep-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-md);
+    letter-spacing: -0.02em;
+}
+
+.profile-hero-info h2 {
+    font-size: var(--fs-h3);
+    margin: 0 0 4px;
+}
+
+.profile-form-section {
+    padding: var(--space-5) 0;
+}
+
+.profile-form-section h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+    color: var(--app-fg);
+}
+
+.profile-form-section .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+/* Nav user info hover */
+#nav-user-info:hover {
+    background: rgba(37, 99, 235, 0.06);
+    border-radius: var(--radius-md);
+    transition: background var(--dur-fast) var(--ease-out);
+}
+
+/* ==========================================================================
    Premium Project Dashboard UI
    ========================================================================== */
 
@@ -1799,7 +1986,8 @@ body.auth-pending {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: var(--app-bg-subtle);
+    /* Signature Yunex Silver gradient — one opener gradient per surface, never tiled */
+    background: var(--yx-grad-silver);
     z-index: 9998; /* Just below auth-overlay */
     display: flex;
     align-items: center;
