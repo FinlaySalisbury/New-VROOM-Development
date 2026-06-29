@@ -1,12 +1,20 @@
 """
-Route Explainer — Context assembly and Gemini API integration.
+Route Explainer — Context assembly and LLM integration.
 
-Assembles VROOM scenario data into structured XML context blocks
-and sends them to Gemini 3 Flash for natural-language explanations.
+Assembles VROOM scenario data into structured XML context blocks and sends
+them to an LLM for natural-language explanations. The active provider is
+selected by AI_PROVIDER ("gemini" → Gemini 3 Flash; "claude" → Anthropic
+Claude). Claude is a temporary fallback for when Gemini is unavailable.
 """
 import json
 import logging
 from typing import Any, Optional
+
+import requests
+import urllib3
+
+# Corporate SSL proxy intercepts HTTPS; suppress the resulting verify=False warnings.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -297,4 +305,72 @@ def ask_gemini(
 
     reply = response.text or "I wasn't able to generate a response. Please try again."
     logger.info(f"Gemini response: {len(reply)} chars")
+    return reply
+
+
+def ask_claude(
+    context: str,
+    message: str,
+    history: list[dict[str, str]],
+    api_key: str,
+    model: str = "claude-sonnet-4-6",
+) -> str:
+    """
+    Call Anthropic Claude (Messages API) with the assembled context and history.
+
+    Temporary fallback provider for when Gemini is unavailable. Uses raw HTTP
+    via `requests` (matching routers/classify.py) so the corporate SSL proxy
+    can be bypassed with verify=False, rather than pulling in the anthropic SDK.
+
+    Args:
+        context: The assembled XML context blocks.
+        message: The user's current question.
+        history: Previous conversation turns [{role, content}, ...].
+        api_key: Anthropic API key.
+        model: Claude model ID (default: claude-sonnet-4-6).
+
+    Returns:
+        The assistant's response text.
+    """
+    # Claude takes the system prompt as a dedicated top-level field, not a turn.
+    full_system = (
+        SYSTEM_PROMPT.strip()
+        + "\n\n--- SCENARIO DATA ---\n\n"
+        + context
+    )
+
+    # Claude roles are "user"/"assistant" — the stored history already uses these.
+    messages = [
+        {"role": "assistant" if t.get("role") == "assistant" else "user",
+         "content": t["content"]}
+        for t in history
+    ]
+    messages.append({"role": "user", "content": message})
+
+    logger.info(f"Calling {model} with {len(messages)} messages, context={len(context)} chars")
+
+    resp = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        },
+        json={
+            "model": model,
+            "max_tokens": 2048,
+            "temperature": 0.3,
+            "system": full_system,
+            "messages": messages,
+        },
+        verify=False,
+        timeout=60,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    blocks = data.get("content", []) or []
+    reply = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+    reply = reply or "I wasn't able to generate a response. Please try again."
+    logger.info(f"Claude response: {len(reply)} chars")
     return reply

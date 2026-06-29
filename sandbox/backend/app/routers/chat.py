@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.database import get_test_run_by_id
-from app.services.route_explainer import assemble_context, ask_gemini
+from app.services.route_explainer import assemble_context, ask_gemini, ask_claude
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -30,12 +30,19 @@ class ChatResponse(BaseModel):
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    Send a natural-language question about a specific test run
-    to the Gemini-powered Route Explainer AI.
+    Send a natural-language question about a specific test run to the
+    Route Explainer AI (provider selected by AI_PROVIDER).
     """
     settings = get_settings()
-    
-    if not settings.GEMINI_API_KEY:
+
+    provider = (settings.AI_PROVIDER or "gemini").lower()
+    if provider == "claude":
+        if not settings.CLAUDE_API_KEY:
+            raise HTTPException(
+                status_code=503,
+                detail="CLAUDE_API_KEY is not configured. Add it to .env to enable the AI assistant."
+            )
+    elif not settings.GEMINI_API_KEY:
         raise HTTPException(
             status_code=503,
             detail="GEMINI_API_KEY is not configured. Add it to .env to enable the AI assistant."
@@ -49,16 +56,25 @@ async def chat(request: ChatRequest):
     try:
         # Assemble context from stored scenario data
         context = assemble_context(run_data)
-        logger.info(f"AI Chat: assembled {len(context)} chars of context for run {request.run_id[:8]}")
+        logger.info(f"AI Chat: assembled {len(context)} chars of context for run {request.run_id[:8]} (provider={provider})")
 
-        # Call Gemini
-        reply = ask_gemini(
-            context=context,
-            message=request.message,
-            history=request.history,
-            api_key=settings.GEMINI_API_KEY,
-            model=settings.GEMINI_MODEL,
-        )
+        # Call the configured provider
+        if provider == "claude":
+            reply = ask_claude(
+                context=context,
+                message=request.message,
+                history=request.history,
+                api_key=settings.CLAUDE_API_KEY,
+                model=settings.CLAUDE_MODEL,
+            )
+        else:
+            reply = ask_gemini(
+                context=context,
+                message=request.message,
+                history=request.history,
+                api_key=settings.GEMINI_API_KEY,
+                model=settings.GEMINI_MODEL,
+            )
 
         # Build updated history
         updated_history = list(request.history)
