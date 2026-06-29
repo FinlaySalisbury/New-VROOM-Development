@@ -79,3 +79,21 @@ export function runSimulation(req: SimulationRequest): Promise<SimulationResult>
     body: JSON.stringify(req),
   });
 }
+
+export interface RemixRequest {
+  project_id: string;
+  parent_run_id: string;
+  strategy: RoutingStrategy;
+}
+
+/**
+ * Re-solve a past run's same job↔engineer assignments under a different routing
+ * strategy (POST /api/remix) — a like-for-like comparison of the same day under
+ * different traffic models. Returns a new solved run.
+ */
+export function remixRun(req: RemixRequest): Promise<SimulationResult> {
+  return apiFetch<SimulationResult>('/remix', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}

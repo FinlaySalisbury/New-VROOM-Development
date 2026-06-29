@@ -33,19 +33,25 @@ interface AppState {
   projects: Project[];
 
   /**
-   * A solve result staged for the map view — e.g. a historical run the user
-   * chose to replay. MapView consumes and clears it on mount. One-shot handoff
-   * across the History→Map navigation.
+   * A solve result staged for the map view from another section — either a
+   * historical run rendered as-is ('replay') or a freshly re-solved comparison
+   * ('remix'). MapView consumes and clears it on mount. One-shot handoff across
+   * the History→Map navigation.
    */
-  mapRun: SimulationResult | null;
+  mapRun: StagedRun | null;
 
   setBoot: (b: BootState) => void;
   setSession: (s: Session | null) => void;
   setUserProfile: (p: UserProfile | null) => void;
   setProjects: (p: Project[]) => void;
   selectProject: (id: string | null, role: ProjectRole | null) => void;
-  setMapRun: (r: SimulationResult | null) => void;
+  setMapRun: (r: StagedRun | null) => void;
   reset: () => void;
+}
+
+export interface StagedRun {
+  result: SimulationResult;
+  mode: 'replay' | 'remix';
 }
 
 const initial = {
@@ -56,7 +62,7 @@ const initial = {
   projectId: null,
   projectRole: null,
   projects: [] as Project[],
-  mapRun: null as SimulationResult | null,
+  mapRun: null as StagedRun | null,
 };
 
 export const useAppStore = create<AppState>((set) => ({

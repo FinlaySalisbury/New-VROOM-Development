@@ -7,8 +7,10 @@ import { ErrorState } from '@/components/ErrorState';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { Modal } from '@/components/Modal';
 import { PageHeader } from '@/components/PageHeader';
+import { useToast } from '@/components/Toast';
 import { friendlyError } from '@/lib/errors';
 import { getTestRun, listTestRuns } from '@/services/history';
+import { remixRun, type RoutingStrategy } from '@/services/simulation';
 import { useAppStore } from '@/store/appStore';
 import type { TestRun, TestRunDetail } from '@/types';
 import { historyRunToResult } from './replay';
@@ -265,10 +267,19 @@ interface RunDetailProps {
   detail: TestRunDetail | null;
   loading: boolean;
   error: string | null;
+  remixing: boolean;
   onClose: () => void;
   onRetry: () => void;
   onReplay: () => void;
+  onRemix: (strategy: RoutingStrategy) => void;
 }
+
+const REMIX_STRATEGIES: { value: RoutingStrategy; label: string }[] = [
+  { value: 'naive', label: 'Naive' },
+  { value: 'inhouse', label: 'In-house' },
+  { value: 'tomtom_premium', label: 'TomTom Premium' },
+  { value: 'here_premium', label: 'HERE Premium' },
+];
 
 function RunDetailModal({
   open,
@@ -276,15 +287,19 @@ function RunDetailModal({
   detail,
   loading,
   error,
+  remixing,
   onClose,
   onRetry,
   onReplay,
+  onRemix,
 }: RunDetailProps) {
   const title = summary
     ? summary.name?.trim() || `Dispatch #${summary.test_number ?? '?'}`
     : 'Run details';
 
   const engineers = detail ? buildEngineerStats(detail) : [];
+  const [remixStrategy, setRemixStrategy] = useState<RoutingStrategy>('inhouse');
+  const busy = loading || !detail || remixing;
 
   return (
     <Modal
@@ -293,19 +308,58 @@ function RunDetailModal({
       onClose={onClose}
       size="lg"
       footer={
-        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-          <Button
-            variant="secondary"
-            onClick={onReplay}
-            disabled={loading || !detail}
-            title="Render this run on the map and animate the routes"
-            aria-label="Replay on map"
-          >
-            Replay on map
-          </Button>
-          <Button variant="primary" onClick={onClose}>
-            Close
-          </Button>
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-3)',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <label htmlFor="remix-strategy" style={{ fontSize: 'var(--fs-sm, 0.875rem)', color: 'var(--app-muted, #555)' }}>
+              Compare as
+            </label>
+            <select
+              id="remix-strategy"
+              className="form-input"
+              value={remixStrategy}
+              onChange={(e) => setRemixStrategy(e.target.value as RoutingStrategy)}
+              disabled={busy}
+              style={{ width: 'auto' }}
+            >
+              {REMIX_STRATEGIES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              variant="secondary"
+              onClick={() => onRemix(remixStrategy)}
+              loading={remixing}
+              disabled={busy}
+              title="Re-solve the same assignments under a different routing strategy"
+            >
+              Remix
+            </Button>
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              onClick={onReplay}
+              disabled={busy}
+              title="Render this run on the map and animate the routes"
+              aria-label="Replay on map"
+            >
+              Replay on map
+            </Button>
+            <Button variant="primary" onClick={onClose}>
+              Close
+            </Button>
+          </div>
         </div>
       }
     >
@@ -454,6 +508,7 @@ export function HistoryView() {
   const setMapRun = useAppStore((s) => s.setMapRun);
   const projectId = params.id ?? storeProjectId ?? null;
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [runs, setRuns] = useState<TestRun[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -464,6 +519,7 @@ export function HistoryView() {
   const [detail, setDetail] = useState<TestRunDetail | null>(null);
   const [detailStatus, setDetailStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [detailError, setDetailError] = useState<string>('');
+  const [remixing, setRemixing] = useState(false);
 
   const loadRuns = useCallback(async () => {
     if (!projectId) {
@@ -518,10 +574,28 @@ export function HistoryView() {
     if (!detail || !projectId) return;
     // Stage the stored run for the map view and navigate there — no re-solve,
     // matching the legacy viewHistoryRun (free, instant render + animation).
-    setMapRun(historyRunToResult(detail));
+    setMapRun({ result: historyRunToResult(detail), mode: 'replay' });
     setDetailOpen(false);
     navigate(`/projects/${projectId}/map`);
   }, [detail, projectId, setMapRun, navigate]);
+
+  const handleRemix = useCallback(
+    async (strategy: RoutingStrategy) => {
+      if (!detail || !projectId) return;
+      setRemixing(true);
+      try {
+        const res = await remixRun({ project_id: projectId, parent_run_id: detail.id, strategy });
+        setMapRun({ result: res, mode: 'remix' });
+        setDetailOpen(false);
+        navigate(`/projects/${projectId}/map`);
+      } catch (err) {
+        toast(friendlyError(err, 'The remix could not be solved. Please try again.'), { variant: 'error' });
+      } finally {
+        setRemixing(false);
+      }
+    },
+    [detail, projectId, setMapRun, navigate, toast],
+  );
 
   const closeDetail = useCallback(() => {
     setDetailOpen(false);
@@ -573,9 +647,11 @@ export function HistoryView() {
         detail={detail}
         loading={detailStatus === 'loading'}
         error={detailStatus === 'error' ? detailError : null}
+        remixing={remixing}
         onClose={closeDetail}
         onRetry={() => activeSummary && void loadDetail(activeSummary)}
         onReplay={handleReplay}
+        onRemix={handleRemix}
       />
     </div>
   );

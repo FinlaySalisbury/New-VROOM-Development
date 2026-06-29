@@ -170,17 +170,17 @@ export function MapView() {
   const { toast } = useToast();
 
   const [result, setResult] = useState<SimulationResult | null>(null);
-  const [replayed, setReplayed] = useState(false);
+  const [staged, setStaged] = useState<'replay' | 'remix' | null>(null);
   const [running, setRunning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [engineerFilter, setEngineerFilter] = useState<number | 'all'>('all');
 
-  // Consume a run staged from the History view (replay on map) — one-shot.
+  // Consume a run staged from the History view (replay/remix) — one-shot.
   useEffect(() => {
     if (!mapRun) return;
-    setResult(mapRun);
-    setReplayed(true);
+    setResult(mapRun.result);
+    setStaged(mapRun.mode);
     setEngineerFilter('all');
     setMapRun(null);
   }, [mapRun, setMapRun]);
@@ -257,7 +257,7 @@ export function MapView() {
       try {
         const res = await runSimulation({ project_id: projectId, ...cfg });
         setResult(res);
-        setReplayed(false);
+        setStaged(null);
         setEngineerFilter('all');
         setModalOpen(false);
         toast(`Dispatch #${res.test_number} solved — ${res.num_jobs} jobs.`, { variant: 'success' });
@@ -332,9 +332,14 @@ export function MapView() {
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
             <span className="yx-badge yx-badge-blue">{result.strategy.replace('_', ' ')}</span>
-            {replayed && (
+            {staged === 'replay' && (
               <span className="yx-badge yx-badge-outline" title="Rendered from history — not re-solved">
                 Replayed
+              </span>
+            )}
+            {staged === 'remix' && (
+              <span className="yx-badge yx-badge-outline" title="Same assignments re-solved under a new strategy">
+                Remix
               </span>
             )}
           </div>
