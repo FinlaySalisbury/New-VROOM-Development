@@ -68,6 +68,7 @@ RULES:
    - "Comms Fault": SW/Config + Maintenance -> [Prefix+02, Prefix+03]
    - "Power Issue": Install + SW/Config + Maintenance -> [Prefix+01, Prefix+02, Prefix+03]
 5. Return ONLY a valid JSON array, without any markdown formatting.
+6. Keep each "reasoning" to one short sentence (under 12 words) — large batches must fit in the response.
 
 RESPONSE FORMAT:
 [{"job_index":0,"skills":[1103],"manufacturer":"Alfen","site_type":"22kWAC","reasoning":"..."},...]`;
@@ -113,7 +114,48 @@ function parseClassificationText(text: string): RawClassification[] | null {
     if (sliced) return sliced;
   }
 
+  // Last resort: salvage complete top-level objects even from a truncated array
+  // (large batches can hit the model's max_tokens and cut off mid-array). Every
+  // complete {...} is recovered; the incomplete tail is dropped and gap-filled
+  // by the caller, so a near-complete classification still beats a full fallback.
+  const salvaged = salvageObjects(raw);
+  if (salvaged) return salvaged;
+
   return null;
+}
+
+/** Extract every complete top-level JSON object from (possibly truncated) text. */
+function salvageObjects(text: string): RawClassification[] | null {
+  const out: RawClassification[] = [];
+  let depth = 0;
+  let start = -1;
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try {
+          out.push(JSON.parse(text.slice(start, i + 1)) as RawClassification);
+        } catch {
+          /* skip a malformed object */
+        }
+        start = -1;
+      }
+    }
+  }
+  return out.length ? out : null;
 }
 
 export interface ClassifyResult {
@@ -140,7 +182,9 @@ export async function classifyWithClaude(batch: AiJobInput[]): Promise<ClassifyR
     method: 'POST',
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 8192,
+      // Large PI batches (100+ jobs) overflow 8192 output tokens and truncate
+      // the JSON array; raise the ceiling (sonnet-4.6 supports well beyond this).
+      max_tokens: 32000,
       system: AI_SYSTEM_PROMPT,
       messages: [
         {
