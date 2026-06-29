@@ -491,6 +491,98 @@
   cursor: not-allowed;
 }
 
+/* Rota matrix (multi-day engineer shift selection) */
+.rota-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+.rota-toolbar-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--app-fg-muted);
+  font-weight: 600;
+}
+.rota-time {
+  font-size: var(--fs-small);
+  padding: 4px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  color: var(--app-fg);
+  background: var(--yx-white);
+}
+.rota-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-md);
+}
+.rota-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs-small);
+}
+.rota-table th,
+.rota-table td {
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--app-border);
+  text-align: center;
+  white-space: nowrap;
+}
+.rota-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--app-bg-subtle);
+  font-weight: 600;
+  z-index: 1;
+}
+.rota-th-name,
+.rota-name {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: var(--yx-white);
+  z-index: 1;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rota-table thead .rota-th-name {
+  background: var(--app-bg-subtle);
+  z-index: 2;
+}
+.rota-name {
+  font-weight: 600;
+}
+.rota-loc {
+  font-size: 12px;
+  padding: 3px 4px;
+  min-width: 72px;
+}
+.rota-cell {
+  vertical-align: top;
+}
+.rota-day-toggle {
+  display: inline-flex;
+  cursor: pointer;
+  min-height: 24px;
+  align-items: center;
+}
+.rota-times {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+.rota-times .rota-time {
+  width: 64px;
+  font-size: 10px;
+  padding: 2px 3px;
+}
+
 /* Empty state */
 .map-empty {
   position: absolute;

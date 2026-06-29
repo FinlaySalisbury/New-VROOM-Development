@@ -8,7 +8,8 @@ import type { Engineer, JobList } from '@/types';
 import { listEngineers } from '@/services/engineers';
 import { listJobLists } from '@/services/jobs';
 import { getGlobalSettings } from '@/services/settings';
-import { buildRealScenario, type LocationMode } from './buildRealScenario';
+import { buildRealScenario, defaultRota, mondayOf, type EngineerRota } from './buildRealScenario';
+import { RotaMatrix } from './RotaMatrix';
 
 interface Props {
   open: boolean;
@@ -27,8 +28,15 @@ const STRATEGIES: { value: RoutingStrategy; label: string; note: string; paid: b
   { value: 'here_premium', label: 'HERE Premium', note: 'HERE matrix routing · paid', paid: true },
 ];
 
-function todayInputValue(): string {
-  return new Date().toISOString().slice(0, 10);
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function mapRota(
+  rota: Record<string, EngineerRota>,
+  fn: (r: EngineerRota) => EngineerRota,
+): Record<string, EngineerRota> {
+  return Object.fromEntries(Object.entries(rota).map(([k, v]) => [k, fn(v)]));
 }
 
 export function NewDispatchModal({ open, running, projectId, onClose, onRun }: Props) {
@@ -48,8 +56,10 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
   const [liveError, setLiveError] = useState('');
   const loadingRef = useRef(false);
   const [jobListId, setJobListId] = useState('');
-  const [shiftDate, setShiftDate] = useState(todayInputValue());
-  const [locationMode, setLocationMode] = useState<LocationMode>('home');
+  const [weekStart, setWeekStart] = useState<string>(() => isoDate(mondayOf(new Date())));
+  const [rota, setRota] = useState<Record<string, EngineerRota>>({});
+  const [globalStart, setGlobalStart] = useState('08:00');
+  const [globalEnd, setGlobalEnd] = useState('18:00');
 
   // Shared
   const [strategy, setStrategy] = useState<RoutingStrategy>('inhouse');
@@ -81,6 +91,7 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
         setJobLists(lists);
         setDepot(settings.mainDepot);
         setJobListId(lists[0]?.id ?? '');
+        setRota(Object.fromEntries(engs.map((e) => [e.id, defaultRota(e)])));
         setLiveLoaded(true);
       } catch (err) {
         if (!cancelled) setLiveError(friendlyError(err, 'Could not load engineers and job lists.'));
@@ -95,7 +106,21 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
   }, [open, mode, projectId, liveLoaded]);
 
   const activeJobList = jobLists.find((l) => l.id === jobListId) ?? null;
-  const liveReady = liveLoaded && engineers.length > 0 && !!activeJobList && (activeJobList.jobs?.length ?? 0) > 0;
+  const engineerDays = Object.values(rota).reduce(
+    (n, r) => n + r.days.filter((d) => d.enabled).length,
+    0,
+  );
+  const liveReady =
+    liveLoaded && engineerDays > 0 && !!activeJobList && (activeJobList.jobs?.length ?? 0) > 0;
+
+  const updateEngineerRota = (id: string, next: EngineerRota) =>
+    setRota((prev) => ({ ...prev, [id]: next }));
+  const applyGlobalTimes = () =>
+    setRota((prev) => mapRota(prev, (r) => ({ ...r, days: r.days.map((d) => ({ ...d, start: globalStart, end: globalEnd })) })));
+  const setAllDays = (enabled: boolean) =>
+    setRota((prev) => mapRota(prev, (r) => ({ ...r, days: r.days.map((d) => ({ ...d, enabled })) })));
+  const setWeekdaysOnly = () =>
+    setRota((prev) => mapRota(prev, (r) => ({ ...r, days: r.days.map((d, i) => ({ ...d, enabled: i < 5 })) })));
 
   function submitSample() {
     void onRun({
@@ -109,19 +134,19 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
   function submitLive() {
     if (!activeJobList) return;
     try {
-      const { scenario, warnings } = buildRealScenario({
+      const { scenario, warnings, vehicleDays } = buildRealScenario({
         engineers,
         jobs: activeJobList.jobs,
         depot,
-        shiftDate: new Date(`${shiftDate}T00:00:00Z`),
-        locationMode,
+        weekStart: new Date(`${weekStart}T00:00:00Z`),
+        rota,
       });
       if (warnings.length) toast(warnings.join(' '), { variant: 'info' });
       void onRun({
-        num_engineers: scenario.vehicles.length,
+        num_engineers: vehicleDays,
         num_jobs: scenario.jobs.length,
         strategy,
-        name: name.trim() || `Live dispatch — ${activeJobList.name}`,
+        name: name.trim() || `Rota dispatch — ${activeJobList.name}`,
         replay_scenario: scenario as unknown as Record<string, unknown>,
       });
     } catch (err) {
@@ -136,6 +161,7 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
       open={open}
       title="New dispatch run"
       onClose={onClose}
+      size={mode === 'live' ? 'xl' : 'md'}
       disableBackdropClose={running}
       footer={
         <>
@@ -210,7 +236,8 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
       ) : (
         <>
           <p style={{ marginTop: 0, color: 'var(--app-fg-muted)' }}>
-            Dispatch this project&apos;s real engineers against a saved job list for a chosen day.
+            Dispatch this project&apos;s real engineers against a saved job list. Tick which days each
+            engineer works across the week and set their shift times — every ticked day is scheduled.
           </p>
 
           {liveLoading && <p style={{ color: 'var(--app-fg-muted)' }}>Loading engineers and job lists…</p>}
@@ -233,48 +260,81 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
                 </p>
               )}
 
-              <p style={{ color: 'var(--app-fg-muted)', marginTop: 0 }}>
-                {engineers.length} engineer{engineers.length === 1 ? '' : 's'} available.
-              </p>
-
               {jobLists.length > 0 && (
-                <div className="yx-field" style={{ marginBottom: 'var(--space-4)' }}>
-                  <label htmlFor="dispatch-joblist">Job list</label>
-                  <select
-                    id="dispatch-joblist"
-                    value={jobListId}
-                    onChange={(e) => setJobListId(e.target.value)}
-                  >
-                    {jobLists.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name} ({l.jobs?.length ?? l.jobCount ?? 0} jobs)
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid-2" style={{ marginBottom: 'var(--space-4)' }}>
+                  <div className="yx-field">
+                    <label htmlFor="dispatch-joblist">Job list</label>
+                    <select
+                      id="dispatch-joblist"
+                      value={jobListId}
+                      onChange={(e) => setJobListId(e.target.value)}
+                    >
+                      {jobLists.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name} ({l.jobs?.length ?? l.jobCount ?? 0} jobs)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="yx-field">
+                    <label htmlFor="dispatch-week">Week starting (Mon)</label>
+                    <input
+                      id="dispatch-week"
+                      type="date"
+                      value={weekStart}
+                      onChange={(e) => setWeekStart(e.target.value)}
+                    />
+                  </div>
                 </div>
               )}
 
-              <div className="yx-field" style={{ marginBottom: 'var(--space-4)' }}>
-                <label htmlFor="dispatch-date">Shift date</label>
-                <input
-                  id="dispatch-date"
-                  type="date"
-                  value={shiftDate}
-                  onChange={(e) => setShiftDate(e.target.value)}
-                />
-              </div>
+              {engineers.length > 0 && (
+                <>
+                  <div className="rota-toolbar">
+                    <span className="rota-toolbar-label">Set all shifts</span>
+                    <input
+                      type="time"
+                      className="rota-time"
+                      value={globalStart}
+                      onChange={(e) => setGlobalStart(e.target.value)}
+                      aria-label="Shift start for all"
+                    />
+                    <input
+                      type="time"
+                      className="rota-time"
+                      value={globalEnd}
+                      onChange={(e) => setGlobalEnd(e.target.value)}
+                      aria-label="Shift end for all"
+                    />
+                    <Button variant="secondary" size="sm" onClick={applyGlobalTimes}>
+                      Apply
+                    </Button>
+                    <span style={{ flex: 1 }} />
+                    <Button variant="ghost" size="sm" onClick={setWeekdaysOnly}>
+                      Weekdays
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setAllDays(true)}>
+                      All
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setAllDays(false)}>
+                      Clear
+                    </Button>
+                  </div>
 
-              <div className="yx-field" style={{ marginBottom: 'var(--space-4)' }}>
-                <label htmlFor="dispatch-locmode">Start &amp; end location</label>
-                <select
-                  id="dispatch-locmode"
-                  value={locationMode}
-                  onChange={(e) => setLocationMode(e.target.value as LocationMode)}
-                >
-                  <option value="home">Engineer home base</option>
-                  <option value="depot">Central depot</option>
-                </select>
-              </div>
+                  <RotaMatrix engineers={engineers} rota={rota} onChange={updateEngineerRota} />
+
+                  <p
+                    style={{
+                      color: 'var(--app-fg-muted)',
+                      fontSize: 'var(--fs-small)',
+                      margin: 'var(--space-3) 0 0',
+                    }}
+                  >
+                    {engineerDays} engineer-day{engineerDays === 1 ? '' : 's'} selected
+                    {activeJobList ? ` · ${activeJobList.jobs?.length ?? 0} jobs` : ''}.
+                  </p>
+                </>
+              )}
             </>
           )}
         </>
