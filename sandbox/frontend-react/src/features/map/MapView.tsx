@@ -19,6 +19,7 @@ import { NewDispatchModal } from './NewDispatchModal';
 import { AnimationLayer } from './AnimationLayer';
 import { AnimationControls } from './AnimationControls';
 import { buildAnimationModel } from './routeAnimation';
+import { ChatPanel } from './ChatPanel';
 
 const LONDON: [number, number] = [51.505, -0.09];
 
@@ -172,6 +173,7 @@ export function MapView() {
   const [replayed, setReplayed] = useState(false);
   const [running, setRunning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [engineerFilter, setEngineerFilter] = useState<number | 'all'>('all');
 
   // Consume a run staged from the History view (replay on map) — one-shot.
@@ -398,6 +400,27 @@ export function MapView() {
         <button type="button" className="map-fab" onClick={() => setModalOpen(true)} disabled={running}>
           + New dispatch run
         </button>
+      )}
+
+      {/* Route assistant toggle (only meaningful with a solved run) */}
+      {result && (
+        <button
+          type="button"
+          className={`map-chat-fab${chatOpen ? ' is-open' : ''}`}
+          onClick={() => setChatOpen((o) => !o)}
+          aria-expanded={chatOpen}
+        >
+          {chatOpen ? 'Close assistant' : 'Ask the route assistant'}
+        </button>
+      )}
+
+      {result && projectId && (
+        <ChatPanel
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          projectId={projectId}
+          runId={result.id}
+        />
       )}
 
       <NewDispatchModal open={modalOpen} running={running} onClose={() => setModalOpen(false)} onRun={handleRun} />
