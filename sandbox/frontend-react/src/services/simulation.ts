@@ -8,6 +8,12 @@ export interface SimulationRequest {
   num_jobs: number;
   strategy: RoutingStrategy;
   name?: string;
+  /**
+   * Solve this exact scenario instead of generating a random one — used by the
+   * live dispatch of the project's real engineers + a saved job list. Shape:
+   * { vehicles, jobs, locations, shift_start } per the backend scenario schema.
+   */
+  replay_scenario?: Record<string, unknown>;
 }
 
 /** A GeoJSON FeatureCollection as returned by the solve endpoint. */

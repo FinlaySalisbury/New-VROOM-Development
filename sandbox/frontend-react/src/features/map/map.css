@@ -456,6 +456,41 @@
   }
 }
 
+/* New-dispatch mode toggle (sample vs live) */
+.dispatch-mode {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--app-bg-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+.dispatch-mode-tab {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--fs-small);
+  color: var(--app-fg-muted);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.dispatch-mode-tab:hover:not(:disabled) {
+  color: var(--app-fg);
+}
+.dispatch-mode-tab.is-active {
+  background: var(--yx-white);
+  color: var(--app-fg);
+  box-shadow: var(--shadow-sm);
+}
+.dispatch-mode-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Empty state */
 .map-empty {
   position: absolute;

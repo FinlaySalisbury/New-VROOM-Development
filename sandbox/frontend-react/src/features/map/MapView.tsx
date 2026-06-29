@@ -428,7 +428,15 @@ export function MapView() {
         />
       )}
 
-      <NewDispatchModal open={modalOpen} running={running} onClose={() => setModalOpen(false)} onRun={handleRun} />
+      {projectId && (
+        <NewDispatchModal
+          open={modalOpen}
+          running={running}
+          projectId={projectId}
+          onClose={() => setModalOpen(false)}
+          onRun={handleRun}
+        />
+      )}
     </div>
   );
 }
