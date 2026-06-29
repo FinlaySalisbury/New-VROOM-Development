@@ -164,12 +164,24 @@ function DepotLayers({ result, engineerFilter }: { result: SimulationResult; eng
 export function MapView() {
   const { id: projectId } = useParams();
   const projectRole = useAppStore((s) => s.projectRole);
+  const mapRun = useAppStore((s) => s.mapRun);
+  const setMapRun = useAppStore((s) => s.setMapRun);
   const { toast } = useToast();
 
   const [result, setResult] = useState<SimulationResult | null>(null);
+  const [replayed, setReplayed] = useState(false);
   const [running, setRunning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [engineerFilter, setEngineerFilter] = useState<number | 'all'>('all');
+
+  // Consume a run staged from the History view (replay on map) — one-shot.
+  useEffect(() => {
+    if (!mapRun) return;
+    setResult(mapRun);
+    setReplayed(true);
+    setEngineerFilter('all');
+    setMapRun(null);
+  }, [mapRun, setMapRun]);
 
   const canRun = projectRole === 'owner' || projectRole === 'admin' || projectRole === 'user';
 
@@ -243,6 +255,7 @@ export function MapView() {
       try {
         const res = await runSimulation({ project_id: projectId, ...cfg });
         setResult(res);
+        setReplayed(false);
         setEngineerFilter('all');
         setModalOpen(false);
         toast(`Dispatch #${res.test_number} solved — ${res.num_jobs} jobs.`, { variant: 'success' });
@@ -315,9 +328,14 @@ export function MapView() {
               ))}
             </select>
           </div>
-          <span className="yx-badge yx-badge-blue" style={{ alignSelf: 'flex-start' }}>
-            {result.strategy.replace('_', ' ')}
-          </span>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            <span className="yx-badge yx-badge-blue">{result.strategy.replace('_', ' ')}</span>
+            {replayed && (
+              <span className="yx-badge yx-badge-outline" title="Rendered from history — not re-solved">
+                Replayed
+              </span>
+            )}
+          </div>
         </section>
       )}
 

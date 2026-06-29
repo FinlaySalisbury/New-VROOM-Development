@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
+import type { SimulationResult } from '@/services/simulation';
 
 export type ProjectRole = 'viewer' | 'user' | 'admin' | 'owner';
 
@@ -31,11 +32,19 @@ interface AppState {
   projectRole: ProjectRole | null;
   projects: Project[];
 
+  /**
+   * A solve result staged for the map view — e.g. a historical run the user
+   * chose to replay. MapView consumes and clears it on mount. One-shot handoff
+   * across the History→Map navigation.
+   */
+  mapRun: SimulationResult | null;
+
   setBoot: (b: BootState) => void;
   setSession: (s: Session | null) => void;
   setUserProfile: (p: UserProfile | null) => void;
   setProjects: (p: Project[]) => void;
   selectProject: (id: string | null, role: ProjectRole | null) => void;
+  setMapRun: (r: SimulationResult | null) => void;
   reset: () => void;
 }
 
@@ -47,6 +56,7 @@ const initial = {
   projectId: null,
   projectRole: null,
   projects: [] as Project[],
+  mapRun: null as SimulationResult | null,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -58,5 +68,6 @@ export const useAppStore = create<AppState>((set) => ({
   setUserProfile: (userProfile) => set({ userProfile }),
   setProjects: (projects) => set({ projects }),
   selectProject: (projectId, projectRole) => set({ projectId, projectRole }),
+  setMapRun: (mapRun) => set({ mapRun }),
   reset: () => set({ ...initial, boot: 'ready' }),
 }));

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
@@ -7,11 +7,11 @@ import { ErrorState } from '@/components/ErrorState';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { Modal } from '@/components/Modal';
 import { PageHeader } from '@/components/PageHeader';
-import { useToast } from '@/components/Toast';
 import { friendlyError } from '@/lib/errors';
 import { getTestRun, listTestRuns } from '@/services/history';
 import { useAppStore } from '@/store/appStore';
 import type { TestRun, TestRunDetail } from '@/types';
+import { historyRunToResult } from './replay';
 
 // ── Formatting helpers (ported from legacy app.js) ────────────
 
@@ -294,15 +294,14 @@ function RunDetailModal({
       size="lg"
       footer={
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-          {/* TODO(map-view): wire replay to the deferred Leaflet map view. */}
           <Button
             variant="secondary"
             onClick={onReplay}
-            disabled
-            title="Map replay is part of the upcoming map view"
-            aria-label="Replay on map (coming soon)"
+            disabled={loading || !detail}
+            title="Render this run on the map and animate the routes"
+            aria-label="Replay on map"
           >
-            Replay on map (coming soon)
+            Replay on map
           </Button>
           <Button variant="primary" onClick={onClose}>
             Close
@@ -452,8 +451,9 @@ const HISTORY_ICON = (
 export function HistoryView() {
   const params = useParams<{ id: string }>();
   const storeProjectId = useAppStore((s) => s.projectId);
+  const setMapRun = useAppStore((s) => s.setMapRun);
   const projectId = params.id ?? storeProjectId ?? null;
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [runs, setRuns] = useState<TestRun[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -515,9 +515,13 @@ export function HistoryView() {
   );
 
   const handleReplay = useCallback(() => {
-    // TODO(map-view): the route replay/animation lives in the deferred map view.
-    toast('Map replay arrives with the map view.', { variant: 'info' });
-  }, [toast]);
+    if (!detail || !projectId) return;
+    // Stage the stored run for the map view and navigate there — no re-solve,
+    // matching the legacy viewHistoryRun (free, instant render + animation).
+    setMapRun(historyRunToResult(detail));
+    setDetailOpen(false);
+    navigate(`/projects/${projectId}/map`);
+  }, [detail, projectId, setMapRun, navigate]);
 
   const closeDetail = useCallback(() => {
     setDetailOpen(false);
