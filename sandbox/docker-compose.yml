@@ -2,26 +2,58 @@
 # InView VROOM Simulation Sandbox — Docker Compose
 #
 # Services:
-#   sandbox  — FastAPI backend + frontend (port 8000)
+#   nginx    — Reverse proxy + SSL termination (ports 80/443)
+#   sandbox  — FastAPI backend + frontend (port 8000, internal)
 #   vroom    — VROOM routing engine (port 3000)
+#   certbot  — Auto-renewing Let's Encrypt certificates
 # ═══════════════════════════════════════════════════════════
 
 services:
+  # ── Nginx Reverse Proxy ──────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: inview-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      sandbox:
+        condition: service_started
+    restart: unless-stopped
+    # Reload nginx every 6 hours to pick up renewed certs
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  # ── SSL Certificate Auto-Renewal ─────────────────────
+  certbot:
+    image: certbot/certbot
+    container_name: inview-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    # Attempt renewal every 12 hours
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    restart: unless-stopped
+
   # ── Simulation Sandbox ────────────────────────────────
   sandbox:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: inview-sandbox
-    ports:
-      - "80:8000"
+    expose:
+      - "8000"
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
-      - TOMTOM_API_KEY=${TOMTOM_API_KEY:-MOCK_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
       - VROOM_ENDPOINT=http://vroom:3000/
       - DATABASE_PATH=/data/sandbox_history.db
+      - GCP_PROJECT_ID=work-site-navigation-app
+      # Public / non-secret config — safe as regular env vars
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_KEY=${SUPABASE_KEY:-}
     volumes:
       - sandbox-data:/data
       - ./frontend:/app/frontend

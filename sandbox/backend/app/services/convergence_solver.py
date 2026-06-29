@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
 
 from app.core.tomtom_client import TomTomClient
+from app.core.here_client import HereClient
+from app.core.here_matrix_v8 import HereMatrixClient
 from app.services.matrix_weighter import TrafficMatrixWeighter
 from app.core.vroom_interface import VroomSolverInterface
 
@@ -144,18 +146,45 @@ class ConvergenceSolver:
         max_iterations: int = 3,
         penalty_threshold: float = 1.25,
         penalty_weight: int = 120,
-        tt_client: Optional[TomTomClient] = None
+        tt_client: Optional[TomTomClient] = None,
+        provider: str = "tomtom"
     ):
         self.api_key = api_key or os.environ.get("TOMTOM_API_KEY")
         self.max_iterations = max_iterations
         self.penalty_threshold = penalty_threshold
         self.penalty_weight = penalty_weight
+        self.provider = provider
         
-        # Initialize components
-        self.tt_client = tt_client or TomTomClient(api_key=self.api_key or "MOCK_KEY")
-        self.weighter = TrafficMatrixWeighter(api_key=self.api_key)
+        # Initialize components based on provider
+        if provider == "here":
+            self.tt_client = tt_client or HereClient(api_key=self.api_key or "MOCK_KEY")
+            # HERE matrix weighter: wraps HereMatrixClient with same interface
+            self.weighter = self._build_here_weighter(self.api_key)
+        else:
+            self.tt_client = tt_client or TomTomClient(api_key=self.api_key or "MOCK_KEY")
+            self.weighter = TrafficMatrixWeighter(api_key=self.api_key)
         self.solver = VroomSolverInterface(endpoint_url=vroom_endpoint)
         self.geo_filter = GeospatialFilter()
+    
+    def _build_here_weighter(self, api_key: str):
+        """Build a TrafficMatrixWeighter-compatible wrapper around HereMatrixClient."""
+        here_client = HereMatrixClient(api_key=api_key)
+        
+        class HereMatrixWeighter:
+            """Adapter: exposes compute_time_dependent_matrix like TrafficMatrixWeighter."""
+            def __init__(self, client):
+                self.client = client
+            
+            def compute_time_dependent_matrix(self, locations, departure_time, 
+                                              traffic="historical", travel_mode="truck", **kwargs):
+                return self.client.compute_matrix(
+                    locations=locations,
+                    depart_at=str(departure_time),
+                    traffic=traffic,
+                    travel_mode=travel_mode,
+                )
+        
+        return HereMatrixWeighter(here_client)
     
     def solve(
         self,

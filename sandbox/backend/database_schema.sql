@@ -85,6 +85,22 @@ CREATE TABLE test_runs (
     parent_run_id TEXT
 );
 
+-- ========================================================================================
+-- PROFILES TABLE (created by Supabase trigger, extended with profile fields)
+-- ========================================================================================
+
+-- Migration: Add profile fields to existing profiles table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS first_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS department TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- RLS: Users can read and update their own profile
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING (id = auth.uid());
+CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING (id = auth.uid());
+
 -- 2. Create Helper Functions
 CREATE OR REPLACE FUNCTION get_user_role(target_project_id UUID)
 RETURNS TEXT AS $$

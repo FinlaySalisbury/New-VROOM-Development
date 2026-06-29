@@ -16,6 +16,7 @@
         boot: 'pending',
         session: null,
         userId: null,
+        userProfile: null,        // { first_name, last_name, department, email, onboarding_complete }
         projectId: null,
         projectRole: null,
         projects: null,

@@ -50,14 +50,19 @@ async def run_test(request: SimulationRequest, supabase: Client = Depends(get_su
         jobs = scenario["jobs"]
         locations = scenario["locations"]
 
-        # Step 2-4: Run pipeline
+        # Step 2-4: Run pipeline (route to correct API key)
+        if request.strategy.value == "here_premium":
+            active_api_key = settings.HERE_API_KEY
+        else:
+            active_api_key = settings.TOMTOM_API_KEY
+
         result = run_simulation(
             vehicles=vehicles,
             jobs=jobs,
             locations=locations,
             strategy=request.strategy.value,
             shift_start=scenario.get("shift_start", shift_start),
-            api_key=settings.TOMTOM_API_KEY,
+            api_key=active_api_key,
             vroom_endpoint=settings.VROOM_ENDPOINT,
         )
 
@@ -69,7 +74,7 @@ async def run_test(request: SimulationRequest, supabase: Client = Depends(get_su
             vroom_solution=result["vroom_solution"],
         )
 
-        # Cost estimate (only meaningful for TomTom Premium)
+        # Cost estimate (for premium strategies)
         cost_estimate = None
         if request.strategy.value == "tomtom_premium":
             n = len(locations)
@@ -78,6 +83,22 @@ async def run_test(request: SimulationRequest, supabase: Client = Depends(get_su
                 total_waypoints=n,
                 matrix_elements=matrix_elements,
                 estimated_cost_eur=round(matrix_elements * 0.00042, 2),
+                provider="tomtom",
+            )
+        elif request.strategy.value == "here_premium":
+            n = len(locations)
+            S = D = n
+            transactions = 5 * max(S, D) if (S >= 5 and D >= 5) else S * D
+            route_txns = 3 * n  # convergence solver overhead
+            total_txns = transactions + route_txns
+            cost_usd = (transactions * 0.0035) + (route_txns * 0.0015)
+            cost_eur = round(cost_usd * 0.92, 2)  # approx USD→EUR
+            cost_estimate = CostEstimate(
+                total_waypoints=n,
+                matrix_elements=n * n,
+                estimated_cost_eur=cost_eur,
+                provider="here",
+                transactions=total_txns,
             )
 
         # Metrics from VROOM
@@ -205,13 +226,19 @@ async def remix_test(request: RemixRequest, supabase: Client = Depends(get_supab
     try:
         logger.info(f"Remix #{test_number}: Re-running parent {request.parent_run_id[:8]}... with strategy={request.strategy.value}")
 
+        # Route to correct API key
+        if request.strategy.value == "here_premium":
+            active_api_key = settings.HERE_API_KEY
+        else:
+            active_api_key = settings.TOMTOM_API_KEY
+
         result = run_simulation(
             vehicles=constrained_vehicles,
             jobs=constrained_jobs,
             locations=remix_locations,
             strategy=request.strategy.value,
             shift_start=shift_start,
-            api_key=settings.TOMTOM_API_KEY,
+            api_key=active_api_key,
             vroom_endpoint=settings.VROOM_ENDPOINT,
         )
 
@@ -230,6 +257,22 @@ async def remix_test(request: RemixRequest, supabase: Client = Depends(get_supab
                 total_waypoints=n,
                 matrix_elements=matrix_elements,
                 estimated_cost_eur=round(matrix_elements * 0.00042, 2),
+                provider="tomtom",
+            )
+        elif request.strategy.value == "here_premium":
+            n = len(remix_locations)
+            S = D = n
+            transactions = 5 * max(S, D) if (S >= 5 and D >= 5) else S * D
+            route_txns = 3 * n
+            total_txns = transactions + route_txns
+            cost_usd = (transactions * 0.0035) + (route_txns * 0.0015)
+            cost_eur = round(cost_usd * 0.92, 2)
+            cost_estimate = CostEstimate(
+                total_waypoints=n,
+                matrix_elements=n * n,
+                estimated_cost_eur=cost_eur,
+                provider="here",
+                transactions=total_txns,
             )
 
         summary = result.get("vroom_summary", {})

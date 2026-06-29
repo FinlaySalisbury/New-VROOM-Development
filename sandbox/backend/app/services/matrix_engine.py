@@ -1,10 +1,11 @@
 """
 Matrix Engine — 3-strategy matrix orchestrator for the Simulation Sandbox.
 
-Routes matrix generation through one of three strategies:
+Routes matrix generation through one of four strategies:
   1. Naive     — Haversine at flat 30 km/h, no traffic awareness
   2. In-House  — Haversine × zone/timeslot multipliers (TomTomClient mock)
   3. TomTom    — Live N×N matrix via TomTom Matrix Routing API v2
+  4. HERE      — Live N×N matrix via HERE Matrix Routing API v8
 """
 import math
 import logging
@@ -12,6 +13,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from app.core.tomtom_client import TomTomClient
+from app.core.here_matrix_v8 import HereMatrixClient
 from app.services.matrix_weighter import TrafficMatrixWeighter
 
 logger = logging.getLogger(__name__)
@@ -92,6 +94,25 @@ def compute_tomtom_matrix(
     return matrix
 
 
+def compute_here_matrix(
+    locations: list[list[float]], shift_start: int, api_key: str
+) -> list[list[int]]:
+    """
+    Strategy 4: Live HERE Matrix Routing API v8.
+    Single POST request returning N×N matrix with predictive traffic.
+    Uses truck mode with 3.5t van vehicle configuration.
+    """
+    client = HereMatrixClient(api_key=api_key)
+    matrix = client.compute_matrix(
+        locations=locations,
+        depart_at=str(shift_start),
+        traffic="historical",
+        travel_mode="truck",
+    )
+    logger.info(f"HERE premium matrix computed: {len(locations)}×{len(locations)}")
+    return matrix
+
+
 def get_matrix(
     strategy: str,
     locations: list[list[float]],
@@ -102,10 +123,10 @@ def get_matrix(
     Route to the appropriate matrix computation strategy.
     
     Args:
-        strategy: 'naive', 'inhouse', or 'tomtom_premium'
+        strategy: 'naive', 'inhouse', 'tomtom_premium', or 'here_premium'
         locations: List of [lon, lat] coordinates
         shift_start: Unix timestamp of shift start
-        api_key: TomTom API key (required for tomtom_premium)
+        api_key: API key (required for premium strategies)
     
     Returns:
         N×N duration matrix in seconds
@@ -119,5 +140,10 @@ def get_matrix(
             logger.warning("TomTom Premium requested but no valid API key; falling back to in-house")
             return compute_inhouse_matrix(locations, shift_start)
         return compute_tomtom_matrix(locations, shift_start, api_key)
+    elif strategy == "here_premium":
+        if not api_key or api_key == "MOCK_KEY":
+            logger.warning("HERE Premium requested but no valid API key; falling back to in-house")
+            return compute_inhouse_matrix(locations, shift_start)
+        return compute_here_matrix(locations, shift_start, api_key)
     else:
         raise ValueError(f"Unknown strategy: {strategy}")

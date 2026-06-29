@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 from app.core.vroom_interface import VroomSolverInterface
 from app.core.tomtom_client import TomTomClient
+from app.core.here_client import HereClient
 from app.services.matrix_engine import get_matrix, _haversine
 from app.services.convergence_solver import ConvergenceSolver
 
@@ -170,9 +171,12 @@ def run_simulation(
           - routes_data: per-vehicle route data with geometries, timestamps, and activity logs
           - vroom_summary: VROOM summary stats
     """
-    # Instantiate a single shared TomTomClient to maximize Time-Bucket Cache hit rate
+    # Instantiate a single shared routing client to maximize cache hit rate
     # between Matrix/Convergence solving and Route Geometry fetching
-    tt_client = TomTomClient(api_key=api_key or "MOCK_KEY")
+    if strategy == "here_premium":
+        tt_client = HereClient(api_key=api_key or "MOCK_KEY")
+    else:
+        tt_client = TomTomClient(api_key=api_key or "MOCK_KEY")
     
     if strategy == "tomtom_premium":
         logger.info("Executing TomTom Iterative Convergence Pipeline...")
@@ -180,7 +184,21 @@ def run_simulation(
             api_key=api_key, 
             vroom_endpoint=vroom_endpoint,
             tt_client=tt_client,
-            max_iterations=3
+            max_iterations=3,
+            provider="tomtom"
+        )
+        result = solver.solve(vehicles, jobs, locations, shift_start)
+        solution = result["vroom_solution"]
+        matrix = result["final_matrix"]
+
+    elif strategy == "here_premium":
+        logger.info("Executing HERE Iterative Convergence Pipeline...")
+        solver = ConvergenceSolver(
+            api_key=api_key, 
+            vroom_endpoint=vroom_endpoint,
+            tt_client=tt_client,
+            max_iterations=3,
+            provider="here"
         )
         result = solver.solve(vehicles, jobs, locations, shift_start)
         solution = result["vroom_solution"]
@@ -382,6 +400,10 @@ def run_simulation(
                 "activity_log": sorted(activity_log, key=lambda x: x.get("timestamp_unix", 0)),
             })
 
+    # Filter out idle vehicle-days (no jobs assigned) — only show days
+    # where the engineer actually does work.
+    routes_data = [r for r in routes_data if r["num_jobs_assigned"] > 0]
+
     return {
         "vroom_solution": solution,
         "routes_data": routes_data,
@@ -399,40 +421,78 @@ def _mock_vroom_solve(
     """
     Skill-aware nearest-neighbor mock VROOM solver.
     
+    Respects:
+      - Vehicle time_window (shift start/end) as hard constraints
+      - Vehicle max_tasks capacity
+      - Job skill requirements
+    
     1. Filters jobs by skill compatibility with each vehicle
-    2. Assigns each job to the nearest compatible vehicle
+    2. Assigns each job to the nearest compatible vehicle that has remaining
+       time capacity in its shift window
     3. Sequences each vehicle's jobs using nearest-neighbor from depot
+    4. Stops sequencing when the shift end would be exceeded
     """
     num_vehicles = len(vehicles)
     vehicle_jobs: dict[int, list] = {i: [] for i in range(num_vehicles)}
     assigned_job_ids: set = set()
     unassigned = []
 
-    # Build skill sets per vehicle
+    # Build skill sets and time windows per vehicle
     vehicle_skills = {}
+    vehicle_tw = {}
+    vehicle_max_tasks = {}
     for i, v in enumerate(vehicles):
         vehicle_skills[i] = set(v.get("skills", []))
+        tw = v.get("time_window")
+        if tw and len(tw) == 2:
+            vehicle_tw[i] = (tw[0], tw[1])
+        else:
+            vehicle_tw[i] = (shift_start, shift_start + 36000)  # 10h default
+        vehicle_max_tasks[i] = v.get("max_tasks", 999)
+
+    # Track estimated end time per vehicle for capacity-aware assignment
+    vehicle_current_time = {i: vehicle_tw[i][0] for i in range(num_vehicles)}
+    vehicle_task_count = {i: 0 for i in range(num_vehicles)}
+    vehicle_last_loc = {i: i for i in range(num_vehicles)}  # Start at vehicle depot
 
     # Assign each job to the nearest compatible vehicle (greedy)
+    # that still has room in its shift window
     for job in jobs:
         required_skills = set(job.get("skills", []))
         best_vehicle = None
         best_cost = float("inf")
+        service_time = job.get("service", 1800)
 
         for v_idx in range(num_vehicles):
-            # Check skill compatibility: vehicle must have ALL required skills
+            # Check skill compatibility
             if not required_skills.issubset(vehicle_skills[v_idx]):
                 continue
+            # Check max_tasks capacity
+            if vehicle_task_count[v_idx] >= vehicle_max_tasks[v_idx]:
+                continue
 
-            # Cost = matrix distance from vehicle start to job
             job_idx = num_vehicles + jobs.index(job)
-            cost = matrix[v_idx][job_idx]
+            travel_to_job = matrix[vehicle_last_loc[v_idx]][job_idx]
+            # Estimate return-to-depot time after this job
+            travel_home = matrix[job_idx][v_idx]
+            estimated_end = vehicle_current_time[v_idx] + travel_to_job + service_time + travel_home
 
+            # Check if this job fits within the shift window
+            _, shift_end = vehicle_tw[v_idx]
+            if estimated_end > shift_end:
+                continue
+
+            cost = travel_to_job
             if cost < best_cost:
                 best_cost = cost
                 best_vehicle = v_idx
 
         if best_vehicle is not None:
+            job_idx = num_vehicles + jobs.index(job)
+            travel_to_job = matrix[vehicle_last_loc[best_vehicle]][job_idx]
+            vehicle_current_time[best_vehicle] += travel_to_job + service_time
+            vehicle_last_loc[best_vehicle] = job_idx
+            vehicle_task_count[best_vehicle] += 1
             vehicle_jobs[best_vehicle].append(job)
             assigned_job_ids.add(job["id"])
         else:
@@ -444,6 +504,8 @@ def _mock_vroom_solve(
         assigned = vehicle_jobs[v_idx]
         if not assigned:
             continue
+
+        v_shift_start, v_shift_end = vehicle_tw[v_idx]
 
         # Nearest-neighbor sequencing from depot
         ordered_jobs = []
@@ -464,33 +526,43 @@ def _mock_vroom_solve(
             current_idx = num_vehicles + jobs.index(best_job)
             remaining.remove(best_job)
 
-        # Build steps
+        # Build steps, respecting the shift window
         steps = []
         steps.append({
             "type": "start",
             "location": vehicle["start"],
-            "arrival": shift_start,
+            "arrival": v_shift_start,
             "service": 0,
         })
 
-        cumulative_time = shift_start
+        cumulative_time = v_shift_start
         prev_loc_index = v_idx
+        actually_assigned = []
 
         for job in ordered_jobs:
             job_loc_index = num_vehicles + jobs.index(job)
             travel_time = matrix[prev_loc_index][job_loc_index]
-            cumulative_time += travel_time
+            service_time = job.get("service", 1800)
+            travel_home = matrix[job_loc_index][v_idx]
 
+            # Check if completing this job + returning to depot exceeds shift end
+            if cumulative_time + travel_time + service_time + travel_home > v_shift_end:
+                # Cannot fit this job — mark as unassigned
+                unassigned.append({"id": job["id"], "type": "job"})
+                continue
+
+            cumulative_time += travel_time
             steps.append({
                 "type": "job",
                 "location": job["location"],
                 "location_index": job_loc_index,
                 "job": job["id"],
                 "arrival": cumulative_time,
-                "service": job.get("service", 1800),
+                "service": service_time,
             })
-            cumulative_time += job.get("service", 1800)
+            cumulative_time += service_time
             prev_loc_index = job_loc_index
+            actually_assigned.append(job)
 
         # Return to depot
         travel_home = matrix[prev_loc_index][v_idx]
@@ -505,7 +577,7 @@ def _mock_vroom_solve(
         routes.append({
             "vehicle": vehicle["id"],
             "steps": steps,
-            "duration": cumulative_time - shift_start,
+            "duration": cumulative_time - v_shift_start,
             "distance": 0,
         })
 
@@ -519,3 +591,4 @@ def _mock_vroom_solve(
             "duration": sum(r["duration"] for r in routes),
         },
     }
+
