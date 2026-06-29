@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -16,6 +16,9 @@ import {
 } from '@/services/simulation';
 import { legStyle, routeColor, URGENCY_COLORS } from './mapColors';
 import { NewDispatchModal } from './NewDispatchModal';
+import { AnimationLayer } from './AnimationLayer';
+import { AnimationControls } from './AnimationControls';
+import { buildAnimationModel } from './routeAnimation';
 
 const LONDON: [number, number] = [51.505, -0.09];
 
@@ -170,6 +173,55 @@ export function MapView() {
 
   const canRun = projectRole === 'owner' || projectRole === 'admin' || projectRole === 'user';
 
+  // ── Route playback ──────────────────────────────────────────
+  const animation = useMemo(() => buildAnimationModel(result), [result]);
+  const hasAnimation = animation.trajectories.length > 0 && animation.endUnix > animation.startUnix;
+
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(120);
+  const [currentUnix, setCurrentUnix] = useState(0);
+  const lastFrameRef = useRef(0);
+
+  // Reset the timeline whenever a new solve loads.
+  useEffect(() => {
+    setPlaying(false);
+    setCurrentUnix(animation.startUnix);
+  }, [animation]);
+
+  // rAF playback loop — advances sim-time by `speed` seconds per real second.
+  useEffect(() => {
+    if (!playing || !hasAnimation) return;
+    let raf = 0;
+    lastFrameRef.current = performance.now();
+    const tick = (now: number) => {
+      const dt = (now - lastFrameRef.current) / 1000;
+      lastFrameRef.current = now;
+      setCurrentUnix((prev) => {
+        const next = prev + dt * speed;
+        if (next >= animation.endUnix) {
+          setPlaying(false);
+          return animation.endUnix;
+        }
+        return next;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, speed, hasAnimation, animation.endUnix]);
+
+  const togglePlay = useCallback(() => {
+    setPlaying((p) => {
+      if (!p && currentUnix >= animation.endUnix) setCurrentUnix(animation.startUnix);
+      return !p;
+    });
+  }, [currentUnix, animation.endUnix, animation.startUnix]);
+
+  const handleScrub = useCallback((unix: number) => {
+    setPlaying(false);
+    setCurrentUnix(unix);
+  }, []);
+
   const engineers = useMemo(() => {
     return (result?.routes_data ?? []).map((v) => ({
       id: v.vehicle_id,
@@ -218,6 +270,9 @@ export function MapView() {
             <JobLayers fc={result.faults_geojson} engineerFilter={engineerFilter} />
             <FitBounds result={result} />
           </>
+        )}
+        {hasAnimation && (
+          <AnimationLayer trajectories={animation.trajectories} currentUnix={currentUnix} />
         )}
       </MapContainer>
 
@@ -304,6 +359,20 @@ export function MapView() {
           <div className="map-spinner" aria-hidden="true" />
           <p>Solving dispatch…</p>
         </div>
+      )}
+
+      {/* Route playback controls */}
+      {hasAnimation && (
+        <AnimationControls
+          playing={playing}
+          currentUnix={currentUnix}
+          startUnix={animation.startUnix}
+          endUnix={animation.endUnix}
+          speed={speed}
+          onTogglePlay={togglePlay}
+          onScrub={handleScrub}
+          onSpeedChange={setSpeed}
+        />
       )}
 
       {/* New dispatch FAB */}
