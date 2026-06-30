@@ -20,9 +20,9 @@ export function routeColor(engineerId: number): string {
   return ROUTE_COLORS[(((engineerId % n) + n) % n)];
 }
 
-/** Colour + weight for a route leg given its traffic multiplier. */
-export function legStyle(engineerId: number, mult: number): { color: string; weight: number } {
+/** Colour + weight for a route leg given its base colour and traffic multiplier. */
+export function legStyle(baseColor: string, mult: number): { color: string; weight: number } {
   if (mult > 2.0) return { color: '#ef4444', weight: 4 };   // severe congestion
   if (mult > 1.3) return { color: '#f97316', weight: 3.5 }; // moderate
-  return { color: routeColor(engineerId), weight: 3 };
+  return { color: baseColor, weight: 3 };
 }

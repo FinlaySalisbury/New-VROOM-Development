@@ -36,7 +36,10 @@ export interface AnimationModel {
  * earliest shift start to the latest shift end (or route activity), so markers
  * appear/depart on their availability windows just like the legacy player.
  */
-export function buildAnimationModel(result: SimulationResult | null): AnimationModel {
+export function buildAnimationModel(
+  result: SimulationResult | null,
+  colorOf?: (vehicleId: number) => string,
+): AnimationModel {
   const empty: AnimationModel = { trajectories: [], startUnix: 0, endUnix: 0 };
   if (!result?.routes_data) return empty;
 
@@ -72,7 +75,7 @@ export function buildAnimationModel(result: SimulationResult | null): AnimationM
         engineerId: rd.vehicle_id,
         name: rd.vehicle_name?.split('|')[0]?.trim() || `Engineer ${rd.vehicle_id}`,
         label: String(idx + 1),
-        color: routeColor(rd.vehicle_id),
+        color: colorOf?.(rd.vehicle_id) ?? routeColor(rd.vehicle_id),
         path,
         availStart,
         availEnd,
