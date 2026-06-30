@@ -24,7 +24,9 @@ import { listTestRuns, getTestRun } from '@/services/history';
 import { historyRunToResult } from '@/features/history/replay';
 import type { TestRun } from '@/types';
 import { buildEngineerGroups, colorByVehicle } from './engineerGroups';
+import { buildDayGroups } from './dayGroups';
 import { BreakdownPanel, type SelectedItem } from './BreakdownPanel';
+import { DispatchRibbon, type RibbonStats } from './DispatchRibbon';
 import { buildJobLookup } from './dayTimeline';
 
 const LONDON: [number, number] = [51.505, -0.09];
@@ -271,6 +273,7 @@ export function MapView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [engineerFilter, setEngineerFilter] = useState<string | 'all'>('all');
+  const [dayFilter, setDayFilter] = useState<string | 'all'>('all');
   const [expandedEngineer, setExpandedEngineer] = useState<string | null>(null);
   const [dayVehicleId, setDayVehicleId] = useState<number | null>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
@@ -278,6 +281,8 @@ export function MapView() {
 
   // Group the solver's per-day vehicles back into one entry per engineer.
   const groups = useMemo(() => buildEngineerGroups(result), [result]);
+  // …and the same vehicle-days re-bucketed by calendar date (the day axis).
+  const dayGroups = useMemo(() => buildDayGroups(groups), [groups]);
   const colorOf = useMemo(() => {
     const m = colorByVehicle(groups);
     return (id: number) => m.get(id) ?? routeColor(id);
@@ -289,21 +294,41 @@ export function MapView() {
     return m;
   }, [result]);
 
-  // Engineer-level highlight; drilling into a day narrows to that one vehicle.
+  // The active map scope: one drilled vehicle-day, all engineers on one date,
+  // one engineer's every day, or the whole dispatch.
   const selectedIds = useMemo<Set<number> | null>(() => {
     if (dayVehicleId != null) return new Set([dayVehicleId]);
-    if (engineerFilter === 'all') return null;
-    return groups.find((g) => g.key === engineerFilter)?.vehicleIds ?? null;
-  }, [dayVehicleId, engineerFilter, groups]);
+    if (dayFilter !== 'all') return dayGroups.find((d) => d.key === dayFilter)?.vehicleIds ?? null;
+    if (engineerFilter !== 'all') return groups.find((g) => g.key === engineerFilter)?.vehicleIds ?? null;
+    return null;
+  }, [dayVehicleId, dayFilter, engineerFilter, groups, dayGroups]);
 
   const selectedLegId = selectedItem?.kind === 'leg' ? selectedItem.legId : null;
   const selectedJobId = selectedItem?.kind === 'job' ? selectedItem.jobId : null;
 
-  // Reset the drill-down + selection whenever the displayed run changes.
+  // Reset all navigation + selection whenever the displayed run changes.
   useEffect(() => {
+    setDayFilter('all');
     setDayVehicleId(null);
     setSelectedItem(null);
   }, [result]);
+
+  // Day and engineer are mutually-exclusive entry axes — picking one resets the
+  // other so the scope is never an opaque intersection.
+  const pickDay = useCallback((key: string | 'all') => {
+    setDayFilter(key);
+    setEngineerFilter('all');
+    setExpandedEngineer(null);
+    setDayVehicleId(null);
+    setSelectedItem(null);
+  }, []);
+
+  const pickEngineer = useCallback((key: string | 'all') => {
+    setEngineerFilter(key);
+    setDayFilter('all');
+    setDayVehicleId(null);
+    setSelectedItem(null);
+  }, []);
 
   // Clear any leg/job highlight when the day scope changes.
   useEffect(() => {
@@ -402,6 +427,7 @@ export function MapView() {
     setResult(null);
     setStaged(null);
     setEngineerFilter('all');
+    setDayFilter('all');
     setExpandedEngineer(null);
     setDayVehicleId(null);
     setSelectedItem(null);
@@ -413,6 +439,22 @@ export function MapView() {
     if (typeof result.vroom_summary?.unassigned === 'number') return result.vroom_summary.unassigned;
     return (result.faults_geojson?.features ?? []).filter((f) => (f.properties?.status ?? '') !== 'Assigned').length;
   }, [result]);
+
+  // Live ribbon stats for the current scope: jobs + labour split into drive/work.
+  const ribbonStats = useMemo<RibbonStats>(() => {
+    let jobs = 0;
+    let travelS = 0;
+    let serviceS = 0;
+    for (const rd of result?.routes_data ?? []) {
+      if (selectedIds && !selectedIds.has(rd.vehicle_id)) continue;
+      jobs += rd.num_jobs_assigned ?? 0;
+      travelS += (rd.legs ?? []).reduce((s, l) => s + (Number(l.duration_s) || 0), 0);
+      serviceS += (rd.activity_log ?? [])
+        .filter((a) => a.action === 'service')
+        .reduce((s, a) => s + (Number(a.duration_s) || 0), 0);
+    }
+    return { jobs, travelS, serviceS, unassigned, scoped: selectedIds != null };
+  }, [result, selectedIds, unassigned]);
 
   const handleRun = useCallback(
     async (cfg: Omit<SimulationRequest, 'project_id'>) => {
@@ -468,82 +510,42 @@ export function MapView() {
         )}
       </MapContainer>
 
-      {/* Results summary + history picker */}
-      {(result || pastRuns.length > 0) && (
-        <section className="map-panel map-summary" aria-label="Dispatch summary">
-          {pastRuns.length > 0 && (
-            <div className="map-field">
-              <label htmlFor="map-history">Past dispatch</label>
-              <select
-                id="map-history"
-                className="form-input"
-                value={result?.id ?? ''}
-                onChange={(e) => void loadPastRun(e.target.value)}
-              >
-                <option value="">Load a past run…</option>
-                {pastRuns.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    #{r.test_number ?? '?'} · {r.name?.trim() || r.strategy.replace('_', ' ')} ({r.num_jobs} jobs)
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {result && (
-          <>
-          <div className="map-summary-grid">
-            <div className="map-stat">
-              <span className="map-stat-num">#{result.test_number}</span>
-              <span className="map-stat-label">Run</span>
-            </div>
-            <div className="map-stat">
-              <span className="map-stat-num">{result.num_jobs}</span>
-              <span className="map-stat-label">Jobs</span>
-            </div>
-            <div className="map-stat">
-              <span className="map-stat-num">{formatDuration(result.vroom_summary?.duration)}</span>
-              <span className="map-stat-label">Total time</span>
-            </div>
-            <div className="map-stat">
-              <span className="map-stat-num" style={{ color: unassigned ? '#ef4444' : undefined }}>
-                {unassigned}
-              </span>
-              <span className="map-stat-label">Unassigned</span>
-            </div>
-          </div>
+      {/* History picker — load a past dispatch (top-left, standalone) */}
+      {(result || pastRuns.length > 0) && pastRuns.length > 0 && (
+        <section className="map-panel map-history-picker" aria-label="Load past dispatch">
           <div className="map-field">
-            <label htmlFor="map-eng-filter">Engineer</label>
+            <label htmlFor="map-history">Past dispatch</label>
             <select
-              id="map-eng-filter"
+              id="map-history"
               className="form-input"
-              value={engineerFilter}
-              onChange={(e) => setEngineerFilter(e.target.value)}
+              value={result?.id ?? ''}
+              onChange={(e) => void loadPastRun(e.target.value)}
             >
-              <option value="all">All engineers ({groups.length})</option>
-              {groups.map((g) => (
-                <option key={g.key} value={g.key}>
-                  {g.name} — {g.totalJobs} jobs
+              <option value="">Load a past run…</option>
+              {pastRuns.map((r) => (
+                <option key={r.id} value={r.id}>
+                  #{r.test_number ?? '?'} · {r.name?.trim() || r.strategy.replace('_', ' ')} ({r.num_jobs} jobs)
                 </option>
               ))}
             </select>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className="yx-badge yx-badge-blue">{result.strategy.replace('_', ' ')}</span>
-            {staged === 'replay' && (
-              <span className="yx-badge yx-badge-outline" title="Rendered from history — not re-solved">
-                Replayed
-              </span>
-            )}
-            {staged === 'remix' && (
-              <span className="yx-badge yx-badge-outline" title="Same assignments re-solved under a new strategy">
-                Remix
-              </span>
-            )}
-          </div>
-          </>
-          )}
         </section>
+      )}
+
+      {/* Dispatch ribbon — navigation (day chips + engineer) + live stats */}
+      {result && (
+        <DispatchRibbon
+          testNumber={result.test_number}
+          strategy={result.strategy}
+          staged={staged}
+          dayGroups={dayGroups}
+          groups={groups}
+          dayFilter={dayFilter}
+          onPickDay={pickDay}
+          engineerFilter={engineerFilter}
+          onPickEngineer={pickEngineer}
+          stats={ribbonStats}
+        />
       )}
 
       {/* Floating close — leaves the dispatch and returns to the empty map */}
@@ -557,10 +559,13 @@ export function MapView() {
       {result && (
         <BreakdownPanel
           groups={groups}
+          dayGroups={dayGroups}
           jobLookup={jobLookup}
           routeByVehicle={routeByVehicle}
           engineerFilter={engineerFilter}
           setEngineerFilter={setEngineerFilter}
+          dayFilter={dayFilter}
+          onPickDay={pickDay}
           expandedEngineer={expandedEngineer}
           setExpandedEngineer={setExpandedEngineer}
           dayVehicleId={dayVehicleId}

@@ -1,17 +1,24 @@
 /**
- * The right-hand breakdown panel. Two levels with breadcrumb navigation:
+ * The right-hand breakdown panel — a breadcrumb-driven hierarchy over two
+ * entry axes that converge on the same day timeline:
+ *
+ *   Engineers           → engineer's days → engineer-day timeline
+ *   All days › <date>   → engineers that day → engineer-day timeline
+ *
  *  - Engineers: one row per engineer (grouped vehicle-days), expandable to its
- *    days; clicking a day drills into the day view.
- *  - Day: a detailed timeline of that engineer-day — shift start, every travel
- *    leg (duration, distance, avg speed, traffic) and every job stop (arrival,
- *    service, urgency, skills), shift end. Selecting a row highlights the leg or
- *    job on the map (and vice-versa, driven by the shared selectedItem).
+ *    days; clicking a day drills into the day timeline.
+ *  - Day: every engineer working that date with their jobs/labour; clicking one
+ *    drills into that engineer's timeline for the day.
+ *  - Timeline: shift start, every travel leg (duration, distance, avg speed,
+ *    traffic) and every job stop (arrival, service, urgency, skills), shift end.
+ *    Selecting a row highlights the leg/job on the map (and vice-versa).
  */
 
 import { useEffect, useRef } from 'react';
 import type { SimVehicleRoute } from '@/services/simulation';
 import { skillLabel } from '@/features/engineers/skills';
 import type { EngineerGroup } from './engineerGroups';
+import type { DayGroup } from './dayGroups';
 import { buildDayTimeline, fmtMins, type JobMeta, type DayItem } from './dayTimeline';
 
 export type SelectedItem =
@@ -21,10 +28,13 @@ export type SelectedItem =
 
 interface Props {
   groups: EngineerGroup[];
+  dayGroups: DayGroup[];
   jobLookup: Map<number, JobMeta>;
   routeByVehicle: Map<number, SimVehicleRoute>;
   engineerFilter: string | 'all';
   setEngineerFilter: (k: string | 'all') => void;
+  dayFilter: string | 'all';
+  onPickDay: (k: string | 'all') => void;
   expandedEngineer: string | null;
   setExpandedEngineer: (k: string | null) => void;
   dayVehicleId: number | null;
@@ -34,17 +44,23 @@ interface Props {
 }
 
 export function BreakdownPanel(props: Props) {
-  const { groups, dayVehicleId } = props;
+  const { groups, dayFilter, dayVehicleId } = props;
   if (groups.length === 0) return null;
 
   return (
     <aside className="map-panel map-breakdown" aria-label="Dispatch breakdown">
-      {dayVehicleId == null ? <EngineerLevel {...props} /> : <DayLevel {...props} />}
+      {dayVehicleId != null ? (
+        <DayTimeline {...props} />
+      ) : dayFilter !== 'all' ? (
+        <DayEngineersLevel {...props} />
+      ) : (
+        <EngineerLevel {...props} />
+      )}
     </aside>
   );
 }
 
-// ── Engineer level ────────────────────────────────────────────
+// ── Engineer level (engineer axis) ────────────────────────────
 
 function EngineerLevel({
   groups,
@@ -61,7 +77,6 @@ function EngineerLevel({
         {groups.map((g) => {
           const multiDay = g.days.length > 1;
           const expanded = expandedEngineer === g.key;
-          // A single-day engineer drills straight into its one day.
           const onMain = () =>
             multiDay
               ? setEngineerFilter(engineerFilter === g.key ? 'all' : g.key)
@@ -113,12 +128,64 @@ function EngineerLevel({
   );
 }
 
-// ── Day level ─────────────────────────────────────────────────
+// ── Day level (day axis) — every engineer working that date ───
 
-function DayLevel({
+function DayEngineersLevel({ dayGroups, dayFilter, onPickDay, setDayVehicleId }: Props) {
+  const day = dayGroups.find((d) => d.key === dayFilter);
+  if (!day) return null;
+  const labourS = day.totalTravelS + day.totalServiceS;
+
+  return (
+    <>
+      <nav className="map-breadcrumb" aria-label="Breadcrumb">
+        <button type="button" className="map-crumb-link" onClick={() => onPickDay('all')}>
+          All days
+        </button>
+        <span className="map-crumb-sep">›</span>
+        <span className="map-crumb-current">{day.label}</span>
+      </nav>
+
+      <div className="map-day-summary">
+        <span>
+          {day.totalJobs} jobs · {fmtMins(labourS)} · {day.engineers.length} engineer
+          {day.engineers.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <ul className="map-breakdown-list">
+        {day.engineers.map((e) => (
+          <li key={e.vehicleId}>
+            <div className="map-breakdown-row">
+              <button
+                type="button"
+                className="map-breakdown-main"
+                onClick={() => setDayVehicleId(e.vehicleId)}
+                title="Open this engineer's day"
+              >
+                <span className="map-dot" style={{ background: e.color }} aria-hidden="true" />
+                <span className="map-breakdown-name">{e.name}</span>
+                <span className="map-breakdown-subjobs">
+                  {e.jobs} job{e.jobs === 1 ? '' : 's'} · {fmtMins(e.travelS + e.serviceS)} ›
+                </span>
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+// ── Timeline (shared leaf of both axes) ───────────────────────
+
+function DayTimeline({
   groups,
+  dayGroups,
   jobLookup,
   routeByVehicle,
+  dayFilter,
+  onPickDay,
+  setEngineerFilter,
   dayVehicleId,
   setDayVehicleId,
   selectedItem,
@@ -128,17 +195,42 @@ function DayLevel({
   const day = group?.days.find((d) => d.vehicleId === dayVehicleId);
   const rd = routeByVehicle.get(dayVehicleId as number);
   const items = buildDayTimeline(rd, jobLookup);
+  const viaDay = dayFilter !== 'all';
+  const dayLabel = dayGroups.find((d) => d.key === dayFilter)?.label ?? day?.label ?? '';
 
   return (
     <>
       <nav className="map-breadcrumb" aria-label="Breadcrumb">
-        <button type="button" className="map-crumb-link" onClick={() => setDayVehicleId(null)}>
-          Engineers
-        </button>
-        <span className="map-crumb-sep">›</span>
-        <span className="map-crumb-current">
-          {group?.name ?? 'Engineer'} · {day?.label ?? ''}
-        </span>
+        {viaDay ? (
+          <>
+            <button type="button" className="map-crumb-link" onClick={() => onPickDay('all')}>
+              All days
+            </button>
+            <span className="map-crumb-sep">›</span>
+            <button type="button" className="map-crumb-link" onClick={() => setDayVehicleId(null)}>
+              {dayLabel}
+            </button>
+            <span className="map-crumb-sep">›</span>
+            <span className="map-crumb-current">{group?.name ?? 'Engineer'}</span>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="map-crumb-link"
+              onClick={() => {
+                setDayVehicleId(null);
+                setEngineerFilter('all');
+              }}
+            >
+              Engineers
+            </button>
+            <span className="map-crumb-sep">›</span>
+            <span className="map-crumb-current">
+              {group?.name ?? 'Engineer'} · {day?.label ?? ''}
+            </span>
+          </>
+        )}
       </nav>
 
       <div className="map-day-summary">
@@ -187,9 +279,7 @@ function TimelineRow({ item, selected, onSelect }: { item: DayItem; selected: bo
         <button type="button" className="map-tl-btn" onClick={onSelect}>
           <span className="map-tl-time">{item.departTime}</span>
           <span className="map-tl-body">
-            <span className="map-tl-title">
-              Drive{item.to ? ` to ${item.to}` : ''}
-            </span>
+            <span className="map-tl-title">Drive{item.to ? ` to ${item.to}` : ''}</span>
             <span className="map-tl-meta">
               {fmtMins(item.durationS)}
               {item.distanceM != null ? ` · ${(item.distanceM / 1000).toFixed(1)} km` : ''}
