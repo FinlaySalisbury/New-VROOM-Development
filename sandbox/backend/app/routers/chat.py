@@ -4,10 +4,11 @@ Chat Router — POST /api/chat endpoint for the Route Explainer AI.
 import logging
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
+from supabase import Client
 from app.config import get_settings
-from app.database import get_test_run_by_id
+from app.database import get_test_run_by_id, get_supabase_client
 from app.services.route_explainer import assemble_context, ask_gemini, ask_claude
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 class ChatRequest(BaseModel):
     """Request body for POST /api/chat."""
+    project_id: str
     run_id: str
     message: str
     history: list[dict[str, str]] = Field(default_factory=list)
@@ -28,7 +30,7 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, supabase: Client = Depends(get_supabase_client)):
     """
     Send a natural-language question about a specific test run to the
     Route Explainer AI (provider selected by AI_PROVIDER).
@@ -48,8 +50,8 @@ async def chat(request: ChatRequest):
             detail="GEMINI_API_KEY is not configured. Add it to .env to enable the AI assistant."
         )
 
-    # Fetch the test run data
-    run_data = await get_test_run_by_id(request.run_id)
+    # Fetch the test run data (scoped to the caller's project for RLS safety)
+    run_data = await get_test_run_by_id(supabase, request.project_id, request.run_id)
     if run_data is None:
         raise HTTPException(status_code=404, detail="Test run not found")
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -16,6 +16,10 @@ import {
 } from '@/services/simulation';
 import { legStyle, routeColor, URGENCY_COLORS } from './mapColors';
 import { NewDispatchModal } from './NewDispatchModal';
+import { AnimationLayer } from './AnimationLayer';
+import { AnimationControls } from './AnimationControls';
+import { buildAnimationModel } from './routeAnimation';
+import { ChatPanel } from './ChatPanel';
 
 const LONDON: [number, number] = [51.505, -0.09];
 
@@ -161,14 +165,76 @@ function DepotLayers({ result, engineerFilter }: { result: SimulationResult; eng
 export function MapView() {
   const { id: projectId } = useParams();
   const projectRole = useAppStore((s) => s.projectRole);
+  const mapRun = useAppStore((s) => s.mapRun);
+  const setMapRun = useAppStore((s) => s.setMapRun);
   const { toast } = useToast();
 
   const [result, setResult] = useState<SimulationResult | null>(null);
+  const [staged, setStaged] = useState<'replay' | 'remix' | null>(null);
   const [running, setRunning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [engineerFilter, setEngineerFilter] = useState<number | 'all'>('all');
 
+  // Consume a run staged from the History view (replay/remix) — one-shot.
+  useEffect(() => {
+    if (!mapRun) return;
+    setResult(mapRun.result);
+    setStaged(mapRun.mode);
+    setEngineerFilter('all');
+    setMapRun(null);
+  }, [mapRun, setMapRun]);
+
   const canRun = projectRole === 'owner' || projectRole === 'admin' || projectRole === 'user';
+
+  // ── Route playback ──────────────────────────────────────────
+  const animation = useMemo(() => buildAnimationModel(result), [result]);
+  const hasAnimation = animation.trajectories.length > 0 && animation.endUnix > animation.startUnix;
+
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(120);
+  const [currentUnix, setCurrentUnix] = useState(0);
+  const lastFrameRef = useRef(0);
+
+  // Reset the timeline whenever a new solve loads.
+  useEffect(() => {
+    setPlaying(false);
+    setCurrentUnix(animation.startUnix);
+  }, [animation]);
+
+  // rAF playback loop — advances sim-time by `speed` seconds per real second.
+  useEffect(() => {
+    if (!playing || !hasAnimation) return;
+    let raf = 0;
+    lastFrameRef.current = performance.now();
+    const tick = (now: number) => {
+      const dt = (now - lastFrameRef.current) / 1000;
+      lastFrameRef.current = now;
+      setCurrentUnix((prev) => {
+        const next = prev + dt * speed;
+        if (next >= animation.endUnix) {
+          setPlaying(false);
+          return animation.endUnix;
+        }
+        return next;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, speed, hasAnimation, animation.endUnix]);
+
+  const togglePlay = useCallback(() => {
+    setPlaying((p) => {
+      if (!p && currentUnix >= animation.endUnix) setCurrentUnix(animation.startUnix);
+      return !p;
+    });
+  }, [currentUnix, animation.endUnix, animation.startUnix]);
+
+  const handleScrub = useCallback((unix: number) => {
+    setPlaying(false);
+    setCurrentUnix(unix);
+  }, []);
 
   const engineers = useMemo(() => {
     return (result?.routes_data ?? []).map((v) => ({
@@ -191,6 +257,7 @@ export function MapView() {
       try {
         const res = await runSimulation({ project_id: projectId, ...cfg });
         setResult(res);
+        setStaged(null);
         setEngineerFilter('all');
         setModalOpen(false);
         toast(`Dispatch #${res.test_number} solved — ${res.num_jobs} jobs.`, { variant: 'success' });
@@ -218,6 +285,9 @@ export function MapView() {
             <JobLayers fc={result.faults_geojson} engineerFilter={engineerFilter} />
             <FitBounds result={result} />
           </>
+        )}
+        {hasAnimation && (
+          <AnimationLayer trajectories={animation.trajectories} currentUnix={currentUnix} />
         )}
       </MapContainer>
 
@@ -260,9 +330,19 @@ export function MapView() {
               ))}
             </select>
           </div>
-          <span className="yx-badge yx-badge-blue" style={{ alignSelf: 'flex-start' }}>
-            {result.strategy.replace('_', ' ')}
-          </span>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            <span className="yx-badge yx-badge-blue">{result.strategy.replace('_', ' ')}</span>
+            {staged === 'replay' && (
+              <span className="yx-badge yx-badge-outline" title="Rendered from history — not re-solved">
+                Replayed
+              </span>
+            )}
+            {staged === 'remix' && (
+              <span className="yx-badge yx-badge-outline" title="Same assignments re-solved under a new strategy">
+                Remix
+              </span>
+            )}
+          </div>
         </section>
       )}
 
@@ -306,11 +386,46 @@ export function MapView() {
         </div>
       )}
 
+      {/* Route playback controls */}
+      {hasAnimation && (
+        <AnimationControls
+          playing={playing}
+          currentUnix={currentUnix}
+          startUnix={animation.startUnix}
+          endUnix={animation.endUnix}
+          speed={speed}
+          onTogglePlay={togglePlay}
+          onScrub={handleScrub}
+          onSpeedChange={setSpeed}
+        />
+      )}
+
       {/* New dispatch FAB */}
       {canRun && (
         <button type="button" className="map-fab" onClick={() => setModalOpen(true)} disabled={running}>
           + New dispatch run
         </button>
+      )}
+
+      {/* Route assistant toggle (only meaningful with a solved run) */}
+      {result && (
+        <button
+          type="button"
+          className={`map-chat-fab${chatOpen ? ' is-open' : ''}`}
+          onClick={() => setChatOpen((o) => !o)}
+          aria-expanded={chatOpen}
+        >
+          {chatOpen ? 'Close assistant' : 'Ask the route assistant'}
+        </button>
+      )}
+
+      {result && projectId && (
+        <ChatPanel
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          projectId={projectId}
+          runId={result.id}
+        />
       )}
 
       <NewDispatchModal open={modalOpen} running={running} onClose={() => setModalOpen(false)} onRun={handleRun} />
