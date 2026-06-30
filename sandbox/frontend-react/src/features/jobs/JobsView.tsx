@@ -18,7 +18,14 @@ import { listJobLists, saveJobList, deleteJobList } from '@/services/jobs';
 import { listSites, saveSites } from '@/services/sites';
 
 import { parseCsvFile } from './csv';
-import { buildImport, makeJobList } from './importJobs';
+import { buildImport, makeJobList, legacyClassify } from './importJobs';
+import type { AiJobInput } from './importJobs';
+import {
+  classifyWithClaude,
+  CLAUDE_CLASSIFIED_BY,
+  type AiClassification,
+} from './aiClassify';
+import type { Job, Site } from '@/types';
 
 const ROLE_LEVEL: Record<ProjectRole, number> = {
   viewer: 0,
@@ -57,13 +64,29 @@ const FolderIcon = (
   </svg>
 );
 
+type ClassifyMode = 'legacy' | 'ai';
+
+/** Per-job state held during the AI review step (legacy showAiReview). */
+interface ReviewRow {
+  job: Job;
+  classification: AiClassification;
+  /** The override input text; validated as a JSON number array on accept. */
+  override: string;
+}
+
+/** Pending AI review payload — jobs + per-row classifications awaiting accept. */
+interface PendingReview {
+  rows: ReviewRow[];
+  meta: string;
+  /** True when the rows came from the rule-based fallback, not Claude. */
+  fallback: boolean;
+}
+
 /**
  * Jobs section — card grid of saved job batches + a CSV import modal. Ports the
- * legacy renderJobLists / importAndSaveJobList / parseCSV / legacyClassify.
- *
- * STUBBED: the Claude AI skill-classification + AI-review modal are not ported.
- * The import always uses the rule-based (string-match) classifier, and the AI
- * engine is shown as a clearly-disabled "coming soon" option (TODO below).
+ * legacy renderJobLists / importAndSaveJobList / parseCSV / legacyClassify, plus
+ * the Claude AI skill-classification path (classifyWithClaude + the AI-review
+ * modal with editable per-job skill overrides).
  */
 export function JobsView() {
   const params = useParams();
@@ -104,11 +127,18 @@ export function JobsView() {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importErr, setImportErr] = useState<string | null>(null);
+  const [classifyMode, setClassifyMode] = useState<ClassifyMode>('legacy');
+
+  // ── AI review state ─────────────────────────────────────────
+  const [review, setReview] = useState<PendingReview | null>(null);
+  const [savingReview, setSavingReview] = useState(false);
+  const [reviewErr, setReviewErr] = useState<string | null>(null);
 
   const nameId = useId();
   const notesId = useId();
   const jobsCsvId = useId();
   const sitesCsvId = useId();
+  const reviewFieldId = useId();
   const jobsInputRef = useRef<HTMLInputElement>(null);
   const sitesInputRef = useRef<HTMLInputElement>(null);
 
@@ -120,6 +150,10 @@ export function JobsView() {
     setImporting(false);
     setImportMsg(null);
     setImportErr(null);
+    setClassifyMode('legacy');
+    setReview(null);
+    setSavingReview(false);
+    setReviewErr(null);
     if (jobsInputRef.current) jobsInputRef.current.value = '';
     if (sitesInputRef.current) sitesInputRef.current.value = '';
   }, []);
@@ -130,9 +164,31 @@ export function JobsView() {
   }, [resetImport]);
 
   const closeImport = useCallback(() => {
-    if (importing) return;
+    if (importing || savingReview) return;
     setImportOpen(false);
-  }, [importing]);
+  }, [importing, savingReview]);
+
+  /**
+   * Persist a finished job list: upsert the site rows it references (merging
+   * with the project's existing sites), then save the list. Shared by the
+   * rule-based path and the AI-review accept handler.
+   */
+  const persistJobList = useCallback(
+    async (jobList: JobList, sites: Site[]): Promise<void> => {
+      if (!projectId) return;
+      if (sites.length > 0) {
+        const existing = await listSites(projectId);
+        const byId = new Map(existing.map((s) => [s.id, s]));
+        for (const s of sites) byId.set(s.id, s);
+        await saveSites(projectId, Array.from(byId.values()));
+      }
+      await saveJobList(projectId, jobList);
+    },
+    [projectId],
+  );
+
+  /** Sites parsed in the current import, held for the AI-review accept step. */
+  const pendingSitesRef = useRef<Site[]>([]);
 
   const runImport = useCallback(async () => {
     if (!projectId) return;
@@ -175,20 +231,56 @@ export function JobsView() {
         return;
       }
 
+      // ── AI path: classify with Claude, then open the review modal. ──
+      if (classifyMode === 'ai') {
+        setImportMsg(`${summary.linked} jobs linked. Classifying skills with Claude…`);
+        let classifications: AiClassification[];
+        let meta: string;
+        let fallback = false;
+        try {
+          const res = await classifyWithClaude(result.aiBatch);
+          classifications = res.classifications;
+          meta = res.usage
+            ? `${res.usage.input_tokens ?? 0} in / ${res.usage.output_tokens ?? 0} out tokens`
+            : 'AI classified';
+        } catch (aiErr) {
+          // Fall back to the rule-based classifier so import still works.
+          fallback = true;
+          classifications = result.aiBatch.map((b: AiJobInput) => ({
+            skills: legacyClassify(b.site_description),
+            manufacturer: 'Fallback',
+            reasoning: 'AI unavailable — used rule-based matching',
+          }));
+          meta = 'Rule-based fallback';
+          toast(friendlyError(aiErr, 'Claude classification failed — using rule-based.'), {
+            variant: 'error',
+          });
+        }
+
+        const rows: ReviewRow[] = result.jobs.map((job, i) => {
+          const cl = classifications[i] ?? {
+            skills: [1003],
+            manufacturer: 'Unknown',
+            reasoning: 'No classification returned',
+          };
+          return { job, classification: cl, override: JSON.stringify(cl.skills) };
+        });
+
+        pendingSitesRef.current = result.sites;
+        setReviewErr(null);
+        setReview({ rows, meta, fallback });
+        setImporting(false);
+        setImportMsg(null);
+        return;
+      }
+
+      // ── Rule-based path: save directly. ──
       setImportMsg(
         `${summary.linked} jobs linked. Applying rule-based skill classification…`,
       );
 
       const jobList = makeJobList(trimmed, notes.trim(), result.jobs);
-
-      // Persist sites first (jobs reference them), then the job list.
-      if (result.sites.length > 0) {
-        const existing = await listSites(projectId);
-        const byId = new Map(existing.map((s) => [s.id, s]));
-        for (const s of result.sites) byId.set(s.id, s);
-        await saveSites(projectId, Array.from(byId.values()));
-      }
-      await saveJobList(projectId, jobList);
+      await persistJobList(jobList, result.sites);
 
       setImporting(false);
       setImportOpen(false);
@@ -203,7 +295,64 @@ export function JobsView() {
       setImportMsg(null);
       setImportErr(friendlyError(err, 'Import failed. Check the file and try again.'));
     }
-  }, [projectId, name, notes, jobsFile, sitesFile, toast, load]);
+  }, [projectId, name, notes, jobsFile, sitesFile, classifyMode, toast, load, persistJobList]);
+
+  /**
+   * Apply the (possibly overridden) AI skills and save the job list with
+   * classifiedBy = the Claude model id. Ports legacy aiReviewAcceptAll.
+   */
+  const acceptReview = useCallback(async () => {
+    if (!projectId || !review) return;
+    setReviewErr(null);
+
+    // Validate every override is a JSON array of numbers before saving.
+    const jobs: Job[] = [];
+    for (const row of review.rows) {
+      let skills: number[];
+      try {
+        const parsed: unknown = JSON.parse(row.override);
+        if (!Array.isArray(parsed) || !parsed.every((n) => typeof n === 'number')) {
+          throw new Error('not a number array');
+        }
+        skills = parsed;
+      } catch {
+        setReviewErr(
+          `Override for "${row.job.description}" must be a JSON array of skill codes, e.g. [1103, 1102].`,
+        );
+        return;
+      }
+      jobs.push({ ...row.job, skills });
+    }
+
+    setSavingReview(true);
+    try {
+      const jobList = makeJobList(
+        name.trim() || 'AI Import',
+        notes.trim(),
+        jobs,
+        CLAUDE_CLASSIFIED_BY,
+      );
+      await persistJobList(jobList, pendingSitesRef.current);
+
+      setReview(null);
+      setSavingReview(false);
+      setImportOpen(false);
+      toast(`Imported "${jobList.name}" — ${jobs.length} jobs`, { variant: 'success' });
+      await load();
+    } catch (err) {
+      setSavingReview(false);
+      setReviewErr(friendlyError(err, 'Could not save the classified job list.'));
+    }
+  }, [projectId, review, name, notes, toast, load, persistJobList]);
+
+  /** Update one review row's override input. */
+  const setOverride = useCallback((idx: number, value: string) => {
+    setReview((prev) => {
+      if (!prev) return prev;
+      const rows = prev.rows.map((r, i) => (i === idx ? { ...r, override: value } : r));
+      return { ...prev, rows };
+    });
+  }, []);
 
   // ── Delete ──────────────────────────────────────────────────
   const handleDelete = useCallback(
@@ -346,7 +495,7 @@ export function JobsView() {
               Cancel
             </Button>
             <Button variant="primary" loading={importing} onClick={() => void runImport()}>
-              Parse and import
+              {classifyMode === 'ai' ? 'Classify with AI' : 'Parse and import'}
             </Button>
           </div>
         }
@@ -436,7 +585,7 @@ export function JobsView() {
                 display: 'flex',
                 gap: 'var(--space-3)',
                 alignItems: 'center',
-                cursor: 'pointer',
+                cursor: importing ? 'not-allowed' : 'pointer',
                 padding: 'var(--space-4)',
               }}
             >
@@ -444,8 +593,9 @@ export function JobsView() {
                 type="radio"
                 name="classify-mode"
                 value="legacy"
-                checked
-                readOnly
+                checked={classifyMode === 'legacy'}
+                onChange={() => setClassifyMode('legacy')}
+                disabled={importing}
               />
               <span>
                 <strong style={{ display: 'block' }}>Rule-based</strong>
@@ -455,8 +605,6 @@ export function JobsView() {
               </span>
             </label>
 
-            {/* TODO: port Claude AI classification + AI-review modal
-                (legacy classifyWithClaude / showAiReview, POST /api/classify). */}
             <label
               className="data-card"
               style={{
@@ -464,16 +612,22 @@ export function JobsView() {
                 display: 'flex',
                 gap: 'var(--space-3)',
                 alignItems: 'center',
-                opacity: 0.55,
-                cursor: 'not-allowed',
+                cursor: importing ? 'not-allowed' : 'pointer',
                 padding: 'var(--space-4)',
               }}
             >
-              <input type="radio" name="classify-mode" value="ai" disabled />
+              <input
+                type="radio"
+                name="classify-mode"
+                value="ai"
+                checked={classifyMode === 'ai'}
+                onChange={() => setClassifyMode('ai')}
+                disabled={importing}
+              />
               <span>
                 <strong style={{ display: 'block' }}>Claude AI</strong>
                 <span style={{ color: 'var(--app-fg-soft)', fontSize: 'var(--fs-small)' }}>
-                  Coming soon
+                  Skill classification with review
                 </span>
               </span>
             </label>
@@ -485,7 +639,9 @@ export function JobsView() {
               color: 'var(--app-fg-soft)',
             }}
           >
-            AI classification is being ported. Imports currently use the rule-based engine.
+            {classifyMode === 'ai'
+              ? 'Claude assigns skills from each site description — you review and edit before saving.'
+              : 'Skills are matched from the site description by manufacturer name.'}
           </p>
         </fieldset>
 
@@ -505,6 +661,126 @@ export function JobsView() {
           >
             {importErr}
           </p>
+        )}
+      </Modal>
+
+      <Modal
+        open={review !== null}
+        title="Review AI classification"
+        size="lg"
+        onClose={() => {
+          if (!savingReview) setReview(null);
+        }}
+        disableBackdropClose={savingReview}
+        footer={
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--space-3)',
+              marginLeft: 'auto',
+            }}
+          >
+            <Button
+              variant="ghost"
+              onClick={() => setReview(null)}
+              disabled={savingReview}
+            >
+              Back
+            </Button>
+            <Button
+              variant="primary"
+              loading={savingReview}
+              onClick={() => void acceptReview()}
+            >
+              Accept and save
+            </Button>
+          </div>
+        }
+      >
+        {review && (
+          <>
+            <p
+              style={{
+                margin: '0 0 var(--space-4)',
+                fontSize: 'var(--fs-small)',
+                color: 'var(--app-fg-soft)',
+              }}
+            >
+              {review.fallback
+                ? 'Claude was unavailable — these are rule-based suggestions. '
+                : 'Claude assigned the skills below. '}
+              {review.rows.length} jobs · {review.meta}. Edit any skill set before saving
+              (JSON array of skill codes, e.g. [1103, 1102]).
+            </p>
+
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {review.rows.map((row, i) => {
+                const overrideId = `${reviewFieldId}-${i}`;
+                return (
+                  <li
+                    key={row.job.id}
+                    className="data-card"
+                    style={{
+                      padding: 'var(--space-4)',
+                      marginBottom: 'var(--space-3)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 'var(--space-3)',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <strong>{row.job.description}</strong>
+                      <span className="data-tag">{row.classification.manufacturer}</span>
+                    </div>
+                    {row.classification.reasoning && (
+                      <p
+                        style={{
+                          margin: 'var(--space-2) 0 0',
+                          fontSize: 'var(--fs-small)',
+                          color: 'var(--app-fg-soft)',
+                        }}
+                      >
+                        {row.classification.reasoning}
+                      </p>
+                    )}
+                    <div
+                      className="form-group"
+                      style={{ margin: 'var(--space-3) 0 0' }}
+                    >
+                      <label className="form-label" htmlFor={overrideId}>
+                        Skills
+                      </label>
+                      <input
+                        id={overrideId}
+                        type="text"
+                        className="form-input"
+                        value={row.override}
+                        placeholder="[1103, 1102]"
+                        autoComplete="off"
+                        spellCheck={false}
+                        disabled={savingReview}
+                        onChange={(e) => setOverride(i, e.target.value)}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {reviewErr && (
+              <p
+                role="alert"
+                style={{ marginTop: 'var(--space-3)', color: 'var(--yx-royal, #1E2ED9)' }}
+              >
+                {reviewErr}
+              </p>
+            )}
+          </>
         )}
       </Modal>
     </div>

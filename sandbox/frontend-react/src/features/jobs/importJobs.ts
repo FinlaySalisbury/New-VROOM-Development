@@ -72,9 +72,22 @@ function parseDate(dStr: string | undefined): number | null {
   return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
 }
 
+/**
+ * Per-job classification input, parallel to `ImportResult.jobs` (same order /
+ * index). Mirrors the legacy `aiBatch` rows fed to classifyWithClaude.
+ */
+export interface AiJobInput {
+  site_ref: string;
+  site_description: string;
+  job_type: string;
+  job_site_name: string;
+}
+
 export interface ImportResult {
   jobs: Job[];
   sites: Site[];
+  /** Classification inputs, index-aligned with `jobs` (for the AI path). */
+  aiBatch: AiJobInput[];
   unmatchedRefs: string[];
   noSiteRef: number;
   dateFails: number;
@@ -110,6 +123,7 @@ export function buildImport(jobsCsv: ParsedCsv, sitesCsv: ParsedCsv): ImportResu
   });
 
   const jobs: Job[] = [];
+  const aiBatch: AiJobInput[] = [];
   const unmatchedRefs: string[] = [];
   let jobIdCounter = 1000;
   const nowMs = Date.now();
@@ -124,6 +138,7 @@ export function buildImport(jobsCsv: ParsedCsv, sitesCsv: ParsedCsv): ImportResu
     const typeKey = findKey(keys, 'type');
     const startKey = findKey(keys, 'start window', 'start');
     const endKey = findKey(keys, 'end window', 'end');
+    const siteNameKey = findKey(keys, 'site');
 
     const siteRefRaw = refKey ? row[refKey] : null;
     if (!siteRefRaw) {
@@ -152,6 +167,8 @@ export function buildImport(jobsCsv: ParsedCsv, sitesCsv: ParsedCsv): ImportResu
     const urgency: Job['urgency_level'] =
       priority >= 80 ? 'critical' : priority >= 60 ? 'high' : 'medium';
 
+    const siteName = siteNameKey && row[siteNameKey] ? row[siteNameKey].trim() : '';
+
     jobs.push({
       id: jobIdCounter++,
       description: `${siteRef} - ${jobType} [${site.town}]`,
@@ -162,13 +179,29 @@ export function buildImport(jobsCsv: ParsedCsv, sitesCsv: ParsedCsv): ImportResu
       priority,
       urgency_level: urgency,
     });
+
+    aiBatch.push({
+      site_ref: siteRef,
+      site_description: site.desc,
+      job_type: jobType,
+      job_site_name: siteName,
+    });
   });
 
-  return { jobs, sites: siteRows, unmatchedRefs, noSiteRef, dateFails, headers };
+  return { jobs, sites: siteRows, aiBatch, unmatchedRefs, noSiteRef, dateFails, headers };
 }
 
-/** Build a persistable JobList from imported jobs (rule-based path). */
-export function makeJobList(name: string, notes: string, jobs: Job[]): JobList {
+/**
+ * Build a persistable JobList from imported jobs. `classifiedBy` is 'legacy'
+ * for the rule-based path and the Claude model id ('claude-sonnet-4.6') for the
+ * AI path — the list-card UI shows "AI classified" when it includes 'claude'.
+ */
+export function makeJobList(
+  name: string,
+  notes: string,
+  jobs: Job[],
+  classifiedBy: string = 'legacy',
+): JobList {
   return {
     id: `jl_${Date.now()}`,
     name,
@@ -176,6 +209,6 @@ export function makeJobList(name: string, notes: string, jobs: Job[]): JobList {
     jobCount: jobs.length,
     jobs,
     createdAt: new Date().toISOString(),
-    classifiedBy: 'legacy',
+    classifiedBy,
   };
 }
