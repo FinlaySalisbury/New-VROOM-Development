@@ -539,6 +539,25 @@
   font-weight: 600;
   z-index: 1;
 }
+.rota-col-dow {
+  display: block;
+  font-size: 11px;
+  color: var(--app-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rota-col-day {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rota-table th.rota-col-weekend {
+  background: rgba(30, 46, 217, 0.04);
+}
+.rota-table th.rota-col-weekend .rota-col-dow {
+  color: var(--yx-royal-blue);
+}
 .rota-th-name,
 .rota-name {
   text-align: left;

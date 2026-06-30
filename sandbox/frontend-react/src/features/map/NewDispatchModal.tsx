@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/Toast';
@@ -8,7 +8,17 @@ import type { Engineer, JobList } from '@/types';
 import { listEngineers } from '@/services/engineers';
 import { listJobLists } from '@/services/jobs';
 import { getGlobalSettings } from '@/services/settings';
-import { buildRealScenario, defaultRota, mondayOf, type EngineerRota } from './buildRealScenario';
+import {
+  buildRealScenario,
+  datesInRange,
+  defaultDayShift,
+  isoDate,
+  isWeekday,
+  utcMidnight,
+  MAX_RANGE_DAYS,
+  type DayShift,
+  type EngineerRota,
+} from './buildRealScenario';
 import { RotaMatrix } from './RotaMatrix';
 
 interface Props {
@@ -28,15 +38,17 @@ const STRATEGIES: { value: RoutingStrategy; label: string; note: string; paid: b
   { value: 'here_premium', label: 'HERE Premium', note: 'HERE matrix routing · paid', paid: true },
 ];
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function mapRota(
+/** Map every day-cell of every engineer's rota through `fn`. */
+function mapRotaDays(
   rota: Record<string, EngineerRota>,
-  fn: (r: EngineerRota) => EngineerRota,
+  fn: (day: DayShift, iso: string) => DayShift,
 ): Record<string, EngineerRota> {
-  return Object.fromEntries(Object.entries(rota).map(([k, v]) => [k, fn(v)]));
+  return Object.fromEntries(
+    Object.entries(rota).map(([id, r]) => [
+      id,
+      { ...r, days: Object.fromEntries(Object.entries(r.days).map(([iso, d]) => [iso, fn(d, iso)])) },
+    ]),
+  );
 }
 
 export function NewDispatchModal({ open, running, projectId, onClose, onRun }: Props) {
@@ -56,10 +68,13 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
   const [liveError, setLiveError] = useState('');
   const loadingRef = useRef(false);
   const [jobListId, setJobListId] = useState('');
-  const [weekStart, setWeekStart] = useState<string>(() => isoDate(mondayOf(new Date())));
+  const [rangeStart, setRangeStart] = useState<string>(() => isoDate(new Date()));
+  const [rangeEnd, setRangeEnd] = useState<string>(() => isoDate(new Date(Date.now() + 6 * 86400000)));
   const [rota, setRota] = useState<Record<string, EngineerRota>>({});
   const [globalStart, setGlobalStart] = useState('08:00');
   const [globalEnd, setGlobalEnd] = useState('18:00');
+
+  const dates = useMemo(() => datesInRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
   // Shared
   const [strategy, setStrategy] = useState<RoutingStrategy>('inhouse');
@@ -91,7 +106,6 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
         setJobLists(lists);
         setDepot(settings.mainDepot);
         setJobListId(lists[0]?.id ?? '');
-        setRota(Object.fromEntries(engs.map((e) => [e.id, defaultRota(e)])));
         setLiveLoaded(true);
       } catch (err) {
         if (!cancelled) setLiveError(friendlyError(err, 'Could not load engineers and job lists.'));
@@ -105,22 +119,42 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
     };
   }, [open, mode, projectId, liveLoaded]);
 
+  // Materialise the rota to cover exactly the range's dates, preserving any
+  // existing per-date selections and defaulting new dates (weekdays on).
+  useEffect(() => {
+    if (engineers.length === 0 || dates.length === 0) return;
+    setRota((prev) =>
+      Object.fromEntries(
+        engineers.map((e) => {
+          const existing = prev[e.id];
+          const days: Record<string, DayShift> = {};
+          for (const d of dates) {
+            const iso = isoDate(d);
+            days[iso] = existing?.days?.[iso] ?? defaultDayShift(e, d);
+          }
+          return [e.id, { locationMode: existing?.locationMode ?? 'home', days }];
+        }),
+      ),
+    );
+  }, [engineers, dates]);
+
   const activeJobList = jobLists.find((l) => l.id === jobListId) ?? null;
   const engineerDays = Object.values(rota).reduce(
-    (n, r) => n + r.days.filter((d) => d.enabled).length,
+    (n, r) => n + Object.values(r.days).filter((d) => d.enabled).length,
     0,
   );
+  const rangeInvalid = dates.length === 0;
+  const rangeClamped = dates.length >= MAX_RANGE_DAYS;
   const liveReady =
-    liveLoaded && engineerDays > 0 && !!activeJobList && (activeJobList.jobs?.length ?? 0) > 0;
+    liveLoaded && !rangeInvalid && engineerDays > 0 && !!activeJobList && (activeJobList.jobs?.length ?? 0) > 0;
 
   const updateEngineerRota = (id: string, next: EngineerRota) =>
     setRota((prev) => ({ ...prev, [id]: next }));
   const applyGlobalTimes = () =>
-    setRota((prev) => mapRota(prev, (r) => ({ ...r, days: r.days.map((d) => ({ ...d, start: globalStart, end: globalEnd })) })));
-  const setAllDays = (enabled: boolean) =>
-    setRota((prev) => mapRota(prev, (r) => ({ ...r, days: r.days.map((d) => ({ ...d, enabled })) })));
+    setRota((prev) => mapRotaDays(prev, (d) => ({ ...d, start: globalStart, end: globalEnd })));
+  const setAllDays = (enabled: boolean) => setRota((prev) => mapRotaDays(prev, (d) => ({ ...d, enabled })));
   const setWeekdaysOnly = () =>
-    setRota((prev) => mapRota(prev, (r) => ({ ...r, days: r.days.map((d, i) => ({ ...d, enabled: i < 5 })) })));
+    setRota((prev) => mapRotaDays(prev, (d, iso) => ({ ...d, enabled: isWeekday(utcMidnight(iso)) })));
 
   function submitSample() {
     void onRun({
@@ -138,7 +172,7 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
         engineers,
         jobs: activeJobList.jobs,
         depot,
-        weekStart: new Date(`${weekStart}T00:00:00Z`),
+        dates,
         rota,
       });
       if (warnings.length) toast(warnings.join(' '), { variant: 'info' });
@@ -236,8 +270,8 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
       ) : (
         <>
           <p style={{ marginTop: 0, color: 'var(--app-fg-muted)' }}>
-            Dispatch this project&apos;s real engineers against a saved job list. Tick which days each
-            engineer works across the week and set their shift times — every ticked day is scheduled.
+            Dispatch this project&apos;s real engineers against a saved job list over a date range. Tick
+            which days each engineer works and set their shift times — every ticked day is scheduled.
           </p>
 
           {liveLoading && <p style={{ color: 'var(--app-fg-muted)' }}>Loading engineers and job lists…</p>}
@@ -261,8 +295,8 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
               )}
 
               {jobLists.length > 0 && (
-                <div className="grid-2" style={{ marginBottom: 'var(--space-4)' }}>
-                  <div className="yx-field">
+                <>
+                  <div className="yx-field" style={{ marginBottom: 'var(--space-4)' }}>
                     <label htmlFor="dispatch-joblist">Job list</label>
                     <select
                       id="dispatch-joblist"
@@ -276,16 +310,39 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
                       ))}
                     </select>
                   </div>
-                  <div className="yx-field">
-                    <label htmlFor="dispatch-week">Week starting (Mon)</label>
-                    <input
-                      id="dispatch-week"
-                      type="date"
-                      value={weekStart}
-                      onChange={(e) => setWeekStart(e.target.value)}
-                    />
+                  <div className="grid-2" style={{ marginBottom: 'var(--space-4)' }}>
+                    <div className="yx-field">
+                      <label htmlFor="dispatch-from">From</label>
+                      <input
+                        id="dispatch-from"
+                        type="date"
+                        value={rangeStart}
+                        onChange={(e) => setRangeStart(e.target.value)}
+                      />
+                    </div>
+                    <div className="yx-field">
+                      <label htmlFor="dispatch-to">To</label>
+                      <input
+                        id="dispatch-to"
+                        type="date"
+                        value={rangeEnd}
+                        min={rangeStart}
+                        onChange={(e) => setRangeEnd(e.target.value)}
+                      />
+                    </div>
                   </div>
-                </div>
+                </>
+              )}
+
+              {rangeInvalid && (
+                <p className="yx-badge yx-badge-danger" style={{ marginBottom: 'var(--space-4)' }}>
+                  The “To” date must be on or after the “From” date.
+                </p>
+              )}
+              {rangeClamped && (
+                <p className="yx-badge yx-badge-warn" style={{ marginBottom: 'var(--space-4)' }}>
+                  Range limited to {MAX_RANGE_DAYS} days.
+                </p>
               )}
 
               {engineers.length > 0 && (
@@ -321,7 +378,7 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
                     </Button>
                   </div>
 
-                  <RotaMatrix engineers={engineers} rota={rota} onChange={updateEngineerRota} />
+                  <RotaMatrix engineers={engineers} dates={dates} rota={rota} onChange={updateEngineerRota} />
 
                   <p
                     style={{
@@ -330,7 +387,8 @@ export function NewDispatchModal({ open, running, projectId, onClose, onRun }: P
                       margin: 'var(--space-3) 0 0',
                     }}
                   >
-                    {engineerDays} engineer-day{engineerDays === 1 ? '' : 's'} selected
+                    {dates.length} day{dates.length === 1 ? '' : 's'} · {engineerDays} engineer-day
+                    {engineerDays === 1 ? '' : 's'} selected
                     {activeJobList ? ` · ${activeJobList.jobs?.length ?? 0} jobs` : ''}.
                   </p>
                 </>

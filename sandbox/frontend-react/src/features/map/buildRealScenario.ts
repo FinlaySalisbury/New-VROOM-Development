@@ -1,15 +1,14 @@
 /**
  * Build a VROOM scenario from the project's REAL engineers + a saved job list,
- * across a multi-day **rota matrix** — the legacy preflight flow (app.js). Each
- * engineer can work a different set of days over the horizon, each day with its
- * own shift window; every selected engineer-day becomes a separate vehicle
- * (named "<engineer>|<number>_DayN"), and the solver schedules across all of
- * them with fair-share load balancing.
+ * across a custom **date range** rota — the legacy preflight flow (app.js),
+ * generalised from a fixed Mon–Sun week to any span of dates. Each engineer can
+ * work a different set of dates in the range, each date with its own shift
+ * window; every selected engineer-day becomes a separate vehicle
+ * ("<engineer>|<number>_DayN"), solved together with fair-share load balancing.
  *
  * Constraints dictated by the backend (vroom_interface._build_payload):
  *  - start_index == end_index == vehicle index, so each vehicle has exactly ONE
  *    location (start == end). We support `home` (engineer location) or `depot`.
- *    (H→D / D→H routes need a backend change and are intentionally omitted.)
  *  - `breaks` are not emitted to VROOM, so they are omitted here.
  *  - `locations` MUST be [all vehicle starts…, then all job locations…].
  */
@@ -18,18 +17,18 @@ import type { Engineer, Job } from '@/types';
 
 export type LocationMode = 'home' | 'depot';
 
-/** Per-day shift selection within an engineer's rota row. Index 0 = Monday. */
+/** A single date's shift selection within an engineer's rota. */
 export interface DayShift {
   enabled: boolean;
   start: string; // "HH:MM"
   end: string; // "HH:MM"
 }
 
-/** One engineer's week: where they start/end and which days they work. */
+/** One engineer's rota: where they start/end and their per-date shifts. */
 export interface EngineerRota {
   locationMode: LocationMode;
-  /** Exactly 7 entries, Monday → Sunday. */
-  days: DayShift[];
+  /** Keyed by ISO date "YYYY-MM-DD". */
+  days: Record<string, DayShift>;
 }
 
 export interface ScenarioVehicle {
@@ -55,15 +54,18 @@ export interface BuildScenarioOptions {
   jobs: Job[];
   /** Project depot as [lon, lat] (GeoJSON order). */
   depot: [number, number];
-  /** Monday of the rota week (any time on that date). */
-  weekStart: Date;
+  /** Ordered dates in the rota range (each at UTC midnight). */
+  dates: Date[];
   /** Rota per engineer id; engineers without an entry are skipped. */
   rota: Record<string, EngineerRota>;
 }
 
 const GENERAL_SKILL = 1003;
 const HORIZON_S = 7 * 24 * 60 * 60; // window-extension horizon for expired jobs
-const DAY_S = 24 * 60 * 60;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Largest rota span we allow (guards against runaway vehicle-day counts). */
+export const MAX_RANGE_DAYS = 31;
 
 /** The six canonical skill categories, mirroring the backend SKILLS_MAP. */
 const SKILLS_MAP: Record<string, number> = {
@@ -75,29 +77,50 @@ const SKILLS_MAP: Record<string, number> = {
   road_marking: 6,
 };
 
-/** Monday of the week containing (or following) `date`, at UTC midnight. */
-export function mondayOf(date: Date): Date {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const dow = d.getUTCDay(); // 0 Sun … 6 Sat
-  const deltaToMonday = dow === 0 ? -6 : 1 - dow;
-  d.setUTCDate(d.getUTCDate() + deltaToMonday);
-  return d;
+/** ISO "YYYY-MM-DD" for a date, in UTC. */
+export function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }
 
-/** A sensible default rota: Mon–Fri, using the engineer's default shift window. */
-export function defaultRota(eng: Engineer): EngineerRota {
-  const start = eng.defaultShiftStart || '08:00';
-  const end = eng.defaultShiftEnd || '18:00';
+/** A date at UTC midnight from a "YYYY-MM-DD" string. */
+export function utcMidnight(iso: string): Date {
+  return new Date(`${iso}T00:00:00Z`);
+}
+
+/** True for Mon–Fri (UTC). */
+export function isWeekday(d: Date): boolean {
+  const dow = d.getUTCDay();
+  return dow >= 1 && dow <= 5;
+}
+
+/**
+ * Inclusive list of UTC-midnight dates from `startIso` to `endIso`. Returns []
+ * if the range is invalid; clamps to MAX_RANGE_DAYS.
+ */
+export function datesInRange(startIso: string, endIso: string): Date[] {
+  const start = utcMidnight(startIso).getTime();
+  const end = utcMidnight(endIso).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
+  const out: Date[] = [];
+  for (let t = start; t <= end && out.length < MAX_RANGE_DAYS; t += DAY_MS) {
+    out.push(new Date(t));
+  }
+  return out;
+}
+
+/** The default shift for an engineer on a date: weekdays on, using their window. */
+export function defaultDayShift(eng: Engineer, date: Date): DayShift {
   return {
-    locationMode: 'home',
-    days: Array.from({ length: 7 }, (_, di) => ({ enabled: di < 5, start, end })),
+    enabled: isWeekday(date),
+    start: eng.defaultShiftStart || '08:00',
+    end: eng.defaultShiftEnd || '18:00',
   };
 }
 
-/** Unix seconds for `HH:MM` at `dayMidnightUnix` (UTC). */
-function atTime(dayMidnightUnix: number, hhmm: string): number {
+/** Unix seconds for `HH:MM` at the given UTC-midnight date. */
+function atTime(date: Date, hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
-  return dayMidnightUnix + (Number.isFinite(h) ? h : 8) * 3600 + (Number.isFinite(m) ? m : 0) * 60;
+  return Math.floor(date.getTime() / 1000) + (Number.isFinite(h) ? h : 8) * 3600 + (Number.isFinite(m) ? m : 0) * 60;
 }
 
 export interface BuildScenarioResult {
@@ -108,17 +131,13 @@ export interface BuildScenarioResult {
 }
 
 /**
- * Construct the multi-day rota scenario. Throws if no engineer-days are
+ * Construct the date-range rota scenario. Throws if no engineer-days are
  * selected or the job list is empty — the caller validates and surfaces a
  * friendly message.
  */
 export function buildRealScenario(opts: BuildScenarioOptions): BuildScenarioResult {
-  const { engineers, jobs: sourceJobs, depot, weekStart, rota } = opts;
+  const { engineers, jobs: sourceJobs, depot, dates, rota } = opts;
   const warnings: string[] = [];
-
-  const weekMidnight = Math.floor(
-    Date.UTC(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate()) / 1000,
-  );
 
   const vehicles: ScenarioVehicle[] = [];
   let vehicleId = 1;
@@ -139,13 +158,13 @@ export function buildRealScenario(opts: BuildScenarioOptions): BuildScenarioResu
 
     const skills = Array.isArray(eng.skills) && eng.skills.length ? eng.skills : [GENERAL_SKILL];
 
-    engRota.days.forEach((day, di) => {
-      if (!day.enabled) return;
-      const dayMidnight = weekMidnight + di * DAY_S;
-      const startS = atTime(dayMidnight, day.start || '08:00');
-      const endS = atTime(dayMidnight, day.end || '18:00');
+    dates.forEach((date, di) => {
+      const day = engRota.days[isoDate(date)];
+      if (!day?.enabled) return;
+      const startS = atTime(date, day.start || '08:00');
+      const endS = atTime(date, day.end || '18:00');
       if (endS <= startS) {
-        warnings.push(`Skipped ${eng.name || 'an engineer'} on day ${di + 1} — shift end not after start.`);
+        warnings.push(`Skipped ${eng.name || 'an engineer'} on ${isoDate(date)} — shift end not after start.`);
         return;
       }
 
