@@ -20,6 +20,12 @@ import { AnimationLayer } from './AnimationLayer';
 import { AnimationControls } from './AnimationControls';
 import { buildAnimationModel } from './routeAnimation';
 import { ChatPanel } from './ChatPanel';
+import { listTestRuns, getTestRun } from '@/services/history';
+import { historyRunToResult } from '@/features/history/replay';
+import type { TestRun } from '@/types';
+import { buildEngineerGroups, colorByVehicle } from './engineerGroups';
+import { BreakdownPanel, type SelectedItem } from './BreakdownPanel';
+import { buildJobLookup } from './dayTimeline';
 
 const LONDON: [number, number] = [51.505, -0.09];
 
@@ -28,51 +34,120 @@ const toLatLng = (c: number[]): [number, number] => [c[1], c[0]];
 
 function formatDuration(seconds?: number): string {
   if (!seconds || seconds <= 0) return '—';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
+  const totalMin = Math.round(seconds / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-/** Re-fit the map to the rendered features whenever the result changes. */
-function FitBounds({ result }: { result: SimulationResult | null }) {
+/**
+ * Auto-frame the map to the current selection: the whole dispatch when nothing
+ * is selected, an engineer's every vehicle-day when one is highlighted, or a
+ * single day when drilled in. Re-fits whenever that scope changes.
+ */
+function FitToSelection({
+  result,
+  selectedIds,
+}: {
+  result: SimulationResult;
+  selectedIds: Set<number> | null;
+}) {
   const map = useMap();
-  useMemo(() => {
-    if (!result) return;
+  useEffect(() => {
     const pts: [number, number][] = [];
     for (const f of result.routes_geojson?.features ?? []) {
+      const engId = Number(f.properties?.engineer_id ?? 0);
+      if (selectedIds && !selectedIds.has(engId)) continue;
       const coords = f.geometry?.coordinates as number[][];
       if (Array.isArray(coords)) for (const c of coords) if (Array.isArray(c)) pts.push(toLatLng(c));
     }
     for (const f of result.faults_geojson?.features ?? []) {
+      const props = f.properties ?? {};
+      const assignedTo = props.assigned_engineer_id != null ? Number(props.assigned_engineer_id) : null;
+      // When an engineer/day is selected, only frame their assigned jobs.
+      if (selectedIds && (assignedTo == null || !selectedIds.has(assignedTo))) continue;
       const c = f.geometry?.coordinates as number[];
       if (Array.isArray(c) && typeof c[0] === 'number') pts.push(toLatLng(c));
     }
     if (pts.length) {
-      map.fitBounds(L.latLngBounds(pts), { padding: [48, 48], maxZoom: 14 });
+      map.fitBounds(L.latLngBounds(pts), { padding: [56, 56], maxZoom: 15 });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
+  }, [result, selectedIds, map]);
   return null;
 }
 
-function RouteLayers({ fc, engineerFilter }: { fc?: SimFeatureCollection; engineerFilter: number | 'all' }) {
+/** Pan (not zoom) the map to the currently selected leg/job. */
+function PanToSelection({
+  result,
+  selectedItem,
+}: {
+  result: SimulationResult;
+  selectedItem: SelectedItem;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!selectedItem) return;
+    let center: [number, number] | null = null;
+    if (selectedItem.kind === 'leg') {
+      const f = result.routes_geojson?.features?.find(
+        (ft) => String(ft.properties?.leg_id ?? '') === selectedItem.legId,
+      );
+      const coords = f?.geometry?.coordinates as number[][] | undefined;
+      if (Array.isArray(coords) && coords.length) {
+        const mid = coords[Math.floor(coords.length / 2)];
+        if (Array.isArray(mid)) center = toLatLng(mid);
+      }
+    } else {
+      const f = result.faults_geojson?.features?.find(
+        (ft) => Number(ft.properties?.job_id) === selectedItem.jobId,
+      );
+      const c = f?.geometry?.coordinates as number[] | undefined;
+      if (Array.isArray(c) && typeof c[0] === 'number') center = toLatLng(c);
+    }
+    if (center) map.panTo(center, { animate: true });
+  }, [selectedItem, result, map]);
+  return null;
+}
+
+function RouteLayers({
+  fc,
+  selectedIds,
+  colorOf,
+  selectedLegId,
+  onSelectLeg,
+}: {
+  fc?: SimFeatureCollection;
+  selectedIds: Set<number> | null;
+  colorOf: (id: number) => string;
+  selectedLegId: string | null;
+  onSelectLeg: (legId: string) => void;
+}) {
   if (!fc?.features) return null;
   return (
     <>
       {fc.features.map((f, i) => {
         const props = f.properties ?? {};
         const engId = Number(props.engineer_id ?? 0);
-        if (engineerFilter !== 'all' && engId !== engineerFilter) return null;
+        if (selectedIds && !selectedIds.has(engId)) return null;
         const coords = f.geometry?.coordinates as number[][];
         if (!Array.isArray(coords) || coords.length < 2) return null;
         const mult = Number(props.traffic_multiplier ?? 1);
-        const { color, weight } = legStyle(engId, mult);
+        const legId = props.leg_id != null ? String(props.leg_id) : null;
+        const isSel = legId != null && legId === selectedLegId;
+        const { color, weight } = legStyle(colorOf(engId), mult);
         const positions = coords.filter((c) => Array.isArray(c)).map(toLatLng);
         return (
           <Polyline
             key={`route-${i}`}
             positions={positions}
-            pathOptions={{ color, weight, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }}
+            pathOptions={{
+              color: isSel ? '#1E2ED9' : color,
+              weight: isSel ? weight + 4 : weight,
+              opacity: isSel ? 1 : 0.85,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }}
+            eventHandlers={legId ? { click: () => onSelectLeg(legId) } : undefined}
           >
             <Popup>
               <strong>Engineer {engId}</strong>
@@ -88,7 +163,17 @@ function RouteLayers({ fc, engineerFilter }: { fc?: SimFeatureCollection; engine
   );
 }
 
-function JobLayers({ fc, engineerFilter }: { fc?: SimFeatureCollection; engineerFilter: number | 'all' }) {
+function JobLayers({
+  fc,
+  selectedIds,
+  selectedJobId,
+  onSelectJob,
+}: {
+  fc?: SimFeatureCollection;
+  selectedIds: Set<number> | null;
+  selectedJobId: number | null;
+  onSelectJob: (jobId: number) => void;
+}) {
   if (!fc?.features) return null;
   return (
     <>
@@ -98,20 +183,23 @@ function JobLayers({ fc, engineerFilter }: { fc?: SimFeatureCollection; engineer
         if (!Array.isArray(c) || typeof c[0] !== 'number') return null;
         const assignedTo = props.assigned_engineer_id != null ? Number(props.assigned_engineer_id) : null;
         const unassigned = (props.status ?? '') !== 'Assigned';
-        if (engineerFilter !== 'all' && assignedTo !== engineerFilter && !unassigned) return null;
+        if (selectedIds && !unassigned && (assignedTo == null || !selectedIds.has(assignedTo))) return null;
         const urgency = String(props.urgency_level ?? 'low');
         const fill = URGENCY_COLORS[urgency] ?? '#9DBBFF';
+        const jobId = props.job_id != null ? Number(props.job_id) : null;
+        const isSel = jobId != null && jobId === selectedJobId;
         return (
           <CircleMarker
             key={`job-${i}`}
             center={toLatLng(c)}
-            radius={unassigned ? 8 : 6}
+            radius={isSel ? 11 : unassigned ? 8 : 6}
             pathOptions={{
-              color: unassigned ? '#ef4444' : '#ffffff',
-              weight: 2,
+              color: isSel ? '#1E2ED9' : unassigned ? '#ef4444' : '#ffffff',
+              weight: isSel ? 3 : 2,
               fillColor: fill,
               fillOpacity: 0.95,
             }}
+            eventHandlers={jobId != null ? { click: () => onSelectJob(jobId) } : undefined}
           >
             <Popup>
               <strong>Job #{String(props.job_id ?? '')}</strong>
@@ -137,21 +225,29 @@ function JobLayers({ fc, engineerFilter }: { fc?: SimFeatureCollection; engineer
   );
 }
 
-function DepotLayers({ result, engineerFilter }: { result: SimulationResult; engineerFilter: number | 'all' }) {
+function DepotLayers({
+  result,
+  selectedIds,
+  colorOf,
+}: {
+  result: SimulationResult;
+  selectedIds: Set<number> | null;
+  colorOf: (id: number) => string;
+}) {
   return (
     <>
       {(result.routes_data ?? []).map((v) => {
         if (!v.vehicle_start) return null;
-        if (engineerFilter !== 'all' && v.vehicle_id !== engineerFilter) return null;
+        if (selectedIds && !selectedIds.has(v.vehicle_id)) return null;
         return (
           <CircleMarker
             key={`depot-${v.vehicle_id}`}
             center={toLatLng(v.vehicle_start)}
             radius={7}
-            pathOptions={{ color: '#000', weight: 2, fillColor: routeColor(v.vehicle_id), fillOpacity: 1 }}
+            pathOptions={{ color: '#000', weight: 2, fillColor: colorOf(v.vehicle_id), fillOpacity: 1 }}
           >
             <Popup>
-              <strong>Depot · engineer {v.vehicle_id}</strong>
+              <strong>{v.vehicle_name?.split('|')[0]?.trim() || `Engineer ${v.vehicle_id}`}</strong>
               <br />
               {v.num_jobs_assigned ?? 0} jobs · {v.availability_start ?? ''}–{v.availability_end ?? ''}
             </Popup>
@@ -174,7 +270,73 @@ export function MapView() {
   const [running, setRunning] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [engineerFilter, setEngineerFilter] = useState<number | 'all'>('all');
+  const [engineerFilter, setEngineerFilter] = useState<string | 'all'>('all');
+  const [expandedEngineer, setExpandedEngineer] = useState<string | null>(null);
+  const [dayVehicleId, setDayVehicleId] = useState<number | null>(null);
+  const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
+  const [pastRuns, setPastRuns] = useState<TestRun[]>([]);
+
+  // Group the solver's per-day vehicles back into one entry per engineer.
+  const groups = useMemo(() => buildEngineerGroups(result), [result]);
+  const colorOf = useMemo(() => {
+    const m = colorByVehicle(groups);
+    return (id: number) => m.get(id) ?? routeColor(id);
+  }, [groups]);
+  const jobLookup = useMemo(() => buildJobLookup(result), [result]);
+  const routeByVehicle = useMemo(() => {
+    const m = new Map<number, NonNullable<SimulationResult['routes_data']>[number]>();
+    for (const rd of result?.routes_data ?? []) m.set(rd.vehicle_id, rd);
+    return m;
+  }, [result]);
+
+  // Engineer-level highlight; drilling into a day narrows to that one vehicle.
+  const selectedIds = useMemo<Set<number> | null>(() => {
+    if (dayVehicleId != null) return new Set([dayVehicleId]);
+    if (engineerFilter === 'all') return null;
+    return groups.find((g) => g.key === engineerFilter)?.vehicleIds ?? null;
+  }, [dayVehicleId, engineerFilter, groups]);
+
+  const selectedLegId = selectedItem?.kind === 'leg' ? selectedItem.legId : null;
+  const selectedJobId = selectedItem?.kind === 'job' ? selectedItem.jobId : null;
+
+  // Reset the drill-down + selection whenever the displayed run changes.
+  useEffect(() => {
+    setDayVehicleId(null);
+    setSelectedItem(null);
+  }, [result]);
+
+  // Clear any leg/job highlight when the day scope changes.
+  useEffect(() => {
+    setSelectedItem(null);
+  }, [dayVehicleId]);
+
+  const refreshHistory = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      setPastRuns(await listTestRuns(projectId, { limit: 50 }));
+    } catch {
+      /* non-fatal — the history picker just stays empty */
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    void refreshHistory();
+  }, [refreshHistory]);
+
+  const loadPastRun = useCallback(
+    async (runId: string) => {
+      if (!projectId || !runId) return;
+      try {
+        const detail = await getTestRun(projectId, runId);
+        setResult(historyRunToResult(detail));
+        setStaged('replay');
+        setEngineerFilter('all');
+      } catch (err) {
+        toast(friendlyError(err, 'Could not load that dispatch.'), { variant: 'error' });
+      }
+    },
+    [projectId, toast],
+  );
 
   // Consume a run staged from the History view (replay/remix) — one-shot.
   useEffect(() => {
@@ -188,7 +350,7 @@ export function MapView() {
   const canRun = projectRole === 'owner' || projectRole === 'admin' || projectRole === 'user';
 
   // ── Route playback ──────────────────────────────────────────
-  const animation = useMemo(() => buildAnimationModel(result), [result]);
+  const animation = useMemo(() => buildAnimationModel(result, colorOf), [result, colorOf]);
   const hasAnimation = animation.trajectories.length > 0 && animation.endUnix > animation.startUnix;
 
   const [playing, setPlaying] = useState(false);
@@ -236,13 +398,15 @@ export function MapView() {
     setCurrentUnix(unix);
   }, []);
 
-  const engineers = useMemo(() => {
-    return (result?.routes_data ?? []).map((v) => ({
-      id: v.vehicle_id,
-      name: v.vehicle_name?.split('|')[0] ?? `Engineer ${v.vehicle_id}`,
-      jobs: v.num_jobs_assigned ?? 0,
-    }));
-  }, [result]);
+  const exitView = useCallback(() => {
+    setResult(null);
+    setStaged(null);
+    setEngineerFilter('all');
+    setExpandedEngineer(null);
+    setDayVehicleId(null);
+    setSelectedItem(null);
+    setPlaying(false);
+  }, []);
 
   const unassigned = useMemo(() => {
     if (!result) return 0;
@@ -260,6 +424,7 @@ export function MapView() {
         setStaged(null);
         setEngineerFilter('all');
         setModalOpen(false);
+        void refreshHistory();
         toast(`Dispatch #${res.test_number} solved — ${res.num_jobs} jobs.`, { variant: 'success' });
       } catch (err) {
         toast(friendlyError(err, 'The dispatch solve failed. Please try again.'), { variant: 'error' });
@@ -267,7 +432,7 @@ export function MapView() {
         setRunning(false);
       }
     },
-    [projectId, toast],
+    [projectId, toast, refreshHistory],
   );
 
   return (
@@ -280,10 +445,22 @@ export function MapView() {
         />
         {result && (
           <>
-            <RouteLayers fc={result.routes_geojson} engineerFilter={engineerFilter} />
-            <DepotLayers result={result} engineerFilter={engineerFilter} />
-            <JobLayers fc={result.faults_geojson} engineerFilter={engineerFilter} />
-            <FitBounds result={result} />
+            <RouteLayers
+              fc={result.routes_geojson}
+              selectedIds={selectedIds}
+              colorOf={colorOf}
+              selectedLegId={selectedLegId}
+              onSelectLeg={(legId) => setSelectedItem({ kind: 'leg', legId })}
+            />
+            <DepotLayers result={result} selectedIds={selectedIds} colorOf={colorOf} />
+            <JobLayers
+              fc={result.faults_geojson}
+              selectedIds={selectedIds}
+              selectedJobId={selectedJobId}
+              onSelectJob={(jobId) => setSelectedItem({ kind: 'job', jobId })}
+            />
+            <FitToSelection result={result} selectedIds={selectedIds} />
+            <PanToSelection result={result} selectedItem={selectedItem} />
           </>
         )}
         {hasAnimation && (
@@ -291,9 +468,30 @@ export function MapView() {
         )}
       </MapContainer>
 
-      {/* Results summary */}
-      {result && (
+      {/* Results summary + history picker */}
+      {(result || pastRuns.length > 0) && (
         <section className="map-panel map-summary" aria-label="Dispatch summary">
+          {pastRuns.length > 0 && (
+            <div className="map-field">
+              <label htmlFor="map-history">Past dispatch</label>
+              <select
+                id="map-history"
+                className="form-input"
+                value={result?.id ?? ''}
+                onChange={(e) => void loadPastRun(e.target.value)}
+              >
+                <option value="">Load a past run…</option>
+                {pastRuns.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    #{r.test_number ?? '?'} · {r.name?.trim() || r.strategy.replace('_', ' ')} ({r.num_jobs} jobs)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {result && (
+          <>
           <div className="map-summary-grid">
             <div className="map-stat">
               <span className="map-stat-num">#{result.test_number}</span>
@@ -320,17 +518,17 @@ export function MapView() {
               id="map-eng-filter"
               className="form-input"
               value={engineerFilter}
-              onChange={(e) => setEngineerFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              onChange={(e) => setEngineerFilter(e.target.value)}
             >
-              <option value="all">All engineers ({engineers.length})</option>
-              {engineers.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name} — {e.jobs} jobs
+              <option value="all">All engineers ({groups.length})</option>
+              {groups.map((g) => (
+                <option key={g.key} value={g.key}>
+                  {g.name} — {g.totalJobs} jobs
                 </option>
               ))}
             </select>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="yx-badge yx-badge-blue">{result.strategy.replace('_', ' ')}</span>
             {staged === 'replay' && (
               <span className="yx-badge yx-badge-outline" title="Rendered from history — not re-solved">
@@ -343,29 +541,33 @@ export function MapView() {
               </span>
             )}
           </div>
+          </>
+          )}
         </section>
       )}
 
-      {/* Engineer breakdown */}
-      {result && engineers.length > 0 && (
-        <aside className="map-panel map-breakdown" aria-label="Engineer breakdown">
-          <h2 className="map-breakdown-title">Engineer breakdown</h2>
-          <ul className="map-breakdown-list">
-            {engineers.map((e) => (
-              <li key={e.id}>
-                <button
-                  type="button"
-                  className={`map-breakdown-row${engineerFilter === e.id ? ' is-active' : ''}`}
-                  onClick={() => setEngineerFilter(engineerFilter === e.id ? 'all' : e.id)}
-                >
-                  <span className="map-dot" style={{ background: routeColor(e.id) }} aria-hidden="true" />
-                  <span className="map-breakdown-name">{e.name}</span>
-                  <span className="map-breakdown-jobs">{e.jobs}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
+      {/* Floating close — leaves the dispatch and returns to the empty map */}
+      {result && (
+        <button type="button" className="map-close-fab" onClick={exitView} aria-label="Exit dispatch view" title="Exit dispatch view">
+          ✕
+        </button>
+      )}
+
+      {/* Engineer / day drill-down breakdown */}
+      {result && (
+        <BreakdownPanel
+          groups={groups}
+          jobLookup={jobLookup}
+          routeByVehicle={routeByVehicle}
+          engineerFilter={engineerFilter}
+          setEngineerFilter={setEngineerFilter}
+          expandedEngineer={expandedEngineer}
+          setExpandedEngineer={setExpandedEngineer}
+          dayVehicleId={dayVehicleId}
+          setDayVehicleId={setDayVehicleId}
+          selectedItem={selectedItem}
+          setSelectedItem={setSelectedItem}
+        />
       )}
 
       {/* Empty state */}
@@ -428,7 +630,15 @@ export function MapView() {
         />
       )}
 
-      <NewDispatchModal open={modalOpen} running={running} onClose={() => setModalOpen(false)} onRun={handleRun} />
+      {projectId && (
+        <NewDispatchModal
+          open={modalOpen}
+          running={running}
+          projectId={projectId}
+          onClose={() => setModalOpen(false)}
+          onRun={handleRun}
+        />
+      )}
     </div>
   );
 }

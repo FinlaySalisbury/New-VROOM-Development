@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/Button';
 import type { Engineer } from '@/types';
-import { SKILL_CATEGORIES, skillLabel, isKnownSkill } from './skills';
+import { SKILL_GROUPS, skillLabel, isKnownSkill } from './skills';
 
 interface EngineerFormModalProps {
   open: boolean;
@@ -207,36 +207,52 @@ export function EngineerFormModal({
           <legend className="form-label" style={{ padding: 0 }}>
             Skills
           </legend>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: 'var(--space-2)',
-              marginTop: 'var(--space-2)',
-            }}
-          >
-            {SKILL_CATEGORIES.map((skill) => {
-              const checked = form.skills.includes(skill.code);
-              return (
-                <label
-                  key={skill.code}
+          <div style={{ marginTop: 'var(--space-2)', display: 'grid', gap: 'var(--space-3)' }}>
+            {SKILL_GROUPS.map((group) => (
+              <div key={group.brand}>
+                <p
+                  className="form-hint"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-2)',
-                    cursor: 'pointer',
-                    minHeight: '44px',
+                    margin: '0 0 var(--space-1)',
+                    textTransform: 'uppercase',
+                    letterSpacing: 'var(--tracking-caps, 0.08em)',
+                    fontSize: 'var(--fs-xs, 0.75rem)',
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => toggleSkill(skill.code, e.target.checked)}
-                  />
-                  <span>{skill.label}</span>
-                </label>
-              );
-            })}
+                  {group.brand}
+                </p>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                    gap: 'var(--space-1) var(--space-2)',
+                  }}
+                >
+                  {group.skills.map((skill) => {
+                    const checked = form.skills.includes(skill.code);
+                    return (
+                      <label
+                        key={skill.code}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 'var(--space-2)',
+                          cursor: 'pointer',
+                          minHeight: '36px',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => toggleSkill(skill.code, e.target.checked)}
+                        />
+                        <span>{skill.action}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
           {extraSkills.length > 0 && (
             <p

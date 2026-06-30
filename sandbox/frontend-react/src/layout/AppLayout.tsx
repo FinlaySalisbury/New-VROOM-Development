@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAppStore } from '@/store/appStore';
 import { supabase } from '@/lib/supabase';
+import { listProjects } from '@/services/projects';
 
 interface NavItem {
   section: string;
@@ -101,6 +102,30 @@ export function AppLayout() {
   const userProfile = useAppStore((s) => s.userProfile);
   const session = useAppStore((s) => s.session);
   const selectProject = useAppStore((s) => s.selectProject);
+  const setProjects = useAppStore((s) => s.setProjects);
+
+  // On a deep link / refresh the store has no projects yet (the picker never
+  // ran), so the active project's role can't be derived and role-gated UI (the
+  // dispatch button, job import) stays hidden. Load memberships once we have a
+  // session and the list is empty.
+  useEffect(() => {
+    if (!session || projects.length > 0) return;
+    let active = true;
+    listProjects()
+      .then((p) => {
+        if (active) {
+          setProjects(
+            p.map((x) => ({ id: x.id, name: x.name, description: x.description ?? undefined, role: x.role })),
+          );
+        }
+      })
+      .catch(() => {
+        /* leave empty; role stays null until the user opens the picker */
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, projects.length, setProjects]);
 
   // Keep the store's active project in sync with the URL (deep links / refresh).
   useEffect(() => {
