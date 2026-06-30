@@ -40,25 +40,39 @@ function formatDuration(seconds?: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-/** Re-fit the map to the rendered features whenever the result changes. */
-function FitBounds({ result }: { result: SimulationResult | null }) {
+/**
+ * Auto-frame the map to the current selection: the whole dispatch when nothing
+ * is selected, an engineer's every vehicle-day when one is highlighted, or a
+ * single day when drilled in. Re-fits whenever that scope changes.
+ */
+function FitToSelection({
+  result,
+  selectedIds,
+}: {
+  result: SimulationResult;
+  selectedIds: Set<number> | null;
+}) {
   const map = useMap();
-  useMemo(() => {
-    if (!result) return;
+  useEffect(() => {
     const pts: [number, number][] = [];
     for (const f of result.routes_geojson?.features ?? []) {
+      const engId = Number(f.properties?.engineer_id ?? 0);
+      if (selectedIds && !selectedIds.has(engId)) continue;
       const coords = f.geometry?.coordinates as number[][];
       if (Array.isArray(coords)) for (const c of coords) if (Array.isArray(c)) pts.push(toLatLng(c));
     }
     for (const f of result.faults_geojson?.features ?? []) {
+      const props = f.properties ?? {};
+      const assignedTo = props.assigned_engineer_id != null ? Number(props.assigned_engineer_id) : null;
+      // When an engineer/day is selected, only frame their assigned jobs.
+      if (selectedIds && (assignedTo == null || !selectedIds.has(assignedTo))) continue;
       const c = f.geometry?.coordinates as number[];
       if (Array.isArray(c) && typeof c[0] === 'number') pts.push(toLatLng(c));
     }
     if (pts.length) {
-      map.fitBounds(L.latLngBounds(pts), { padding: [48, 48], maxZoom: 14 });
+      map.fitBounds(L.latLngBounds(pts), { padding: [56, 56], maxZoom: 15 });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
+  }, [result, selectedIds, map]);
   return null;
 }
 
@@ -291,6 +305,11 @@ export function MapView() {
     setSelectedItem(null);
   }, [result]);
 
+  // Clear any leg/job highlight when the day scope changes.
+  useEffect(() => {
+    setSelectedItem(null);
+  }, [dayVehicleId]);
+
   const refreshHistory = useCallback(async () => {
     if (!projectId) return;
     try {
@@ -440,7 +459,7 @@ export function MapView() {
               selectedJobId={selectedJobId}
               onSelectJob={(jobId) => setSelectedItem({ kind: 'job', jobId })}
             />
-            <FitBounds result={result} />
+            <FitToSelection result={result} selectedIds={selectedIds} />
             <PanToSelection result={result} selectedItem={selectedItem} />
           </>
         )}
