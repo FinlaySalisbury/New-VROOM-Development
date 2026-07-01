@@ -43,6 +43,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Public client config baked into the React bundle at build time
+        # (anon key is a public browser key — same value as the legacy config.js).
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-https://tixqsqgvbrijsqeivzjw.supabase.co}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-sb_publishable_tQgpsofJj_px9mXM1om54w_L-yaKGSi}
     container_name: inview-sandbox
     expose:
       - "8000"
@@ -56,7 +61,7 @@ services:
       - SUPABASE_KEY=${SUPABASE_KEY:-}
     volumes:
       - sandbox-data:/data
-      - ./frontend:/app/frontend
+      # Frontend is the built React bundle baked into the image (no bind mount).
       - ./backend:/app/backend
     depends_on:
       vroom:
