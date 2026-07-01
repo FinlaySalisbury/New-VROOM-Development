@@ -8,7 +8,7 @@ Claude). Claude is a temporary fallback for when Gemini is unavailable.
 """
 import json
 import logging
-from typing import Any, Optional
+from typing import Iterator
 
 import requests
 import urllib3
@@ -39,10 +39,16 @@ CORE EXPLANATION DIRECTIVES:
 4. Unassigned Jobs: If the <ROUTING_OUTPUT> contains unassigned jobs, you MUST explain exactly why. Common reasons to look for: missing skills, lack of spare parts, shift time exhaustion, or site access time window violations.
 
 CONVERSATIONAL RULES:
-- Keep answers friendly, professional, and concise. Avoid dumping raw JSON back to the user.
+- Lead with the direct answer in the first sentence. Do not restate the question or preface with filler.
+- Be brief by default — aim for under 120 words unless the user explicitly asks you to elaborate or go deep.
 - If the user asks a hypothetical question (e.g., 'What if we added a mid-shift injection here?'), use the provided constraints to simulate the likely VROOM behavior (e.g., 'If a new 2-hour urgent fault drops in Westminster, Engineer A would be diverted, likely causing Job Y to be dropped due to shift limits').
-- Always base your logic strictly on the provided JSON context.
-- Use markdown formatting: **bold** for key metrics, bullet points for lists, and short tables when comparing options.
+- Always base your logic strictly on the provided context. If a <DISPATCH_LEDGER> block is present, prefer its pre-computed conclusions (assignment reasoning, unassigned diagnosis, convergence, traffic) over re-deriving from the raw data.
+- Never dump raw JSON back to the user.
+
+FORMATTING:
+- Use a compact markdown table ONLY when comparing two or more engineers, jobs, or options across the same fields. For a single fact or a short explanation, use a sentence or a short bullet list — do not wrap everything in a table.
+- Well-formed GFM tables render natively in the UI, so always include the header separator row (e.g. `|---|---|`).
+- Bold only the single decisive metric per answer. Avoid bolding whole sentences.
 """
 
 
@@ -232,7 +238,62 @@ def assemble_context(run_data: dict) -> str:
     else:
         blocks.append("<TRAFFIC_DELTA>\nNo traffic data available for this run.\n</TRAFFIC_DELTA>")
 
+    # ── DISPATCH_LEDGER (pre-computed conclusions; only present on newer runs) ──
+    ledger = run_data.get("dispatch_ledger")
+    if ledger:
+        ledger_block = _format_ledger(ledger)
+        if ledger_block:
+            blocks.append(f"<DISPATCH_LEDGER>\n{ledger_block}\n</DISPATCH_LEDGER>")
+
     return "\n\n".join(blocks)
+
+
+def _format_ledger(ledger: dict) -> str:
+    """
+    Render the persisted dispatch ledger as compact, pre-summarised text so the
+    assistant can cite conclusions directly. Mirrors ledger_builder's schema;
+    tolerant of missing sections (older/naive runs).
+    """
+    lines = []
+
+    conv = ledger.get("convergence", {})
+    if conv.get("ran"):
+        lines.append(
+            f"Convergence: {conv.get('status')} after {conv.get('iterations')} iteration(s)."
+        )
+
+    loads = ledger.get("engineer_load", [])
+    if loads:
+        lines.append("Engineer load:")
+        for e in loads:
+            util = e.get("shift_utilisation_pct")
+            util_str = f"{util}% shift used" if util is not None else "shift util n/a"
+            lines.append(
+                f"  {e.get('name')} (#{e.get('vehicle_id')}): {e.get('jobs_assigned')} jobs, "
+                f"{e.get('service_min')}min service + {e.get('travel_min')}min travel "
+                f"(traffic +{e.get('traffic_delta_min')}min, {e.get('avg_traffic_multiplier')}x), {util_str}."
+            )
+
+    diag = ledger.get("unassigned_diagnosis", [])
+    if diag:
+        lines.append("Unassigned job diagnosis (deterministic):")
+        for d in diag:
+            lines.append(f"  Job #{d.get('job_id')}: {d.get('reason')}")
+
+    traffic = ledger.get("traffic_discovery", [])
+    if traffic:
+        lines.append("Traffic hotspots (live vs free-flow):")
+        for t in traffic[:5]:
+            lines.append(
+                f"  Engineer #{t.get('vehicle_id')} leg {t.get('leg_id')}: "
+                f"{t.get('free_flow_min')}min → {t.get('actual_min')}min ({t.get('multiplier')}x)."
+            )
+
+    meta = ledger.get("meta", {})
+    if meta.get("solver_mock"):
+        lines.append("Note: this run used the fallback mock solver (VROOM was unavailable).")
+
+    return "\n".join(lines)
 
 
 def ask_gemini(
@@ -374,3 +435,106 @@ def ask_claude(
     reply = reply or "I wasn't able to generate a response. Please try again."
     logger.info(f"Claude response: {len(reply)} chars")
     return reply
+
+
+def ask_gemini_stream(
+    context: str,
+    message: str,
+    history: list[dict[str, str]],
+    api_key: str,
+    model: str = "gemini-3-flash-preview",
+) -> Iterator[str]:
+    """
+    Stream a Gemini response as text deltas. Same inputs as ask_gemini().
+
+    Yields incremental text chunks as they are generated so the UI can render
+    the reply progressively.
+    """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=api_key)
+
+    full_system = SYSTEM_PROMPT.strip() + "\n\n--- SCENARIO DATA ---\n\n" + context
+
+    contents = []
+    for turn in history:
+        gemini_role = "model" if turn.get("role") == "assistant" else "user"
+        contents.append(
+            types.Content(role=gemini_role, parts=[types.Part.from_text(text=turn["content"])])
+        )
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=message)]))
+
+    logger.info(f"Streaming {model} with {len(contents)} turns, context={len(context)} chars")
+
+    stream = client.models.generate_content_stream(
+        model=model,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=full_system,
+            thinking_config=types.ThinkingConfig(thinking_level="low"),
+        ),
+    )
+    for chunk in stream:
+        text = getattr(chunk, "text", None)
+        if text:
+            yield text
+
+
+def ask_claude_stream(
+    context: str,
+    message: str,
+    history: list[dict[str, str]],
+    api_key: str,
+    model: str = "claude-sonnet-4-6",
+) -> Iterator[str]:
+    """
+    Stream a Claude (Messages API) response as text deltas. Same inputs as
+    ask_claude(). Parses the Anthropic SSE stream via requests(stream=True),
+    keeping verify=False for the corporate SSL proxy.
+    """
+    full_system = SYSTEM_PROMPT.strip() + "\n\n--- SCENARIO DATA ---\n\n" + context
+
+    messages = [
+        {"role": "assistant" if t.get("role") == "assistant" else "user", "content": t["content"]}
+        for t in history
+    ]
+    messages.append({"role": "user", "content": message})
+
+    logger.info(f"Streaming {model} with {len(messages)} messages, context={len(context)} chars")
+
+    with requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        },
+        json={
+            "model": model,
+            "max_tokens": 1024,
+            "temperature": 0.3,
+            "system": full_system,
+            "messages": messages,
+            "stream": True,
+        },
+        verify=False,
+        timeout=60,
+        stream=True,
+    ) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines(decode_unicode=True):
+            if not line or not line.startswith("data:"):
+                continue
+            payload = line[len("data:"):].strip()
+            if not payload or payload == "[DONE]":
+                continue
+            try:
+                event = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            if event.get("type") == "content_block_delta":
+                delta = event.get("delta", {})
+                text = delta.get("text")
+                if text:
+                    yield text

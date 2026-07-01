@@ -780,6 +780,44 @@
   padding: 1px 4px;
   border-radius: var(--radius-sm);
 }
+.map-chat-table-wrap {
+  overflow-x: auto;
+  margin: 0 0 var(--space-3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+.map-chat-content table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--fs-small);
+}
+.map-chat-content th {
+  background: var(--yx-royal-blue);
+  color: var(--yx-white);
+  font-weight: 600;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+}
+.map-chat-content td {
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--app-border);
+}
+.map-chat-content tbody tr:nth-child(even) {
+  background: var(--app-bg-subtle);
+}
+/* Green fails AA as text on white, so positive cells tint the background and
+   keep dark type, with a green side accent to carry the "good" signal. */
+.map-chat-content td.cell-pos {
+  font-weight: 600;
+  background: rgba(0, 227, 140, 0.14);
+  box-shadow: inset 3px 0 0 var(--yx-green);
+}
+.map-chat-content td.cell-neg {
+  color: var(--yx-royal-blue);
+  font-weight: 600;
+  background: rgba(30, 46, 217, 0.08);
+}
 .map-chat-typing {
   color: var(--app-fg-muted);
   font-style: italic;

@@ -81,9 +81,14 @@ CREATE TABLE test_runs (
     total_distance_m INTEGER,
     unassigned_jobs INTEGER,
     api_cost_estimate REAL,
+    dispatch_ledger JSONB,
     is_remix BOOLEAN DEFAULT false,
     parent_run_id TEXT
 );
+
+-- Applied to existing databases via migration (additive, nullable — pre-existing
+-- runs keep NULL and the assistant degrades gracefully):
+--   ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS dispatch_ledger JSONB;
 
 -- ========================================================================================
 -- PROFILES TABLE (created by Supabase trigger, extended with profile fields)

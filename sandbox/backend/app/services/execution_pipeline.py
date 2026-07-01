@@ -178,10 +178,14 @@ def run_simulation(
     else:
         tt_client = TomTomClient(api_key=api_key or "MOCK_KEY")
     
+    # Per-iteration convergence records — populated only by the premium
+    # (iterative) strategies; empty for the instant naive/inhouse strategies.
+    convergence_log: list[dict[str, Any]] = []
+
     if strategy == "tomtom_premium":
         logger.info("Executing TomTom Iterative Convergence Pipeline...")
         solver = ConvergenceSolver(
-            api_key=api_key, 
+            api_key=api_key,
             vroom_endpoint=vroom_endpoint,
             tt_client=tt_client,
             max_iterations=3,
@@ -190,11 +194,12 @@ def run_simulation(
         result = solver.solve(vehicles, jobs, locations, shift_start)
         solution = result["vroom_solution"]
         matrix = result["final_matrix"]
+        convergence_log = result.get("convergence_log", [])
 
     elif strategy == "here_premium":
         logger.info("Executing HERE Iterative Convergence Pipeline...")
         solver = ConvergenceSolver(
-            api_key=api_key, 
+            api_key=api_key,
             vroom_endpoint=vroom_endpoint,
             tt_client=tt_client,
             max_iterations=3,
@@ -203,7 +208,8 @@ def run_simulation(
         result = solver.solve(vehicles, jobs, locations, shift_start)
         solution = result["vroom_solution"]
         matrix = result["final_matrix"]
-        
+        convergence_log = result.get("convergence_log", [])
+
     else:
         # Step 1: Compute matrix
         matrix = get_matrix(strategy, locations, shift_start, api_key)
@@ -409,6 +415,7 @@ def run_simulation(
         "routes_data": routes_data,
         "vroom_summary": solution.get("summary", {}),
         "matrix": matrix,
+        "convergence_log": convergence_log,
     }
 
 
