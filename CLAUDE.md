@@ -114,7 +114,7 @@ The system is exposed through the **Simulation Sandbox** — a full-stack web ap
 
 ## 4. Design System
 
-> **Source of truth:** This section codifies the official **Yunex Traffic Design System** (canonical brand guidelines). YuRoute is a Yunex application and inherits it in full. The token implementation lives in `sandbox/frontend/yunex-design-system.css`; the full reference bundle + `SKILL.md` live in `.claude/skills/yunex-traffic-design/`.
+> **Source of truth:** This section codifies the official **Yunex Traffic Design System** (canonical brand guidelines). YuRoute is a Yunex application and inherits it in full. The token implementation lives in `sandbox/frontend-react/src/styles/yunex-design-system.css`; the full reference bundle + `SKILL.md` live in `.claude/skills/yunex-traffic-design/`.
 
 ### 4.1 Design Philosophy
 - **Style:** Confident, geometric, technical minimalism. Black + white dominate; a single signature gradient carries the brand feel per surface. Generous white space, left-aligned, ≤15 words per line.
@@ -327,6 +327,21 @@ All external HTTPS requests must use `verify=False` and `urllib3.disable_warning
 
 ## 7. Development Workflows
 
+### 7.1 Branch & Worktree Discipline
+
+> The account-level `~/.claude/CLAUDE.md` is the authoritative source for the full discipline (pre-work survey, git guardrails, investigate-before-destroying). This section records only the **project-specific bindings** for this repo.
+
+- **Mainline = `main`, and it is merge-only.** Never commit or push directly to `main` — assume it auto-deploys. Every change reaches it via a `<type>/<scope>` branch + PR + merge.
+- **Branch naming:** `feat/`, `fix/`, `chore/`, `docs/`, `perf/`, `refactor/` + scope (e.g. `feat/react-rota`).
+- **Worktree locations:**
+  - **Manual parallel work →** `C:\Users\yu007637\vroom-wt\<branch>` — external to the repo directory. Keeps `node_modules`/build drift out of the working tree.
+  - **Harness-spawned agents** (`isolation: "worktree"`) **→** `.claude/worktrees/` — already gitignored; never commit its contents.
+  - One worktree per independent task, branched from a fresh `main`. Never check out the same branch in two worktrees.
+- **Trivial-change exception** (branch-in-place, still via PR): only when ALL hold — ≤1 file, ≤10 lines, no types/schema/deps/config/env/secrets/migrations, clean mainline, no other agents running. When unsure, it isn't trivial.
+- **Shared-surface files — flag and confirm before editing** (semantic merge-conflict sources): `sandbox/backend/app/models.py`, `sandbox/backend/database_schema.sql`, `sandbox/backend/requirements.txt` and root `requirements.txt`, `sandbox/frontend-react/src/store/appStore.ts`, `sandbox/frontend-react/src/styles/yunex-design-system.css`, `sandbox/docker-compose.yml`, `sandbox/Dockerfile`, `.mcp.json`, `.env*`, and this `CLAUDE.md`.
+- **Pre-work survey** before the first edit/commit of a session: `git worktree list`, `git branch --show-current`, `git status`, `git log --oneline -5`, `git fetch origin && git log HEAD..origin/main --oneline`.
+- **After any merge,** pull `main` into other live worktrees and re-run the backend tests (`python -m pytest tests/`) and the frontend build (`npm run build` in `sandbox/frontend-react`) to catch silent semantic conflicts.
+
 ### Local Development
 
 ```bash
@@ -450,10 +465,10 @@ python stress_test.py  # Validates 2,500+ matrix pairs
 
 | File | Purpose |
 |------|---------|
-| `sandbox/frontend/yunex-design-system.css` | **Master design system** — all tokens, component primitives |
-| `sandbox/frontend/app.js` | **Main frontend logic** — all UI rendering, map interaction, simulation flow |
-| `sandbox/frontend/state.js` | AppState pub/sub store |
-| `sandbox/frontend/router.js` | Hash-based SPA router |
+| `sandbox/frontend-react/src/styles/yunex-design-system.css` | **Master design system** — all tokens, component primitives |
+| `sandbox/frontend-react/src/features/map/MapView.tsx` | **Dispatch map** — routes, animation, day/engineer breakdown, ribbon |
+| `sandbox/frontend-react/src/store/appStore.ts` | Zustand global store (session, project, role) |
+| `sandbox/frontend-react/src/App.tsx` | React Router shell + routes |
 | `sandbox/backend/app/main.py` | FastAPI entrypoint |
 | `sandbox/backend/app/services/execution_pipeline.py` | Core solve execution orchestration |
 | `sandbox/backend/app/services/convergence_solver.py` | Iterative convergence loop |
