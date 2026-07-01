@@ -72,6 +72,7 @@ async def save_test_run(
     total_distance_m: Optional[int],
     unassigned_jobs: Optional[int],
     api_cost_estimate: Optional[float],
+    dispatch_ledger: Optional[dict] = None,
     is_remix: bool = False,
     parent_run_id: Optional[str] = None,
 ):
@@ -91,6 +92,7 @@ async def save_test_run(
         "total_distance_m": total_distance_m,
         "unassigned_jobs": unassigned_jobs,
         "api_cost_estimate": api_cost_estimate,
+        "dispatch_ledger": dispatch_ledger,
         "is_remix": is_remix,
         "parent_run_id": parent_run_id,
     }

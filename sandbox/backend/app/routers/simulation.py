@@ -15,6 +15,7 @@ from supabase import Client
 from app.services.data_generator import generate_scenario
 from app.services.execution_pipeline import run_simulation
 from app.services.foursquare_formatter import compile_all
+from app.services.ledger_builder import build_dispatch_ledger
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["simulation"])
@@ -107,6 +108,16 @@ async def run_test(request: SimulationRequest, supabase: Client = Depends(get_su
         total_distance = summary.get("distance", 0)
         unassigned_count = summary.get("unassigned", 0)
 
+        # Pre-compute the dispatch ledger so the AI assistant has assignment
+        # reasoning, unassigned diagnosis and traffic facts available instantly.
+        dispatch_ledger = build_dispatch_ledger(
+            scenario=scenario,
+            vroom_solution=result["vroom_solution"],
+            routes_data=result["routes_data"],
+            convergence_log=result.get("convergence_log", []),
+            strategy=request.strategy.value,
+        )
+
         # Persist
         await save_test_run(
             supabase=supabase,
@@ -128,6 +139,7 @@ async def run_test(request: SimulationRequest, supabase: Client = Depends(get_su
             total_distance_m=total_distance,
             unassigned_jobs=unassigned_count,
             api_cost_estimate=cost_estimate.estimated_cost_eur if cost_estimate else None,
+            dispatch_ledger=dispatch_ledger,
         )
 
         return SimulationResponse(
@@ -277,6 +289,14 @@ async def remix_test(request: RemixRequest, supabase: Client = Depends(get_supab
 
         summary = result.get("vroom_summary", {})
 
+        dispatch_ledger = build_dispatch_ledger(
+            scenario=scenario,
+            vroom_solution=result["vroom_solution"],
+            routes_data=result["routes_data"],
+            convergence_log=result.get("convergence_log", []),
+            strategy=request.strategy.value,
+        )
+
         await save_test_run(
             supabase=supabase,
             project_id=request.project_id,
@@ -297,6 +317,7 @@ async def remix_test(request: RemixRequest, supabase: Client = Depends(get_supab
             total_distance_m=summary.get("distance", 0),
             unassigned_jobs=summary.get("unassigned", 0),
             api_cost_estimate=cost_estimate.estimated_cost_eur if cost_estimate else None,
+            dispatch_ledger=dispatch_ledger,
             is_remix=True,
             parent_run_id=request.parent_run_id,
         )

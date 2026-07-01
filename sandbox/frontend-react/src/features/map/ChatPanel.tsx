@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { sendChat, type ChatMessage } from '@/services/chat';
+import { sendChat, sendChatStream, type ChatMessage } from '@/services/chat';
 import { friendlyError } from '@/lib/errors';
 
 interface ChatPanelProps {
@@ -40,7 +40,69 @@ function renderInline(text: string): ReactNode[] {
   return nodes;
 }
 
-/** Render an assistant reply as paragraphs, headings and bullet lists. */
+/** Split a markdown table row into trimmed cells, dropping the outer pipes. */
+function splitRow(row: string): string[] {
+  const cells = row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|');
+  return cells.map((c) => c.trim());
+}
+
+const TABLE_SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/;
+
+/** Column alignment parsed from a table separator cell (`:--`, `:--:`, `--:`). */
+function colAlign(sep: string): 'left' | 'center' | 'right' {
+  const s = sep.trim();
+  const l = s.startsWith(':');
+  const r = s.endsWith(':');
+  if (l && r) return 'center';
+  if (r) return 'right';
+  return 'left';
+}
+
+/**
+ * Tone a status cell so key outcomes read at a glance. Danger maps to Royal
+ * Blue (the brand has no red); positive outcomes map to Green.
+ */
+function cellTone(text: string): '' | 'cell-pos' | 'cell-neg' {
+  const t = text.toLowerCase();
+  if (/\b(unassigned|dropped|missed|late|over\b|overrun|fail|breach|infeasible)/.test(t)) return 'cell-neg';
+  if (/\b(assigned|on[- ]?time|converged|ok\b|within|met\b|feasible|success)/.test(t)) return 'cell-pos';
+  return '';
+}
+
+/** Render a GFM table (header + separator already validated by the caller). */
+function renderTable(header: string, sep: string, body: string[], key: number): ReactNode {
+  const heads = splitRow(header);
+  const aligns = splitRow(sep).map(colAlign);
+  const rows = body.map(splitRow);
+  return (
+    <div className="map-chat-table-wrap" key={key}>
+      <table>
+        <thead>
+          <tr>
+            {heads.map((h, i) => (
+              <th key={i} style={{ textAlign: aligns[i] ?? 'left' }}>
+                {renderInline(h)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((cells, r) => (
+            <tr key={r}>
+              {cells.map((c, i) => (
+                <td key={i} className={cellTone(c)} style={{ textAlign: aligns[i] ?? 'left' }}>
+                  {renderInline(c)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Render an assistant reply as paragraphs, headings, bullet lists and tables. */
 function renderRich(text: string): ReactNode {
   const lines = text.split('\n');
   const blocks: ReactNode[] = [];
@@ -60,8 +122,25 @@ function renderRich(text: string): ReactNode {
     }
   };
 
-  for (const raw of lines) {
-    const line = raw.trimEnd();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trimEnd();
+
+    // Table: a pipe header row immediately followed by a separator row.
+    if (line.includes('|') && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1])) {
+      flushList();
+      const header = line;
+      const sep = lines[i + 1];
+      const body: string[] = [];
+      let j = i + 2;
+      while (j < lines.length && lines[j].includes('|') && lines[j].trim()) {
+        body.push(lines[j]);
+        j++;
+      }
+      blocks.push(renderTable(header, sep, body, key++));
+      i = j - 1;
+      continue;
+    }
+
     if (/^- /.test(line)) {
       list.push(line.slice(2));
       continue;
@@ -98,16 +177,33 @@ export function ChatPanel({ open, onClose, projectId, runId }: ChatPanelProps) {
     if (!text || busy) return;
     setInput('');
     const priorHistory = history;
-    setHistory([...priorHistory, { role: 'user', content: text }]);
+    const withUser: ChatMessage[] = [...priorHistory, { role: 'user', content: text }];
+    setHistory(withUser);
     setBusy(true);
+
+    const req = { project_id: projectId, run_id: runId, message: text, history: priorHistory };
+
+    // Update the trailing assistant message in place as deltas stream in.
+    const paint = (content: string) =>
+      setHistory([...withUser, { role: 'assistant', content }]);
+
     try {
-      const res = await sendChat({ project_id: projectId, run_id: runId, message: text, history: priorHistory });
-      setHistory(res.history);
-    } catch (err) {
-      setHistory((h) => [
-        ...h,
-        { role: 'assistant', content: friendlyError(err, 'The assistant could not answer just now. Please try again.') },
-      ]);
+      const reply = await sendChatStream(req, paint);
+      setHistory([...withUser, { role: 'assistant', content: reply }]);
+    } catch {
+      // Streaming failed (proxy, network, or endpoint) — fall back to blocking.
+      try {
+        const res = await sendChat(req);
+        setHistory(res.history);
+      } catch (err) {
+        setHistory([
+          ...withUser,
+          {
+            role: 'assistant',
+            content: friendlyError(err, 'The assistant could not answer just now. Please try again.'),
+          },
+        ]);
+      }
     } finally {
       setBusy(false);
     }
@@ -147,7 +243,7 @@ export function ChatPanel({ open, onClose, projectId, runId }: ChatPanelProps) {
           </div>
         ))}
 
-        {busy && (
+        {busy && history[history.length - 1]?.role === 'user' && (
           <div className="map-chat-msg map-chat-msg-assistant" aria-live="polite">
             <span className="map-chat-avatar" aria-hidden="true">
               AI
