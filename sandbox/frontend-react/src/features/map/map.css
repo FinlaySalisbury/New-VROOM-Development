@@ -59,7 +59,9 @@
   border: 1px solid var(--app-border);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-md);
-  max-width: min(720px, calc(100vw - 600px));
+  /* Leave room for the history picker (left) + breakdown panel (right) so the
+     centred ribbon never overlaps them. Below 1200px it moves to a sheet. */
+  max-width: min(720px, calc(100vw - 720px));
 }
 .map-ribbon-nav {
   display: flex;
@@ -1059,19 +1061,144 @@
   }
 }
 
-/* Mobile: stack panels full-width, move FAB clear of nav */
-@media (max-width: 768px) {
-  .map-history-picker,
-  .map-ribbon,
-  .map-breakdown {
-    position: static;
-    transform: none;
-    width: auto;
-    max-width: none;
-    margin: var(--space-3);
-    border-radius: var(--radius-lg);
+/* ── Bottom sheet (compact ≤1200px) ──────────────────────────
+   The floating dispatch panels collapse into a peek/expand sheet so they
+   never overlap on laptop/tablet/mobile. */
+.map-sheet {
+  position: absolute;
+  z-index: 600;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--app-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -12px 32px rgba(15, 28, 64, 0.14);
+  max-height: 82vh;
+}
+.map-sheet-handle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.map-sheet-grip {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: #000;
+  opacity: 0.22;
+}
+.map-sheet-peek {
+  flex: 1;
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  color: var(--app-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-sheet-caret {
+  color: var(--app-fg-muted);
+  font-size: 12px;
+}
+.map-sheet-body {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--space-3) var(--space-4);
+  overscroll-behavior: contain;
+}
+.map-sheet.is-expanded .map-sheet-body {
+  display: flex;
+}
+/* Panels drop their floating positioning when hosted inside the sheet. */
+.map-sheet .map-history-picker,
+.map-sheet .map-ribbon,
+.map-sheet .map-breakdown {
+  position: static;
+  transform: none;
+  inset: auto;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 0;
+  border-radius: 0;
+}
+.map-sheet .map-history-picker {
+  padding: 0;
+}
+.map-sheet .map-ribbon {
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-lg);
+  background: var(--yx-white);
+  padding: var(--space-3);
+}
+.map-sheet .map-breakdown {
+  border-top: 1px solid var(--app-border);
+  padding: var(--space-3) 0 0;
+}
+
+/* Compact: keep the bottom controls clear of the peeked sheet (~52px). */
+@media (max-width: 1200px) {
+  .has-dispatch .anim-bar,
+  .has-dispatch .map-fab,
+  .has-dispatch .map-chat-fab {
+    bottom: calc(52px + var(--space-2));
   }
-  .map-view {
-    overflow-y: auto;
+}
+
+/* Mobile: tighten spacing and let the sheet own the full width. */
+@media (max-width: 768px) {
+  .map-history-picker {
+    left: var(--space-3);
+    right: var(--space-3);
+    width: auto;
+  }
+}
+
+/* Narrow: FABs become compact icon buttons, tiered above the playback bar so
+   the bottom zone (peek → playback → FABs) never overlaps. */
+@media (max-width: 640px) {
+  .map-fab,
+  .map-chat-fab {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .map-fab {
+    right: var(--space-3);
+  }
+  .map-chat-fab {
+    left: var(--space-3);
+  }
+  .has-dispatch .map-fab,
+  .has-dispatch .map-chat-fab {
+    bottom: calc(52px + var(--space-2) + 46px + var(--space-2));
   }
 }

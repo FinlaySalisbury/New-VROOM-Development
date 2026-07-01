@@ -23,6 +23,7 @@ import { ChatPanel } from './ChatPanel';
 import { listTestRuns, getTestRun } from '@/services/history';
 import { historyRunToResult } from '@/features/history/replay';
 import type { TestRun } from '@/types';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { buildEngineerGroups, colorByVehicle } from './engineerGroups';
 import { buildDayGroups } from './dayGroups';
 import { BreakdownPanel, type SelectedItem } from './BreakdownPanel';
@@ -279,6 +280,12 @@ export function MapView() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [pastRuns, setPastRuns] = useState<TestRun[]>([]);
 
+  // Below ~1200px the floating panels can't sit side-by-side without colliding,
+  // so they collapse into a bottom sheet (peek → expand).
+  const compact = useMediaQuery('(max-width: 1200px)');
+  const narrow = useMediaQuery('(max-width: 640px)');
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+
   // Group the solver's per-day vehicles back into one entry per engineer.
   const groups = useMemo(() => buildEngineerGroups(result), [result]);
   // …and the same vehicle-days re-bucketed by calendar date (the day axis).
@@ -311,6 +318,7 @@ export function MapView() {
     setDayFilter('all');
     setDayVehicleId(null);
     setSelectedItem(null);
+    setSheetExpanded(false);
   }, [result]);
 
   // Day and engineer are mutually-exclusive entry axes — picking one resets the
@@ -478,7 +486,7 @@ export function MapView() {
   );
 
   return (
-    <div className="map-view">
+    <div className={`map-view${result ? ' has-dispatch' : ''}`}>
       <MapContainer center={LONDON} zoom={11} className="map-canvas" zoomControl={false} scrollWheelZoom>
         <TileLayer
           // CARTO Positron — clean, minimal light basemap (no API key needed).
@@ -510,69 +518,106 @@ export function MapView() {
         )}
       </MapContainer>
 
-      {/* History picker — load a past dispatch (top-left, standalone) */}
-      {(result || pastRuns.length > 0) && pastRuns.length > 0 && (
-        <section className="map-panel map-history-picker" aria-label="Load past dispatch">
-          <div className="map-field">
-            <label htmlFor="map-history">Past dispatch</label>
-            <select
-              id="map-history"
-              className="form-input"
-              value={result?.id ?? ''}
-              onChange={(e) => void loadPastRun(e.target.value)}
-            >
-              <option value="">Load a past run…</option>
-              {pastRuns.map((r) => (
-                <option key={r.id} value={r.id}>
-                  #{r.test_number ?? '?'} · {r.name?.trim() || r.strategy.replace('_', ' ')} ({r.num_jobs} jobs)
-                </option>
-              ))}
-            </select>
-          </div>
-        </section>
-      )}
+      {/* Dispatch panels — floating on desktop, a bottom sheet when compact */}
+      {(() => {
+        const historyPicker =
+          pastRuns.length > 0 ? (
+            <section className="map-panel map-history-picker" aria-label="Load past dispatch">
+              <div className="map-field">
+                <label htmlFor="map-history">Past dispatch</label>
+                <select
+                  id="map-history"
+                  className="form-input"
+                  value={result?.id ?? ''}
+                  onChange={(e) => void loadPastRun(e.target.value)}
+                >
+                  <option value="">Load a past run…</option>
+                  {pastRuns.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      #{r.test_number ?? '?'} · {r.name?.trim() || r.strategy.replace('_', ' ')} ({r.num_jobs} jobs)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </section>
+          ) : null;
 
-      {/* Dispatch ribbon — navigation (day chips + engineer) + live stats */}
-      {result && (
-        <DispatchRibbon
-          testNumber={result.test_number}
-          strategy={result.strategy}
-          staged={staged}
-          dayGroups={dayGroups}
-          groups={groups}
-          dayFilter={dayFilter}
-          onPickDay={pickDay}
-          engineerFilter={engineerFilter}
-          onPickEngineer={pickEngineer}
-          stats={ribbonStats}
-        />
-      )}
+        const ribbon = result ? (
+          <DispatchRibbon
+            testNumber={result.test_number}
+            strategy={result.strategy}
+            staged={staged}
+            dayGroups={dayGroups}
+            groups={groups}
+            dayFilter={dayFilter}
+            onPickDay={pickDay}
+            engineerFilter={engineerFilter}
+            onPickEngineer={pickEngineer}
+            stats={ribbonStats}
+          />
+        ) : null;
+
+        const breakdown = result ? (
+          <BreakdownPanel
+            groups={groups}
+            dayGroups={dayGroups}
+            jobLookup={jobLookup}
+            routeByVehicle={routeByVehicle}
+            engineerFilter={engineerFilter}
+            setEngineerFilter={setEngineerFilter}
+            dayFilter={dayFilter}
+            onPickDay={pickDay}
+            expandedEngineer={expandedEngineer}
+            setExpandedEngineer={setExpandedEngineer}
+            dayVehicleId={dayVehicleId}
+            setDayVehicleId={setDayVehicleId}
+            selectedItem={selectedItem}
+            setSelectedItem={setSelectedItem}
+          />
+        ) : null;
+
+        if (compact && result) {
+          const peekSummary = `#${result.test_number} · ${ribbonStats.jobs} jobs · ${formatDuration(
+            ribbonStats.travelS + ribbonStats.serviceS,
+          )}`;
+          return (
+            <div className={`map-sheet${sheetExpanded ? ' is-expanded' : ''}`}>
+              <button
+                type="button"
+                className="map-sheet-handle"
+                aria-expanded={sheetExpanded}
+                aria-label={sheetExpanded ? 'Collapse dispatch details' : 'Expand dispatch details'}
+                onClick={() => setSheetExpanded((v) => !v)}
+              >
+                <span className="map-sheet-grip" aria-hidden="true" />
+                <span className="map-sheet-peek">{peekSummary}</span>
+                <span className="map-sheet-caret" aria-hidden="true">
+                  {sheetExpanded ? '▾' : '▴'}
+                </span>
+              </button>
+              <div className="map-sheet-body">
+                {historyPicker}
+                {ribbon}
+                {breakdown}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <>
+            {historyPicker}
+            {ribbon}
+            {breakdown}
+          </>
+        );
+      })()}
 
       {/* Floating close — leaves the dispatch and returns to the empty map */}
       {result && (
         <button type="button" className="map-close-fab" onClick={exitView} aria-label="Exit dispatch view" title="Exit dispatch view">
           ✕
         </button>
-      )}
-
-      {/* Engineer / day drill-down breakdown */}
-      {result && (
-        <BreakdownPanel
-          groups={groups}
-          dayGroups={dayGroups}
-          jobLookup={jobLookup}
-          routeByVehicle={routeByVehicle}
-          engineerFilter={engineerFilter}
-          setEngineerFilter={setEngineerFilter}
-          dayFilter={dayFilter}
-          onPickDay={pickDay}
-          expandedEngineer={expandedEngineer}
-          setExpandedEngineer={setExpandedEngineer}
-          dayVehicleId={dayVehicleId}
-          setDayVehicleId={setDayVehicleId}
-          selectedItem={selectedItem}
-          setSelectedItem={setSelectedItem}
-        />
       )}
 
       {/* Empty state */}
@@ -607,10 +652,22 @@ export function MapView() {
         />
       )}
 
-      {/* New dispatch FAB */}
+      {/* New dispatch FAB — icon-only on narrow screens */}
       {canRun && (
-        <button type="button" className="map-fab" onClick={() => setModalOpen(true)} disabled={running}>
-          + New dispatch run
+        <button
+          type="button"
+          className="map-fab"
+          onClick={() => setModalOpen(true)}
+          disabled={running}
+          aria-label="New dispatch run"
+        >
+          {narrow ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+          ) : (
+            '+ New dispatch run'
+          )}
         </button>
       )}
 
@@ -621,8 +678,29 @@ export function MapView() {
           className={`map-chat-fab${chatOpen ? ' is-open' : ''}`}
           onClick={() => setChatOpen((o) => !o)}
           aria-expanded={chatOpen}
+          aria-label={chatOpen ? 'Close route assistant' : 'Ask the route assistant'}
         >
-          {chatOpen ? 'Close assistant' : 'Ask the route assistant'}
+          {narrow ? (
+            chatOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M4 5h16v11H9l-5 4V5z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )
+          ) : chatOpen ? (
+            'Close assistant'
+          ) : (
+            'Ask the route assistant'
+          )}
         </button>
       )}
 
