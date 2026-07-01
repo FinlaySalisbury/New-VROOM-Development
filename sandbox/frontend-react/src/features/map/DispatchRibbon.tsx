@@ -143,31 +143,27 @@ export function DispatchRibbon({
       </div>
 
       <div className="map-ribbon-stats">
-        <div className="map-ribbon-stat">
-          <span className="map-ribbon-num">{stats.jobs}</span>
-          <span className="map-ribbon-lbl">jobs</span>
-        </div>
-        <div className="map-ribbon-labour">
-          <div className="map-ribbon-labour-top">
-            <span className="map-ribbon-num">{fmtHrs(labourS)}</span>
-            <span className="map-ribbon-lbl">labour</span>
-          </div>
-          <div className="map-ribbon-bar" title={`${fmtHrs(stats.travelS)} drive · ${fmtHrs(stats.serviceS)} work`}>
-            <span className="map-ribbon-bar-drive" style={{ width: `${drivePct}%` }} />
-            <span className="map-ribbon-bar-work" style={{ width: `${100 - drivePct}%` }} />
-          </div>
-          <div className="map-ribbon-split">
-            <span><i className="map-swatch map-swatch-drive" />{fmtHrs(stats.travelS)} drive</span>
-            <span><i className="map-swatch map-swatch-work" />{fmtHrs(stats.serviceS)} work</span>
-          </div>
-        </div>
+        <span className="map-ribbon-stat">
+          <strong>{stats.jobs}</strong> jobs
+        </span>
+        <span className="map-ribbon-stat">
+          <strong>{fmtHrs(labourS)}</strong> labour
+        </span>
+        <span
+          className="map-ribbon-bar"
+          title={`${fmtHrs(stats.travelS)} drive · ${fmtHrs(stats.serviceS)} work`}
+          aria-hidden="true"
+        >
+          <span className="map-ribbon-bar-drive" style={{ width: `${drivePct}%` }} />
+          <span className="map-ribbon-bar-work" style={{ width: `${100 - drivePct}%` }} />
+        </span>
+        <span className="map-ribbon-split">
+          {fmtHrs(stats.travelS)} drive · {fmtHrs(stats.serviceS)} work
+        </span>
         {!stats.scoped && (
-          <div className="map-ribbon-stat">
-            <span className="map-ribbon-num" style={{ color: stats.unassigned ? '#ef4444' : undefined }}>
-              {stats.unassigned}
-            </span>
-            <span className="map-ribbon-lbl">unassigned</span>
-          </div>
+          <span className={`map-ribbon-stat${stats.unassigned ? ' is-danger' : ''}`}>
+            <strong>{stats.unassigned}</strong> unassigned
+          </span>
         )}
       </div>
     </section>
