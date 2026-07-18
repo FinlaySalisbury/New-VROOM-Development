@@ -53,6 +53,20 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    section: 'performance',
+    label: 'Performance',
+    title: 'Engineer performance & allocation preferences',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 20a8 8 0 1 0-8-8" />
+        <path d="M12 12l4.5-4.5" />
+        <path d="M2 12h2" />
+        <path d="M12 2v2" />
+        <path d="M20.5 7.5 19 9" />
+      </svg>
+    ),
+  },
+  {
     section: 'history',
     label: 'Analytics',
     title: 'History & analytics',
@@ -89,7 +103,7 @@ function initialsFromProfile(
 }
 
 /**
- * Authed app shell for /projects/:id/:section. Black nav rail with the five
+ * Authed app shell for /projects/:id/:section. Black nav rail with the
  * section links, project identity, user identity, project switcher and
  * logout, plus a <main> outlet for the active section.
  */
@@ -153,7 +167,7 @@ export function AppLayout() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div className="app-shell" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <nav className="nav-rail" aria-label="Primary">
         <div className="nav-brand">
           <img src="/assets/yuroute-icon@2x.png" alt="YuRoute" />
@@ -175,10 +189,10 @@ export function AppLayout() {
           ))}
         </div>
 
-        <div style={{ flexGrow: 1 }} />
+        <div className="nav-spacer" style={{ flexGrow: 1 }} />
 
         {/* Project name + role badge */}
-        <div style={{ padding: '8px 12px', marginBottom: 8, textAlign: 'center' }}>
+        <div className="nav-project" style={{ padding: '8px 12px', marginBottom: 8, textAlign: 'center' }}>
           <div
             title={projectName}
             style={{

@@ -1761,6 +1761,52 @@ img.map-monochrome {
     }
 }
 
+/* Phone: nav rail becomes a bottom tab bar (column-reverse puts it below content
+   so the map's bottom sheet naturally sits above it — no fixed positioning). */
+@media (max-width: 640px) {
+    .app-shell {
+        flex-direction: column-reverse;
+    }
+    .app-shell .nav-rail {
+        width: 100%;
+        height: 58px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 var(--space-1);
+        border-right: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    .nav-brand,
+    .nav-spacer,
+    .nav-project,
+    .nav-powered-by,
+    .nav-version {
+        display: none;
+    }
+    .app-shell .nav-group {
+        flex-direction: row;
+        gap: 2px;
+        width: auto;
+        padding: 0;
+    }
+    .app-shell .nav-btn {
+        height: 50px;
+        min-width: 50px;
+        padding: 0 6px;
+        gap: 2px;
+        margin: 0 !important;
+    }
+    .app-shell .nav-btn.active {
+        box-shadow: inset 0 3px 0 var(--yx-royal-blue);
+    }
+    .app-shell .nav-label {
+        font-size: 9px;
+    }
+}
+
 /* Small Tablets / Portrait */
 @media (max-width: 768px) {
     .nav-rail {
