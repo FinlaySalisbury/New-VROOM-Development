@@ -27,3 +27,18 @@
 #root {
   min-height: 100dvh;
 }
+
+/* Route transition — a subtle fade on section change. Opacity-only so it never
+   creates a containing block (safe for the absolutely-positioned map view).
+   The reduced-motion guard above neutralises it automatically. */
+.route-fade {
+  animation: route-fade-in var(--dur-base, 220ms) var(--ease-out, ease);
+}
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

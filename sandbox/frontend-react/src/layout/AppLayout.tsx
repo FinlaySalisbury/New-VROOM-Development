@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAppStore } from '@/store/appStore';
 import { supabase } from '@/lib/supabase';
@@ -110,6 +110,14 @@ function initialsFromProfile(
 export function AppLayout() {
   const { id: routeProjectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Reset scroll to top on section change (react-router keeps the scroll
+  // container's position otherwise).
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const projects = useAppStore((s) => s.projects);
   const projectRole = useAppStore((s) => s.projectRole);
@@ -313,10 +321,13 @@ export function AppLayout() {
       </nav>
 
       <main
+        ref={mainRef}
         className="main-content"
         style={{ flex: 1, overflow: 'auto', position: 'relative' }}
       >
-        <Outlet />
+        <div key={location.pathname} className="route-fade">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
