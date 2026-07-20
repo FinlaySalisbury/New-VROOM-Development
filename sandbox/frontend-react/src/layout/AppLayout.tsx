@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAppStore } from '@/store/appStore';
 import { supabase } from '@/lib/supabase';
 import { listProjects } from '@/services/projects';
+import { Modal } from '@/components/Modal';
+import type { ProjectRole } from '@/types';
 
 interface NavItem {
   section: string;
@@ -125,6 +127,14 @@ export function AppLayout() {
   const session = useAppStore((s) => s.session);
   const selectProject = useAppStore((s) => s.selectProject);
   const setProjects = useAppStore((s) => s.setProjects);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+
+  const switchTo = (id: string, role: ProjectRole | null) => {
+    setSwitcherOpen(false);
+    if (id === routeProjectId) return;
+    selectProject(id, role);
+    navigate(`/projects/${id}/map`);
+  };
 
   // On a deep link / refresh the store has no projects yet (the picker never
   // ran), so the active project's role can't be derived and role-gated UI (the
@@ -239,8 +249,9 @@ export function AppLayout() {
         <button
           type="button"
           className="nav-btn"
-          onClick={() => navigate('/projects')}
+          onClick={() => setSwitcherOpen(true)}
           title="Switch project"
+          aria-haspopup="dialog"
           style={{ marginBottom: 4 }}
         >
           <span className="nav-icon">
@@ -329,6 +340,36 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {switcherOpen && (
+        <Modal open title="Switch project" onClose={() => setSwitcherOpen(false)}>
+          <ul className="switcher-list">
+            {projects.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className={`switcher-item${p.id === routeProjectId ? ' is-current' : ''}`}
+                  onClick={() => switchTo(p.id, p.role ?? null)}
+                >
+                  <span className="switcher-name">{p.name}</span>
+                  {p.role && <span className="switcher-role">{p.role}</span>}
+                  {p.id === routeProjectId && <span className="switcher-current">Current</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="switcher-manage"
+            onClick={() => {
+              setSwitcherOpen(false);
+              navigate('/projects');
+            }}
+          >
+            Manage all projects →
+          </button>
+        </Modal>
+      )}
     </div>
   );
 }

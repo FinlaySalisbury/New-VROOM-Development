@@ -125,6 +125,69 @@
     color: rgba(255,255,255,0.25);
 }
 
+/* ─── Project switcher (modal) ─── */
+.switcher-list {
+    list-style: none;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+.switcher-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    text-align: left;
+    padding: var(--space-3);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+    background: var(--yx-white);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.switcher-item:hover {
+    border-color: var(--app-border-strong, #000);
+    background: var(--app-bg-subtle);
+}
+.switcher-item.is-current {
+    border-color: var(--yx-royal-blue);
+    background: rgba(30, 46, 217, 0.06);
+}
+.switcher-name {
+    flex: 1;
+    font-weight: 600;
+    color: var(--app-fg);
+}
+.switcher-role {
+    font-size: var(--fs-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--app-fg-muted);
+}
+.switcher-current {
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    color: var(--yx-royal-blue);
+}
+.switcher-manage {
+    border: 0;
+    background: transparent;
+    color: var(--yx-royal-blue);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+}
+.switcher-manage:hover {
+    text-decoration: underline;
+}
+
 /* ─── Main Content ─── */
 .main-content {
     flex: 1;
