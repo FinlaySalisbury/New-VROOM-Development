@@ -274,6 +274,72 @@
     box-shadow: var(--shadow-md);
 }
 
+.data-card.is-selected {
+    border-color: var(--yx-royal-blue);
+    background: rgba(30, 46, 217, 0.04);
+}
+
+.data-card-check {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--yx-royal-blue);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-right: var(--space-2);
+}
+
+/* ─── Bulk action bar (multi-select on data lists) ─── */
+.bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+    background: var(--app-bg-subtle);
+}
+
+.bulk-selectall {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: var(--fs-small);
+    font-weight: 600;
+    color: var(--app-fg);
+}
+
+.bulk-selectall input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--yx-royal-blue);
+    cursor: pointer;
+}
+
+.bulk-count {
+    font-size: var(--fs-small);
+    color: var(--app-fg-muted);
+}
+
+.bulk-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+    .bulk-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+    .bulk-actions .yx-btn {
+        flex: 1;
+    }
+}
+
 .data-card-header {
     display: flex;
     justify-content: space-between;

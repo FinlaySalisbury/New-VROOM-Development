@@ -74,6 +74,9 @@ export function EngineersView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Engineer | null>(null);
   const [saving, setSaving] = useState(false);
+  // Bulk selection — ids of engineers ticked for a multi-delete.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!projectId) return;
@@ -166,6 +169,53 @@ export function EngineersView() {
     }
   };
 
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allSelected = engineers.length > 0 && selected.size === engineers.length;
+
+  const handleBulkDelete = async () => {
+    if (!projectId || !editable || selected.size === 0) return;
+    const ids = [...selected];
+    const ok = await confirm({
+      title: `Delete ${ids.length} engineer${ids.length === 1 ? '' : 's'}`,
+      message: `This removes ${ids.length} engineer${ids.length === 1 ? '' : 's'} from the project. This cannot be undone.`,
+      confirmLabel: `Delete ${ids.length}`,
+      destructive: true,
+    });
+    if (!ok) return;
+    setBulkBusy(true);
+    const failed: string[] = [];
+    for (const id of ids) {
+      try {
+        await deleteEngineer(projectId, id);
+        void logActivity({
+          projectId,
+          action: 'engineer.deleted',
+          category: 'data',
+          details: { engineerId: id, bulk: true },
+        });
+      } catch {
+        failed.push(id);
+      }
+    }
+    const removed = ids.filter((id) => !failed.includes(id));
+    setEngineers((prev) => prev.filter((e) => !removed.includes(e.id)));
+    setSelected(new Set(failed));
+    setBulkBusy(false);
+    if (failed.length === 0) {
+      toast(`Deleted ${removed.length} engineer${removed.length === 1 ? '' : 's'}.`, { variant: 'success' });
+    } else {
+      toast(`Deleted ${removed.length}; ${failed.length} could not be removed.`, { variant: 'error' });
+    }
+  };
+
   return (
     <div className="view-container">
       <PageHeader
@@ -209,6 +259,44 @@ export function EngineersView() {
         />
       )}
 
+      {state === 'ready' && engineers.length > 0 && editable && (
+        <div className="bulk-bar" role="region" aria-label="Bulk actions">
+          <label className="bulk-selectall">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = selected.size > 0 && !allSelected;
+              }}
+              onChange={() =>
+                setSelected(allSelected ? new Set() : new Set(engineers.map((e) => e.id)))
+              }
+            />
+            <span>{allSelected ? 'Clear all' : 'Select all'}</span>
+          </label>
+          <span className="bulk-count" aria-live="polite">
+            {selected.size > 0
+              ? `${selected.size} selected`
+              : `${engineers.length} engineer${engineers.length === 1 ? '' : 's'}`}
+          </span>
+          {selected.size > 0 && (
+            <div className="bulk-actions">
+              <Button variant="secondary" size="sm" onClick={() => setSelected(new Set())}>
+                Clear
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={bulkBusy}
+                onClick={() => void handleBulkDelete()}
+              >
+                Delete {selected.size}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {state === 'ready' && engineers.length > 0 && (
         <ul
           className="bento-grid"
@@ -219,6 +307,8 @@ export function EngineersView() {
               <EngineerCard
                 engineer={eng}
                 editable={editable}
+                selected={selected.has(eng.id)}
+                onToggleSelect={() => toggleSelected(eng.id)}
                 onEdit={() => openEdit(eng)}
                 onDelete={() => void handleDelete(eng)}
               />
@@ -246,17 +336,35 @@ export function EngineersView() {
 interface EngineerCardProps {
   engineer: Engineer;
   editable: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-function EngineerCard({ engineer, editable, onEdit, onDelete }: EngineerCardProps) {
+function EngineerCard({
+  engineer,
+  editable,
+  selected = false,
+  onToggleSelect,
+  onEdit,
+  onDelete,
+}: EngineerCardProps) {
   const e = engineer;
   const title = `${e.number ? `#${e.number} – ` : ''}${e.name}`;
 
   return (
-    <div className="data-card">
+    <div className={`data-card${selected ? ' is-selected' : ''}`}>
       <div className="data-card-header">
+        {editable && onToggleSelect && (
+          <input
+            type="checkbox"
+            className="data-card-check"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Select ${e.name}`}
+          />
+        )}
         {editable ? (
           <button
             type="button"
