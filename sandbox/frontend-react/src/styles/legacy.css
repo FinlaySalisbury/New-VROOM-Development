@@ -2331,8 +2331,14 @@ body.auth-pending {
    ========================================================================== */
 
 :root {
-    --z-modal-base: 2000;
-    --z-toast:      9000;
+    /* Stacking order, bottom → top:
+         app content · app overlays (project 9998 / auth 9999) · modals · toasts
+       The legacy vanilla app raised modal depth at runtime in modal.js; the React
+       port has no such hook, so the static values must already clear the
+       full-screen overlays — otherwise "New project" / "Settings" modals and any
+       toast fired from the projects or auth screens render underneath them. */
+    --z-modal-base: 10000;
+    --z-toast:      10100;
 }
 
 /* ─── Toast region (aria-live polite) ─── */
