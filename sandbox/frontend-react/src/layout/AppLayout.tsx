@@ -5,6 +5,7 @@ import { useAppStore } from '@/store/appStore';
 import { supabase } from '@/lib/supabase';
 import { listProjects } from '@/services/projects';
 import { Modal } from '@/components/Modal';
+import { NavProgress } from '@/components/NavProgress';
 import type { ProjectRole } from '@/types';
 
 interface NavItem {
@@ -339,6 +340,7 @@ export function AppLayout() {
         className="main-content"
         style={{ flex: 1, overflow: 'auto', position: 'relative' }}
       >
+        <NavProgress />
         <div key={location.pathname} className="route-fade">
           <Outlet />
         </div>
