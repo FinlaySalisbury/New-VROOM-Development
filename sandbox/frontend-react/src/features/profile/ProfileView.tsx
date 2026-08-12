@@ -240,7 +240,7 @@ export function ProfileView() {
               <div className="form-group">
                 <label className="form-label" htmlFor="profile-department">
                   Department{' '}
-                  <span style={{ opacity: 0.5, fontWeight: 400 }}>
+                  <span style={{ color: 'var(--app-fg-muted)', fontWeight: 400 }}>
                     (optional)
                   </span>
                 </label>

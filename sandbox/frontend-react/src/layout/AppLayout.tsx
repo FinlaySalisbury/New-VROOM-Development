@@ -216,7 +216,8 @@ export function AppLayout() {
             style={{
               fontSize: 11,
               fontWeight: 600,
-              color: 'var(--app-fg)',
+              // The rail is a black surface — --app-fg is black and was invisible here.
+              color: 'rgba(255,255,255,0.92)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -237,8 +238,10 @@ export function AppLayout() {
                 fontWeight: 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
-                background: 'rgba(30,46,217,0.12)',
-                color: 'var(--yx-royal-blue)',
+                // Royal Blue text fails contrast on the black rail — Lavender is
+                // the brand's supporting tone and clears AA here.
+                background: 'rgba(157,187,255,0.16)',
+                color: 'var(--yx-lavender, #9DBBFF)',
               }}
             >
               {projectRole}

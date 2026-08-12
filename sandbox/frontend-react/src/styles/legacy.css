@@ -45,20 +45,16 @@
     align-items: center;
     gap: 4px;
     padding: 8px 8px 4px;
-    opacity: 0.45;
-    transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-.nav-powered-by:hover {
-    opacity: 0.7;
-}
-
+/* Text colours are set directly (not via a parent opacity, which compounded
+   down to ~0.3 alpha and failed WCAG AA); the logo carries the de-emphasis. */
 .nav-powered-by .powered-label {
     font-family: var(--font-body);
     font-size: 8px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.75);
     white-space: nowrap;
 }
 
@@ -66,7 +62,12 @@
     width: 44px;
     height: auto;
     display: block;
-    opacity: 0.9;
+    opacity: 0.55;
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.nav-powered-by:hover .powered-logo {
+    opacity: 0.85;
 }
 
 .nav-group {
@@ -84,7 +85,9 @@
     justify-content: center;
     background: transparent;
     border: none;
-    color: rgba(255,255,255,0.45);
+    /* 0.72 alpha on black clears WCAG AA 4.5:1 for the 10px labels; the pure
+       white active state still reads as clearly distinct. */
+    color: rgba(255,255,255,0.72);
     height: 64px;
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -122,7 +125,7 @@
 .nav-version {
     font-family: var(--font-body);
     font-size: 10px;
-    color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.72);
 }
 
 /* ─── Project switcher (modal) ─── */
