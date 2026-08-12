@@ -1832,7 +1832,7 @@ body.auth-pending {
     /* Black-authority surface (brand: flat black for authority, no textures/patterns) */
     background: linear-gradient(135deg, #14141A 0%, #000000 100%);
     background-size: cover;
-    z-index: 9999;
+    z-index: var(--z-auth-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1988,7 +1988,7 @@ body.auth-pending {
     height: 100vh;
     /* Signature Yunex Silver gradient — one opener gradient per surface, never tiled */
     background: var(--yx-grad-silver);
-    z-index: 9998; /* Just below auth-overlay */
+    z-index: var(--z-project-overlay); /* Just below auth-overlay */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2152,9 +2152,16 @@ body.auth-pending {
    Token-only — every value below references colors_and_type.css.
    ========================================================================== */
 
+/* Stacking ladder. The two full-screen shells (.auth-overlay, .project-overlay)
+   live inside #root, which creates no stacking context, so they compete
+   directly with the modal portal on document.body. Modals and toasts must
+   therefore clear BOTH — otherwise anything opened from the project picker
+   (settings, invite, confirm dialogs) renders underneath it. */
 :root {
-    --z-modal-base: 2000;
-    --z-toast:      9000;
+    --z-project-overlay:  9998;
+    --z-auth-overlay:     9999;
+    --z-modal-base:      10000;
+    --z-toast:           10100;
 }
 
 /* ─── Toast region (aria-live polite) ─── */
