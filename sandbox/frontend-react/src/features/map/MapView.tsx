@@ -21,6 +21,9 @@ import { AnimationControls } from './AnimationControls';
 import { buildAnimationModel } from './routeAnimation';
 import { ChatPanel } from './ChatPanel';
 import { listTestRuns, getTestRun } from '@/services/history';
+import { listEngineers } from '@/services/engineers';
+import { listJobLists } from '@/services/jobs';
+import { SetupChecklist } from './SetupChecklist';
 import { historyRunToResult } from '@/features/history/replay';
 import type { TestRun } from '@/types';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -279,6 +282,8 @@ export function MapView() {
   const [dayVehicleId, setDayVehicleId] = useState<number | null>(null);
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [pastRuns, setPastRuns] = useState<TestRun[]>([]);
+  // Setup progress for a project with nothing dispatched yet (null = unknown).
+  const [setup, setSetup] = useState<{ engineers: number; jobLists: number } | null>(null);
 
   // Below ~1200px the floating panels can't sit side-by-side without colliding,
   // so they collapse into a bottom sheet (peek → expand).
@@ -355,6 +360,22 @@ export function MapView() {
   useEffect(() => {
     void refreshHistory();
   }, [refreshHistory]);
+
+  // Load setup progress so the empty map can guide a fresh project.
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    Promise.all([listEngineers(projectId), listJobLists(projectId)])
+      .then(([eng, jl]) => {
+        if (active) setSetup({ engineers: eng.length, jobLists: jl.length });
+      })
+      .catch(() => {
+        if (active) setSetup(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   const loadPastRun = useCallback(
     async (runId: string) => {
@@ -622,12 +643,22 @@ export function MapView() {
 
       {/* Empty state */}
       {!result && !running && (
-        <div className="map-empty">
-          <h1 className="map-empty-title">Dispatch map</h1>
-          <p className="map-empty-text">
-            Run a dispatch to generate optimised routes across London and visualise them here.
-          </p>
-        </div>
+        setup && projectId && (setup.engineers === 0 || setup.jobLists === 0) ? (
+          <SetupChecklist
+            projectId={projectId}
+            engineerCount={setup.engineers}
+            jobListCount={setup.jobLists}
+            canRun={canRun}
+            onRunDispatch={() => setModalOpen(true)}
+          />
+        ) : (
+          <div className="map-empty">
+            <h1 className="map-empty-title">Dispatch map</h1>
+            <p className="map-empty-text">
+              Run a dispatch to generate optimised routes across London and visualise them here.
+            </p>
+          </div>
+        )
       )}
 
       {/* Running overlay */}
