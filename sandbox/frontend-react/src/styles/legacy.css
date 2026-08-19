@@ -24,6 +24,62 @@
     align-items: center;
     padding: var(--space-5) 0;
     z-index: 50;
+    /* On short viewports the rail's content is taller than 100vh. Without this
+       it simply clipped: Projects / Profile / Log out fell past the fold with
+       no way to reach them. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.25) transparent;
+}
+
+.nav-rail::-webkit-scrollbar {
+    width: 6px;
+}
+.nav-rail::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: var(--radius-pill);
+}
+.nav-rail::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* The flexible gap collapses before any content is pushed out of view. */
+.nav-spacer {
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+/* Reclaim vertical space before falling back to scrolling. Scoped above the
+   mobile breakpoint so it never fights the bottom tab bar, and prefixed with
+   .app-shell so these win over the base .nav-btn height defined further down. */
+@media (max-height: 900px) and (min-width: 641px) {
+    .app-shell .nav-rail {
+        padding: var(--space-3) 0;
+    }
+    .app-shell .nav-brand {
+        margin-bottom: var(--space-4);
+    }
+    .app-shell .nav-group {
+        gap: var(--space-2);
+    }
+    .app-shell .nav-btn {
+        height: 54px;
+    }
+}
+
+@media (max-height: 740px) and (min-width: 641px) {
+    .app-shell .nav-btn {
+        height: 46px;
+    }
+    .app-shell .nav-brand img {
+        width: 36px;
+    }
+    /* Decorative attribution is the first thing to go, never a control. */
+    .app-shell .nav-powered-by,
+    .app-shell .nav-version {
+        display: none;
+    }
 }
 
 .nav-brand {
