@@ -27,3 +27,47 @@
 #root {
   min-height: 100dvh;
 }
+
+/* Route transition — a subtle fade on section change. Opacity-only so it never
+   creates a containing block (safe for the absolutely-positioned map view).
+   The reduced-motion guard above neutralises it automatically. */
+.route-fade {
+  animation: route-fade-in var(--dur-base, 220ms) var(--ease-out, ease);
+}
+@keyframes route-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Navigation progress — one thin sweeping bar pinned to the top of the shell,
+   giving the data-fetch gap after a section change a quiet signal. */
+.nav-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  z-index: 900;
+  pointer-events: none;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--yx-royal-blue, #1e2ed9), var(--yx-lavender, #9dbbff));
+  animation: nav-progress-sweep 550ms var(--ease-out, ease) forwards;
+}
+@keyframes nav-progress-sweep {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  70% {
+    transform: scaleX(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}

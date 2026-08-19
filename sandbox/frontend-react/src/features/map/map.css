@@ -42,63 +42,66 @@
   max-width: calc(100vw - var(--space-7));
 }
 
-/* Dispatch ribbon — top-centre: navigation + live stats */
+/* Dispatch ribbon — top-centre: a slim toolbar (navigation + live stats) */
 .map-ribbon {
   position: absolute;
   z-index: 550;
-  top: var(--space-4);
+  top: var(--space-3);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: rgba(255, 255, 255, 0.94);
+  gap: 6px;
+  padding: 8px var(--space-3);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--app-border);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  max-width: min(720px, calc(100vw - 600px));
+  /* Leave room for the history picker (left) + breakdown panel (right) so the
+     centred ribbon never overlaps them. Below 1200px it moves to a sheet. */
+  max-width: min(680px, calc(100vw - 700px));
 }
 .map-ribbon-nav {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 .map-ribbon-run {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 6px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--fs-small);
   color: var(--app-fg);
 }
 .map-ribbon-field .form-input {
-  padding: 6px var(--space-3);
-  border-radius: var(--radius-pill);
-  font-size: var(--fs-small);
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-micro);
+  height: auto;
 }
 
 /* Day chips */
 .map-daychips {
   display: flex;
-  align-items: stretch;
-  gap: var(--space-1);
+  align-items: center;
+  gap: 4px;
   flex-wrap: wrap;
 }
 .map-daychip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   border: 1px solid var(--app-border);
   background: var(--yx-white);
   color: var(--app-fg);
-  border-radius: var(--radius-pill);
-  padding: 5px var(--space-3);
-  font-size: var(--fs-small);
+  border-radius: var(--radius-md);
+  padding: 3px 8px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -114,58 +117,48 @@
   color: var(--yx-white);
 }
 .map-daychip-count {
-  font-size: var(--fs-micro);
+  font-size: 10px;
   font-weight: 700;
   background: var(--app-bg-subtle);
   color: var(--app-fg-muted);
   border-radius: var(--radius-pill);
-  padding: 1px 7px;
+  padding: 0 6px;
 }
 .map-daychip.is-active .map-daychip-count {
   background: rgba(255, 255, 255, 0.25);
   color: var(--yx-white);
 }
 
-/* Ribbon stats — jobs + labour split */
+/* Ribbon stats — a single compact line */
 .map-ribbon-stats {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding-top: var(--space-2);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: 6px;
   border-top: 1px solid var(--app-border);
-}
-.map-ribbon-stat {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-}
-.map-ribbon-num {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--app-fg);
-}
-.map-ribbon-lbl {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-small);
   color: var(--app-fg-muted);
 }
-.map-ribbon-labour {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 170px;
+.map-ribbon-stat {
+  color: var(--app-fg);
+  white-space: nowrap;
 }
-.map-ribbon-labour-top {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+.map-ribbon-stat strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+.map-ribbon-stat.is-danger strong {
+  color: #ef4444;
 }
 .map-ribbon-bar {
-  display: flex;
-  height: 6px;
+  display: inline-flex;
+  width: 64px;
+  height: 5px;
   border-radius: var(--radius-pill);
   overflow: hidden;
   background: var(--app-bg-subtle);
+  flex-shrink: 0;
 }
 .map-ribbon-bar-drive {
   background: var(--yx-royal-blue);
@@ -174,27 +167,9 @@
   background: var(--yx-green);
 }
 .map-ribbon-split {
-  display: flex;
-  gap: var(--space-3);
   font-size: var(--fs-micro);
   color: var(--app-fg-muted);
-}
-.map-ribbon-split span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.map-swatch {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  display: inline-block;
-}
-.map-swatch-drive {
-  background: var(--yx-royal-blue);
-}
-.map-swatch-work {
-  background: var(--yx-green);
+  white-space: nowrap;
 }
 
 .map-summary-grid {
@@ -232,12 +207,12 @@
 
 /* Breakdown — top-right (sits below the floating close button) */
 .map-breakdown {
-  top: calc(var(--space-4) + 52px);
-  right: var(--space-4);
-  padding: var(--space-4);
-  width: 300px;
-  max-width: calc(100vw - 2 * var(--space-4));
-  max-height: calc(100vh - var(--space-9) - 52px);
+  top: calc(var(--space-3) + 48px);
+  right: var(--space-3);
+  padding: var(--space-3);
+  width: 272px;
+  max-width: calc(100vw - 2 * var(--space-3));
+  max-height: calc(100vh - var(--space-8) - 48px);
   overflow-y: auto;
 }
 
@@ -1017,6 +992,148 @@
   padding: var(--space-6);
   pointer-events: none;
 }
+
+/* ── Guided setup for an empty project ── */
+.map-setup {
+  position: absolute;
+  z-index: 450;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 2 * var(--space-5)));
+  max-height: calc(100vh - 2 * var(--space-6));
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+.map-setup-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-1);
+  color: var(--app-fg);
+}
+.map-setup-text {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-small);
+  color: var(--app-fg-muted);
+}
+.map-setup-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.map-setup-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-md);
+  background: var(--yx-white);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.map-setup-step.is-active {
+  border-color: var(--yx-royal-blue);
+  box-shadow: var(--shadow-glow);
+}
+.map-setup-marker {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--app-bg-subtle);
+  color: var(--app-fg-muted);
+}
+.map-setup-step.is-active .map-setup-marker {
+  background: var(--yx-royal-blue);
+  color: var(--yx-white);
+}
+.map-setup-step.is-done .map-setup-marker {
+  background: var(--yx-green);
+  color: #04231a;
+}
+.map-setup-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.map-setup-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  font-size: var(--fs-small);
+  color: var(--app-fg);
+}
+.map-setup-count {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  background: var(--app-bg-subtle);
+  color: var(--app-fg-muted);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+}
+.map-setup-hint {
+  font-size: var(--fs-micro);
+  color: var(--app-fg-muted);
+}
+.map-setup-cta {
+  flex-shrink: 0;
+  border: 1px solid var(--app-border-strong, #000);
+  background: var(--yx-white);
+  color: var(--app-fg);
+  border-radius: var(--radius-pill);
+  padding: 6px var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.map-setup-cta.is-primary {
+  background: var(--yx-black);
+  border-color: var(--yx-black);
+  color: var(--yx-white);
+}
+.map-setup-cta:hover:not(:disabled) {
+  background: var(--yx-royal-blue);
+  border-color: var(--yx-royal-blue);
+  color: var(--yx-white);
+}
+.map-setup-cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .map-setup {
+    padding: var(--space-4);
+  }
+  .map-setup-step {
+    flex-wrap: wrap;
+  }
+  .map-setup-cta {
+    width: 100%;
+  }
+}
+
 .map-empty-title {
   margin: 0 0 var(--space-2);
 }
@@ -1059,19 +1176,144 @@
   }
 }
 
-/* Mobile: stack panels full-width, move FAB clear of nav */
-@media (max-width: 768px) {
-  .map-history-picker,
-  .map-ribbon,
-  .map-breakdown {
-    position: static;
-    transform: none;
-    width: auto;
-    max-width: none;
-    margin: var(--space-3);
-    border-radius: var(--radius-lg);
+/* ── Bottom sheet (compact ≤1200px) ──────────────────────────
+   The floating dispatch panels collapse into a peek/expand sheet so they
+   never overlap on laptop/tablet/mobile. */
+.map-sheet {
+  position: absolute;
+  z-index: 600;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--app-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -12px 32px rgba(15, 28, 64, 0.14);
+  max-height: 82vh;
+}
+.map-sheet-handle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.map-sheet-grip {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: #000;
+  opacity: 0.22;
+}
+.map-sheet-peek {
+  flex: 1;
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  color: var(--app-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.map-sheet-caret {
+  color: var(--app-fg-muted);
+  font-size: 12px;
+}
+.map-sheet-body {
+  display: none;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--space-3) var(--space-4);
+  overscroll-behavior: contain;
+}
+.map-sheet.is-expanded .map-sheet-body {
+  display: flex;
+}
+/* Panels drop their floating positioning when hosted inside the sheet. */
+.map-sheet .map-history-picker,
+.map-sheet .map-ribbon,
+.map-sheet .map-breakdown {
+  position: static;
+  transform: none;
+  inset: auto;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 0;
+  border-radius: 0;
+}
+.map-sheet .map-history-picker {
+  padding: 0;
+}
+.map-sheet .map-ribbon {
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-lg);
+  background: var(--yx-white);
+  padding: var(--space-3);
+}
+.map-sheet .map-breakdown {
+  border-top: 1px solid var(--app-border);
+  padding: var(--space-3) 0 0;
+}
+
+/* Compact: keep the bottom controls clear of the peeked sheet (~52px). */
+@media (max-width: 1200px) {
+  .has-dispatch .anim-bar,
+  .has-dispatch .map-fab,
+  .has-dispatch .map-chat-fab {
+    bottom: calc(52px + var(--space-2));
   }
-  .map-view {
-    overflow-y: auto;
+}
+
+/* Mobile: tighten spacing and let the sheet own the full width. */
+@media (max-width: 768px) {
+  .map-history-picker {
+    left: var(--space-3);
+    right: var(--space-3);
+    width: auto;
+  }
+}
+
+/* Narrow: FABs become compact icon buttons, tiered above the playback bar so
+   the bottom zone (peek → playback → FABs) never overlaps. */
+@media (max-width: 640px) {
+  .map-fab,
+  .map-chat-fab {
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .map-fab {
+    right: var(--space-3);
+  }
+  .map-chat-fab {
+    left: var(--space-3);
+  }
+  .has-dispatch .map-fab,
+  .has-dispatch .map-chat-fab {
+    bottom: calc(52px + var(--space-2) + 46px + var(--space-2));
   }
 }

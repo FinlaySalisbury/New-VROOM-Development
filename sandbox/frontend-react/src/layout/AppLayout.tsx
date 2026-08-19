@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAppStore } from '@/store/appStore';
 import { supabase } from '@/lib/supabase';
 import { listProjects } from '@/services/projects';
+import { Modal } from '@/components/Modal';
+import { NavProgress } from '@/components/NavProgress';
+import type { ProjectRole } from '@/types';
 
 interface NavItem {
   section: string;
@@ -53,6 +56,20 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    section: 'performance',
+    label: 'Performance',
+    title: 'Engineer performance & allocation preferences',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 20a8 8 0 1 0-8-8" />
+        <path d="M12 12l4.5-4.5" />
+        <path d="M2 12h2" />
+        <path d="M12 2v2" />
+        <path d="M20.5 7.5 19 9" />
+      </svg>
+    ),
+  },
+  {
     section: 'history',
     label: 'Analytics',
     title: 'History & analytics',
@@ -89,13 +106,21 @@ function initialsFromProfile(
 }
 
 /**
- * Authed app shell for /projects/:id/:section. Black nav rail with the five
+ * Authed app shell for /projects/:id/:section. Black nav rail with the
  * section links, project identity, user identity, project switcher and
  * logout, plus a <main> outlet for the active section.
  */
 export function AppLayout() {
   const { id: routeProjectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Reset scroll to top on section change (react-router keeps the scroll
+  // container's position otherwise).
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const projects = useAppStore((s) => s.projects);
   const projectRole = useAppStore((s) => s.projectRole);
@@ -103,6 +128,14 @@ export function AppLayout() {
   const session = useAppStore((s) => s.session);
   const selectProject = useAppStore((s) => s.selectProject);
   const setProjects = useAppStore((s) => s.setProjects);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+
+  const switchTo = (id: string, role: ProjectRole | null) => {
+    setSwitcherOpen(false);
+    if (id === routeProjectId) return;
+    selectProject(id, role);
+    navigate(`/projects/${id}/map`);
+  };
 
   // On a deep link / refresh the store has no projects yet (the picker never
   // ran), so the active project's role can't be derived and role-gated UI (the
@@ -153,7 +186,7 @@ export function AppLayout() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div className="app-shell" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <nav className="nav-rail" aria-label="Primary">
         <div className="nav-brand">
           <img src="/assets/yuroute-icon@2x.png" alt="YuRoute" />
@@ -175,16 +208,17 @@ export function AppLayout() {
           ))}
         </div>
 
-        <div style={{ flexGrow: 1 }} />
+        <div className="nav-spacer" style={{ flexGrow: 1 }} />
 
         {/* Project name + role badge */}
-        <div style={{ padding: '8px 12px', marginBottom: 8, textAlign: 'center' }}>
+        <div className="nav-project" style={{ padding: '8px 12px', marginBottom: 8, textAlign: 'center' }}>
           <div
             title={projectName}
             style={{
               fontSize: 11,
               fontWeight: 600,
-              color: 'var(--app-fg)',
+              // The rail is a black surface — --app-fg is black and was invisible here.
+              color: 'rgba(255,255,255,0.92)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -205,8 +239,10 @@ export function AppLayout() {
                 fontWeight: 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
-                background: 'rgba(30,46,217,0.12)',
-                color: 'var(--yx-royal-blue)',
+                // Royal Blue text fails contrast on the black rail — Lavender is
+                // the brand's supporting tone and clears AA here.
+                background: 'rgba(157,187,255,0.16)',
+                color: 'var(--yx-lavender, #9DBBFF)',
               }}
             >
               {projectRole}
@@ -217,8 +253,9 @@ export function AppLayout() {
         <button
           type="button"
           className="nav-btn"
-          onClick={() => navigate('/projects')}
+          onClick={() => setSwitcherOpen(true)}
           title="Switch project"
+          aria-haspopup="dialog"
           style={{ marginBottom: 4 }}
         >
           <span className="nav-icon">
@@ -299,11 +336,45 @@ export function AppLayout() {
       </nav>
 
       <main
+        ref={mainRef}
         className="main-content"
         style={{ flex: 1, overflow: 'auto', position: 'relative' }}
       >
-        <Outlet />
+        <NavProgress />
+        <div key={location.pathname} className="route-fade">
+          <Outlet />
+        </div>
       </main>
+
+      {switcherOpen && (
+        <Modal open title="Switch project" onClose={() => setSwitcherOpen(false)}>
+          <ul className="switcher-list">
+            {projects.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className={`switcher-item${p.id === routeProjectId ? ' is-current' : ''}`}
+                  onClick={() => switchTo(p.id, p.role ?? null)}
+                >
+                  <span className="switcher-name">{p.name}</span>
+                  {p.role && <span className="switcher-role">{p.role}</span>}
+                  {p.id === routeProjectId && <span className="switcher-current">Current</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="switcher-manage"
+            onClick={() => {
+              setSwitcherOpen(false);
+              navigate('/projects');
+            }}
+          >
+            Manage all projects →
+          </button>
+        </Modal>
+      )}
     </div>
   );
 }

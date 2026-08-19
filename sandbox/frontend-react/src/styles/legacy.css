@@ -24,6 +24,62 @@
     align-items: center;
     padding: var(--space-5) 0;
     z-index: 50;
+    /* On short viewports the rail's content is taller than 100vh. Without this
+       it simply clipped: Projects / Profile / Log out fell past the fold with
+       no way to reach them. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.25) transparent;
+}
+
+.nav-rail::-webkit-scrollbar {
+    width: 6px;
+}
+.nav-rail::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: var(--radius-pill);
+}
+.nav-rail::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* The flexible gap collapses before any content is pushed out of view. */
+.nav-spacer {
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+/* Reclaim vertical space before falling back to scrolling. Scoped above the
+   mobile breakpoint so it never fights the bottom tab bar, and prefixed with
+   .app-shell so these win over the base .nav-btn height defined further down. */
+@media (max-height: 900px) and (min-width: 641px) {
+    .app-shell .nav-rail {
+        padding: var(--space-3) 0;
+    }
+    .app-shell .nav-brand {
+        margin-bottom: var(--space-4);
+    }
+    .app-shell .nav-group {
+        gap: var(--space-2);
+    }
+    .app-shell .nav-btn {
+        height: 54px;
+    }
+}
+
+@media (max-height: 740px) and (min-width: 641px) {
+    .app-shell .nav-btn {
+        height: 46px;
+    }
+    .app-shell .nav-brand img {
+        width: 36px;
+    }
+    /* Decorative attribution is the first thing to go, never a control. */
+    .app-shell .nav-powered-by,
+    .app-shell .nav-version {
+        display: none;
+    }
 }
 
 .nav-brand {
@@ -45,20 +101,16 @@
     align-items: center;
     gap: 4px;
     padding: 8px 8px 4px;
-    opacity: 0.45;
-    transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-.nav-powered-by:hover {
-    opacity: 0.7;
-}
-
+/* Text colours are set directly (not via a parent opacity, which compounded
+   down to ~0.3 alpha and failed WCAG AA); the logo carries the de-emphasis. */
 .nav-powered-by .powered-label {
     font-family: var(--font-body);
     font-size: 8px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.75);
     white-space: nowrap;
 }
 
@@ -66,7 +118,12 @@
     width: 44px;
     height: auto;
     display: block;
-    opacity: 0.9;
+    opacity: 0.55;
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.nav-powered-by:hover .powered-logo {
+    opacity: 0.85;
 }
 
 .nav-group {
@@ -84,7 +141,9 @@
     justify-content: center;
     background: transparent;
     border: none;
-    color: rgba(255,255,255,0.45);
+    /* 0.72 alpha on black clears WCAG AA 4.5:1 for the 10px labels; the pure
+       white active state still reads as clearly distinct. */
+    color: rgba(255,255,255,0.72);
     height: 64px;
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -122,7 +181,70 @@
 .nav-version {
     font-family: var(--font-body);
     font-size: 10px;
-    color: rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.72);
+}
+
+/* ─── Project switcher (modal) ─── */
+.switcher-list {
+    list-style: none;
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+.switcher-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    text-align: left;
+    padding: var(--space-3);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+    background: var(--yx-white);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.switcher-item:hover {
+    border-color: var(--app-border-strong, #000);
+    background: var(--app-bg-subtle);
+}
+.switcher-item.is-current {
+    border-color: var(--yx-royal-blue);
+    background: rgba(30, 46, 217, 0.06);
+}
+.switcher-name {
+    flex: 1;
+    font-weight: 600;
+    color: var(--app-fg);
+}
+.switcher-role {
+    font-size: var(--fs-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--app-fg-muted);
+}
+.switcher-current {
+    font-size: var(--fs-micro);
+    font-weight: 600;
+    color: var(--yx-royal-blue);
+}
+.switcher-manage {
+    border: 0;
+    background: transparent;
+    color: var(--yx-royal-blue);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    font-family: var(--font-body);
+    font-size: var(--fs-small);
+}
+.switcher-manage:hover {
+    text-decoration: underline;
 }
 
 /* ─── Main Content ─── */
@@ -209,6 +331,72 @@
 
 .data-card:hover {
     box-shadow: var(--shadow-md);
+}
+
+.data-card.is-selected {
+    border-color: var(--yx-royal-blue);
+    background: rgba(30, 46, 217, 0.04);
+}
+
+.data-card-check {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--yx-royal-blue);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-right: var(--space-2);
+}
+
+/* ─── Bulk action bar (multi-select on data lists) ─── */
+.bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--app-border);
+    border-radius: var(--radius-md);
+    background: var(--app-bg-subtle);
+}
+
+.bulk-selectall {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: var(--fs-small);
+    font-weight: 600;
+    color: var(--app-fg);
+}
+
+.bulk-selectall input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--yx-royal-blue);
+    cursor: pointer;
+}
+
+.bulk-count {
+    font-size: var(--fs-small);
+    color: var(--app-fg-muted);
+}
+
+.bulk-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+    .bulk-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+    .bulk-actions .yx-btn {
+        flex: 1;
+    }
 }
 
 .data-card-header {
@@ -1758,6 +1946,52 @@ img.map-monochrome {
 
     .activity-overlay {
         max-width: calc(100vw - 120px);
+    }
+}
+
+/* Phone: nav rail becomes a bottom tab bar (column-reverse puts it below content
+   so the map's bottom sheet naturally sits above it — no fixed positioning). */
+@media (max-width: 640px) {
+    .app-shell {
+        flex-direction: column-reverse;
+    }
+    .app-shell .nav-rail {
+        width: 100%;
+        height: 58px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 var(--space-1);
+        border-right: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    .nav-brand,
+    .nav-spacer,
+    .nav-project,
+    .nav-powered-by,
+    .nav-version {
+        display: none;
+    }
+    .app-shell .nav-group {
+        flex-direction: row;
+        gap: 2px;
+        width: auto;
+        padding: 0;
+    }
+    .app-shell .nav-btn {
+        height: 50px;
+        min-width: 50px;
+        padding: 0 6px;
+        gap: 2px;
+        margin: 0 !important;
+    }
+    .app-shell .nav-btn.active {
+        box-shadow: inset 0 3px 0 var(--yx-royal-blue);
+    }
+    .app-shell .nav-label {
+        font-size: 9px;
     }
 }
 
