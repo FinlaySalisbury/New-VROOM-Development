@@ -48,6 +48,9 @@ services:
         # (anon key is a public browser key — same value as the legacy config.js).
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-https://tixqsqgvbrijsqeivzjw.supabase.co}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-sb_publishable_tQgpsofJj_px9mXM1om54w_L-yaKGSi}
+        # Optional basemap override; empty falls back to the keyless provider.
+        VITE_BASEMAP_URL: ${VITE_BASEMAP_URL:-}
+        VITE_BASEMAP_ATTRIBUTION: ${VITE_BASEMAP_ATTRIBUTION:-}
     container_name: inview-sandbox
     expose:
       - "8000"

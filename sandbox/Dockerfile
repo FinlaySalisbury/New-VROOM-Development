@@ -21,6 +21,15 @@ ARG VITE_SUPABASE_ANON_KEY
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 
+# Optional basemap override. Left unset the map falls back to a keyless
+# provider, so this is only needed once a licensed tile key is issued. Any key
+# here is baked into the public bundle — it must be a dedicated key enabled for
+# map display only, never the backend's TomTom/HERE routing credentials.
+ARG VITE_BASEMAP_URL
+ARG VITE_BASEMAP_ATTRIBUTION
+ENV VITE_BASEMAP_URL=$VITE_BASEMAP_URL
+ENV VITE_BASEMAP_ATTRIBUTION=$VITE_BASEMAP_ATTRIBUTION
+
 COPY frontend-react/ ./
 RUN npm run build
 

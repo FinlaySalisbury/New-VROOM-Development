@@ -14,7 +14,7 @@ InView VROOM is a **Vehicle Routing Problem (VRP) engine** built for Yunex Traff
 1. Ingesting engineer profiles (skills, shift windows, depot locations) and job manifests (required skills, priority, service time, location).
 2. Computing time-dependent travel matrices using TomTom or an in-house London traffic model.
 3. Solving the VRP with the open-source VROOM engine (via Docker), enforcing hard constraints (skill matching, time windows).
-4. Visualising optimised routes on an interactive Mapbox GL JS map with animated playback, activity timelines, and GeoJSON layers.
+4. Visualising optimised routes on an interactive Leaflet map with animated playback, activity timelines, and GeoJSON layers.
 
 The system is exposed through the **Simulation Sandbox** — a full-stack web application where users generate scenarios, run solves across three routing strategies (Naive / In-House / TomTom Premium), compare results, and replay routes.
 
@@ -96,12 +96,12 @@ The system is exposed through the **Simulation Sandbox** — a full-stack web ap
 - **Solver:** VROOM via Docker (`ghcr.io/vroom-project/vroom-docker:latest`)
 
 ### Frontend
-- **Architecture:** Vanilla HTML/CSS/JS single-page application (no framework)
-- **State Management:** Custom `AppState` pub/sub store (`state.js`)
-- **Routing:** Hash-based SPA router (`router.js`)
-- **Maps:** Mapbox GL JS
+- **Architecture:** React 19 + TypeScript SPA built with Vite, in `sandbox/frontend-react/`. The legacy vanilla-JS app in `sandbox/frontend/` is retired and no longer deployed.
+- **State Management:** Zustand (`src/store/appStore.ts`)
+- **Routing:** React Router 7 (`src/App.tsx`)
+- **Maps:** Leaflet via `react-leaflet` — **not** Mapbox or Google Maps. There is no map SDK key. The basemap tile source is resolved at runtime in `src/features/map/basemap.ts`: `VITE_BASEMAP_URL` selects a licensed provider; unset, it falls back to Esri's keyless light-grey canvas (native to zoom 16, upscaled beyond).
 - **Auth UI:** Supabase Auth JS SDK
-- **Design System:** Custom CSS design system (`yunex-design-system.css`)
+- **Design System:** Custom CSS design system (`src/styles/yunex-design-system.css`)
 
 ### Infrastructure
 - **Hosting:** GCP Compute Engine VM (`vroom-sandbox-server`, `europe-west2-c`)
@@ -315,6 +315,19 @@ SUPABASE_SERVICE_ROLE_KEY  # Service role for admin operations
 RESEND_API_KEY          # Resend email API key
 APP_URL                 # Application URL (default: https://yuroute.com)
 ```
+
+### Frontend Build-Time Variables
+
+Vite compiles these into the browser bundle, so **every value is public**. In production they reach the in-container build only via `sandbox/docker-compose.yml` build args → `sandbox/Dockerfile` `ARG`/`ENV`. A new `VITE_*` var must be added to both, or the Docker build silently drops it.
+
+```
+VITE_SUPABASE_URL         # Supabase project URL
+VITE_SUPABASE_ANON_KEY    # Supabase publishable (anon) key — public by design
+VITE_BASEMAP_URL          # Optional Leaflet tile URL template; unset → keyless Esri fallback
+VITE_BASEMAP_ATTRIBUTION  # Optional attribution HTML for the above
+```
+
+A key in `VITE_BASEMAP_URL` must be a dedicated key enabled for TomTom's Map Display API only — never the backend `TOMTOM_API_KEY` / `HERE_API_KEY`. TomTom's domain whitelist is CORS-based and does not cover `<img>` tile loads, so the product restriction plus a usage cap is the real control.
 
 ### Secret Loading Priority
 1. **Production:** GCP Secret Manager (`app/secrets.py`)
@@ -560,3 +573,5 @@ Services:
 5. **AppState boot gate:** The router waits for `AppState.boot === 'ready'` before evaluating routes, preventing the auth overlay flash on cold start.
 6. **Polyline decoding:** The GeoJSON formatter attempts to decode `route.geometry` polylines first, falling back to straight-line step coordinates only if geometry is unavailable.
 7. **Docker networking:** Services reference each other by Docker Compose service names (e.g., `http://vroom:3000/`), not `localhost`.
+8. **Basemap tiles fail silently:** Free tile hosts gate access by returning **HTTP 200 with a placeholder image** (CARTO: "API KEY REQUIRED"; OSM: "418 Access blocked"; Esri beyond zoom 16: "Map data not yet available"). Leaflet raises no error and the console stays clean. Verify any basemap change by fetching a tile and *looking at the image* — never by status code.
+9. **`deploy_to_vm.ps1` is git-unaware:** it robocopies the local `sandbox/` directory, whatever branch is checked out, uncommitted edits included. Deploy only from a clean checkout of the branch you mean to ship — never from a feature-branch working tree, which can ship unreviewed work and roll back commits already on `main`.
