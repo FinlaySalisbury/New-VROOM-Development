@@ -32,8 +32,11 @@ import { buildDayGroups } from './dayGroups';
 import { BreakdownPanel, type SelectedItem } from './BreakdownPanel';
 import { DispatchRibbon, type RibbonStats } from './DispatchRibbon';
 import { buildJobLookup } from './dayTimeline';
+import { resolveBasemap } from './basemap';
 
 const LONDON: [number, number] = [51.505, -0.09];
+
+const BASEMAP = resolveBasemap();
 
 /** GeoJSON [lon,lat] -> Leaflet [lat,lon]. */
 const toLatLng = (c: number[]): [number, number] => [c[1], c[0]];
@@ -506,13 +509,30 @@ export function MapView() {
     [projectId, toast, refreshHistory],
   );
 
+  // An unreachable or erroring tile host otherwise fails silently. Note this
+  // cannot catch a host that gates with a 200 placeholder tile (as CARTO does)
+  // — that is only visible on the map itself. Warn once; one dead tile at the
+  // edge of a pan should not spam the user.
+  const basemapWarned = useRef(false);
+  const onTileError = useCallback(() => {
+    if (basemapWarned.current) return;
+    basemapWarned.current = true;
+    toast('The map basemap failed to load. Check the tile provider configuration.', {
+      variant: 'error',
+    });
+  }, [toast]);
+
   return (
     <div className={`map-view${result ? ' has-dispatch' : ''}`}>
       <MapContainer center={LONDON} zoom={11} className="map-canvas" zoomControl={false} scrollWheelZoom>
         <TileLayer
-          // CARTO Positron — clean, minimal light basemap (no API key needed).
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          // Resolved at runtime — see basemap.ts. Defaults to keyless Esri tiles.
+          attribution={BASEMAP.attribution}
+          url={BASEMAP.url}
+          maxZoom={BASEMAP.maxZoom}
+          maxNativeZoom={BASEMAP.maxNativeZoom}
+          subdomains={BASEMAP.subdomains ?? 'abc'}
+          eventHandlers={{ tileerror: onTileError }}
         />
         {result && (
           <>
