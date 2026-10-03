@@ -21,16 +21,17 @@
  * so maxNativeZoom pins the fetch at 16 and Leaflet upscales beyond that —
  * blurry at street level, but continuous rather than blank.
  *
- * Example VITE_BASEMAP_URL values (confirm the exact template against the
- * provider's current docs — these are illustrative, not verified):
- *   TomTom  https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?tileSize=256&key=KEY
- *   Mapbox  https://api.mapbox.com/styles/v1/mapbox/light-v11/tiles/{z}/{x}/{y}?access_token=TOKEN
- *   CARTO   https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?api_key=KEY
+ * Intended production value — TomTom Orbis Maps raster tiles (the template
+ * documented at docs.tomtom.com as of 2026-10; the older /map/1/tile/basic/main
+ * endpoint is deprecated in Orbis's favour). {s} rotates across the a–d hosts:
+ *   https://{s}.api.tomtom.com/maps/orbis/map-display/tile/{z}/{x}/{y}.png?apiVersion=1&style=street-light&key=KEY
  *
  * Any key placed in VITE_BASEMAP_URL is compiled into the browser bundle and
- * is therefore public. It must be a dedicated, referrer-restricted tile key —
- * never the backend's TOMTOM_API_KEY or HERE_API_KEY, which are paid routing
- * credentials scoped to server-side use.
+ * is therefore public. It must be a dedicated key enabled for the Map Display
+ * API only — never the backend's TOMTOM_API_KEY or HERE_API_KEY, which are
+ * paid routing credentials scoped to server-side use. TomTom's domain
+ * whitelist is enforced via CORS, which plain <img> tile loads do not go
+ * through, so the product restriction (plus a usage cap) is the real control.
  */
 
 export interface Basemap {
